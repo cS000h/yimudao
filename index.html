@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ea">
+<title>一亩稻</title>
+<style>
+  :root{
+    --paper:#f6f3ea;
+    --card:#fffdf7;
+    --ink:#2b3026;
+    --dim:#8b8776;
+    --green:#4a6b3f;
+    --green-d:#33492c;
+    --gold:#a87d24;
+    --line:#ded7c5;
+    --bad:#a8452f;
+    --good:#3f6b4a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;min-height:100%}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",sans-serif;
+    font-size:17px;
+    line-height:1.8;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width:520px;
+    min-height:100vh;
+    min-height:100dvh;
+    padding:26px 22px 34px;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ---------- 顶部数值条 ---------- */
+  .hud{
+    display:flex;
+    gap:6px;
+    font-size:13px;
+    line-height:1.4;
+    color:var(--dim);
+    letter-spacing:.02em;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:26px;
+  }
+  .hud .cell{flex:1;text-align:center}
+  .hud .cell b{
+    display:block;
+    font-size:19px;
+    font-weight:600;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+    transition:color .3s;
+  }
+  .hud .cell.up b{color:var(--good)}
+  .hud .cell.down b{color:var(--bad)}
+  .hud .cell.low b{color:var(--bad);opacity:.55}
+
+  /* ---------- 进度 ---------- */
+  .step{
+    font-size:13px;
+    color:var(--dim);
+    letter-spacing:.14em;
+    margin-bottom:10px;
+  }
+
+  /* ---------- 标题区 ---------- */
+  .term{
+    font-size:40px;
+    line-height:1.2;
+    font-weight:600;
+    letter-spacing:.06em;
+    color:var(--green-d);
+  }
+  .term small{
+    display:block;
+    font-size:13px;
+    font-weight:400;
+    letter-spacing:.2em;
+    color:var(--dim);
+    margin-top:8px;
+  }
+  .title{
+    font-size:22px;
+    font-weight:600;
+    margin:22px 0 10px;
+    letter-spacing:.02em;
+  }
+  .brief{
+    color:#5c6152;
+    margin:0 0 26px;
+  }
+
+  /* ---------- 通用块 ---------- */
+  .spacer{flex:1;min-height:22px}
+
+  .btn{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:var(--card);
+    color:var(--ink);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:17px 19px;
+    font:inherit;
+    line-height:1.7;
+    cursor:pointer;
+    margin-bottom:11px;
+    transition:border-color .15s, transform .1s, background .15s;
+  }
+  .btn:hover:not(:disabled){border-color:#bfb79e;background:#fff}
+  .btn:active:not(:disabled){transform:scale(.985)}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn .cost{
+    display:block;
+    font-size:12.5px;
+    color:var(--dim);
+    letter-spacing:.06em;
+    margin-top:5px;
+  }
+  .btn.poor .cost{color:var(--bad)}
+
+  .go{
+    display:block;
+    width:100%;
+    background:var(--green);
+    color:#fff;
+    border:none;
+    border-radius:12px;
+    padding:16px;
+    font:inherit;
+    font-size:17px;
+    letter-spacing:.14em;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .go:active{transform:scale(.985)}
+  .go.ghost{
+    background:transparent;
+    color:var(--green-d);
+    border:1px solid var(--green);
+    font-weight:600;
+  }
+
+  /* ---------- 事件块 ---------- */
+  .event{
+    background:#fbf6e6;
+    border-left:4px solid var(--gold);
+    border-radius:0 10px 10px 0;
+    padding:15px 18px;
+    margin-bottom:14px;
+  }
+  .event .tag{
+    font-size:12.5px;
+    letter-spacing:.16em;
+    color:var(--gold);
+    display:block;
+    margin-bottom:5px;
+  }
+  .event p{margin:0}
+  .event.bad{border-left-color:var(--bad);background:#fbf0ec}
+  .event.bad .tag{color:var(--bad)}
+  .event.good{border-left-color:var(--good);background:#eef5ee}
+  .event.good .tag{color:var(--good)}
+
+  /* ---------- 结算 ---------- */
+  .harvest{text-align:center;margin:8px 0 4px}
+  .harvest .big{
+    font-size:52px;
+    font-weight:600;
+    letter-spacing:.14em;
+    color:var(--green-d);
+  }
+  .final{
+    display:flex;
+    justify-content:center;
+    gap:26px;
+    margin:30px 0 34px;
+  }
+  .final div{text-align:center}
+  .final b{
+    display:block;
+    font-size:34px;
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+  }
+  .final span{font-size:13px;color:var(--dim);letter-spacing:.1em}
+  .final .lo b{color:var(--bad)}
+
+  .notes{margin:0 0 8px}
+  .notes .note{
+    padding:12px 0;
+    border-top:1px solid var(--line);
+    margin:0;
+    color:#4d5245;
+  }
+  .notes .note:last-child{border-bottom:1px solid var(--line)}
+
+  .foot{
+    text-align:center;
+    font-size:12.5px;
+    color:var(--dim);
+    letter-spacing:.08em;
+    margin-top:22px;
+  }
+
+  /* ---------- 开场 ---------- */
+  .cover{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    text-align:center;
+    padding:20px 0 40px;
+  }
+  .cover .name{
+    font-size:58px;
+    font-weight:600;
+    letter-spacing:.24em;
+    text-indent:.24em;
+    color:var(--green-d);
+    margin:0;
+  }
+  .cover .sub{
+    font-size:13.5px;
+    letter-spacing:.28em;
+    text-indent:.28em;
+    color:var(--dim);
+    margin:16px 0 40px;
+  }
+  .cover .lead{
+    color:#555a4c;
+    text-align:left;
+    margin:0 0 38px;
+    padding:0 4px;
+  }
+  .cover .lead p{margin:0 0 14px}
+  .cover .lead p:last-child{margin-bottom:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ==========================================================================
+   《一亩稻》最小原型
+   —— 验证："一局 8 个节气 + 决策后果延迟显现"，会不会让人想再来一局。
+
+   代码分两层：
+     1) 数据层（下面那三个大表）—— 改内容只改这里，不用碰逻辑
+     2) 逻辑层（newSeason / dueEvents / settle）—— 纯函数，完全不碰 DOM
+        将来搬去小程序时，逻辑层可以整个复制，只重写渲染层
+   ========================================================================== */
+
+
+/* ============================ 1. 数据层 ============================ */
+
+/* 一局 = 一季稻 = 这 8 个节气，每个节气做 1 个决策 */
+const TERMS = ["谷雨", "立夏", "芒种", "夏至", "小暑", "大暑", "立秋", "秋分"];
+
+/* 每个决策：节气 / 标题 / 引子 / 若干选项
+   选项字段：
+     text    按钮上的文案
+     cost    花掉多少本钱（本钱 = 钱 + 工夫，合在一起算）
+     effect  立刻生效的数值变化
+     flags   给这一季打的标记，后面用来判断延迟后果
+     result  选完之后给玩家看的一句话（只描述"发生了什么"，不评价对错）
+     note    可选。数值变化之外，额外补一句说明
+*/
+const DECISIONS = [
+  {
+    term: "谷雨",
+    date: "4月20日前后",
+    title: "选种",
+    brief: "谷雨前后，该泡种了。缸里的种子，有饱满的，也有瘪的。",
+    options: [
+      {
+        text: "都留着，一块儿泡下去",
+        cost: 0, effect: {}, flags: [],
+        result: "种子下了缸。水面上一层瘪谷，你没去管它。"
+      },
+      {
+        text: "兑盐水，把浮起来的捞掉",
+        cost: 1, effect: { quality: 8 }, flags: ["壮苗"],
+        result: "三成种子浮了上来，你拿笊篱一片片捞掉。沉在底下的，粒粒都坠手。"
+      }
+    ]
+  },
+  {
+    term: "立夏",
+    date: "5月5日前后",
+    title: "育秧",
+    brief: "秧田该整出来了。这几年的倒春寒，说不准什么时候来。",
+    options: [
+      {
+        text: "露天育秧，省事",
+        cost: 0, effect: {}, flags: ["露天"],
+        result: "秧田整好了，种子撒下去，盖上薄薄一层土。"
+      },
+      {
+        text: "搭个棚，夜里给它盖上",
+        cost: 1, effect: {}, flags: ["棚育"],
+        result: "竹片弯成拱，蒙上膜。棚里比外头暖和不少。"
+      }
+    ]
+  },
+  {
+    term: "芒种",
+    date: "6月6日前后",
+    title: "插秧",
+    brief: "秧苗有三寸高了。老话说：「京稻不插五月秧。」节气不等人。",
+    options: [
+      {
+        text: "再等五天，让秧再壮一壮",
+        cost: 0, effect: {}, flags: ["误农时"],
+        result: "又等了五天。田里的水晒得暖透了。"
+      },
+      {
+        text: "今天就插",
+        cost: 0, effect: {}, flags: [],
+        result: "天没亮就下田。一上午，六行秧插得笔直。"
+      }
+    ]
+  },
+  {
+    term: "夏至",
+    date: "6月21日前后",
+    title: "水位",
+    brief: "日头最毒的几天。田里的水，一天浅一层。",
+    options: [
+      {
+        text: "灌深水，水多压得住热气",
+        cost: 0, effect: {}, flags: ["深水"],
+        result: "水放满了，稻苗只露出个尖。看着挺安稳。"
+      },
+      {
+        text: "把水排干，晒田，让田裂一裂",
+        cost: 2, effect: {}, flags: ["晒田"],
+        result: "水放干了。第三天，田面裂开细密的纹路，稻根往下扎了一截。"
+      }
+    ]
+  },
+  {
+    term: "小暑",
+    date: "7月7日前后",
+    title: "除草",
+    brief: "稗子和稻子长得几乎一样，只是它的秆更滑、叶更挺。",
+    options: [
+      {
+        text: "薅一遍，差不多就得了",
+        cost: 0, effect: {}, flags: ["草未净"],
+        result: "薅了一遍，腰就直不起来了。田里看着是清爽了些。"
+      },
+      {
+        text: "薅三遍，一根一根地认",
+        cost: 2, effect: { ecology: 5 }, flags: [],
+        result: "薅了三遍。到最后，你能隔着老远一眼认出哪棵是稗子。"
+      }
+    ]
+  },
+  {
+    term: "大暑",
+    date: "7月22日前后",
+    title: "虫害",
+    brief: "稻叶上出现了卷尖，掰开一看，里头有条小青虫。",
+    options: [
+      {
+        text: "打药，一遍下去最干脆",
+        cost: 0, effect: { harvest: 6, ecology: -12 }, flags: ["打药"],
+        result: "药兑上水，背着桶走了一圈。第二天，田埂上落了一层虫。"
+      },
+      {
+        text: "赶一群鸭子下田",
+        cost: 1, effect: {}, flags: ["稻鸭"],
+        result: "二十只麻鸭下了田，扑腾着在秧行间钻来钻去。"
+      }
+    ]
+  },
+  {
+    term: "立秋",
+    date: "8月7日前后",
+    title: "追肥",
+    brief: "稻子开始拔节了。追不追肥、追多少，全看这一手。",
+    options: [
+      {
+        text: "多追一遍，穗子才压得住秤",
+        cost: 2, effect: { harvest: 8, quality: -8, ecology: -6 }, flags: ["多肥"],
+        result: "化肥撒下去，稻叶眼见着黑了一层。"
+      },
+      {
+        text: "少追一点，够用就行",
+        cost: 0, effect: {}, flags: [],
+        result: "只撒了薄薄一层。稻子长得不算快，但叶色正。"
+      }
+    ]
+  },
+  {
+    term: "秋分",
+    date: "9月23日前后",
+    title: "收割",
+    brief: "稻穗垂下来了，掐一粒用牙一咬，已经硬了。",
+    options: [
+      {
+        text: "再等五天，让米再饱满些",
+        cost: 0, effect: {}, flags: ["晚收"],
+        result: "你没动镰刀，又多等了五天。"
+      },
+      {
+        text: "今天就开镰",
+        cost: 0, effect: {}, flags: [],
+        result: "镰刀磨好了。天亮下田，稻把子一捆一捆码在田埂上。"
+      }
+    ]
+  }
+];
+
+/* 延迟后果 —— 原型的心脏。
+   玩家在某个节气做的决定，当时毫无反应，直到后面某个节气才显形。
+
+   字段：
+     at     在第几个节气触发（0=谷雨 … 7=秋分，8=秋收结算）
+     when   判断条件，参数是当前状态
+     effect 数值变化
+     mood   "bad" / "good"，只影响颜色
+     line   给玩家看的那句话 —— 说"因为什么"，不说"你做错了"
+     once   默认 true，触发过就不再触发
+*/
+const DELAYED = [
+  /* —— 育秧的回声，最早的一次延迟，让玩家先摸到这个机制 —— */
+  {
+    at: 4, when: s => s.flags["露天"], mood: "bad",
+    effect: { harvest: -5 },
+    line: "露天的那批秧，缓了半个月才立住。分蘖比别家少。"
+  },
+  {
+    at: 4, when: s => s.flags["棚育"], mood: "good",
+    effect: { harvest: 6 },
+    line: "棚里的秧出得齐。插下去三天就立住了，分蘖一串一串地冒。"
+  },
+
+  /* —— 链 1（负向·单因）：夏至灌深水 → 立秋徒长 —— */
+  {
+    at: 6, when: s => s.flags["深水"], mood: "bad",
+    effect: { harvest: -10 },
+    line: "稻子一个劲儿往上蹿，秆子又细又软，风一吹整片地都在晃。"
+  },
+  {
+    at: 6, when: s => s.flags["晒田"], mood: "good",
+    effect: { harvest: 6 },
+    line: "晒过田的稻根扎得深。别家的稻在晃，你家的站得笔直。"
+  },
+
+  /* —— 链 2（负向·复合）：深水 + 多追肥 → 秋分倒伏 —— */
+  {
+    at: 7, when: s => s.flags["深水"] && s.flags["多肥"], mood: "bad",
+    effect: { harvest: -15 },
+    line: "穗子沉，秆子软——稻子成片倒在水里。扶不起来。"
+  },
+
+  /* —— 链 3（正向·回报延迟）：大暑放鸭 → 秋分才知道值 —— */
+  {
+    at: 7, when: s => s.flags["稻鸭"] && s.flags["露天"], mood: "bad",
+    effect: { harvest: -8, ecology: 18 },
+    line: "鸭子把虫子和小草都啄干净了，可秧苗本来就弱，被它们踩倒、啄散了一片。"
+  },
+  {
+    at: 7, when: s => s.flags["稻鸭"] && !s.flags["露天"], mood: "good",
+    effect: { ecology: 25, quality: 5 },
+    line: "秧苗本来就壮，鸭子踩不倒。虫子和小草都啄干净了，一季省了药钱，还多拣了一篮鸭蛋。"
+  },
+
+  /* —— 另外两条小回响 —— */
+  {
+    at: 7, when: s => s.flags["草未净"] && s.flags["深水"], mood: "good",
+    effect: {},
+    line: "田里的水一夏天没断过，稗子没能发起来。"
+  },
+  {
+    at: 7, when: s => s.flags["草未净"] && !s.flags["深水"], mood: "bad",
+    effect: { quality: -10 },
+    line: "没除净的稗子，跟稻子抢了一季的肥。打下来的米，粒儿不够沉。"
+  },
+  {
+    at: 7, when: s => s.flags["误农时"], mood: "bad",
+    effect: { quality: -12 },
+    line: "插得晚了。灌浆那阵子赶上头一场早霜，米没长足。"
+  },
+
+  /* —— 收尾：同一个决定，好还是坏，要看前面种成什么样 —— */
+  {
+    at: 8, when: s => s.flags["晚收"] && s.flags["深水"], mood: "bad",
+    effect: { harvest: -8 },
+    line: "多等的这五天，一场秋雨把熟透的稻子打趴了。谷粒掉在泥里，捡不起来。"
+  },
+  {
+    at: 8, when: s => s.flags["晚收"] && !s.flags["深水"], mood: "good",
+    effect: { quality: 10 },
+    line: "多等的这五天没白等。稻子站得直，谷粒灌得饱，一咬一个响。"
+  }
+];
+
+
+/* ==================== 2. 逻辑层（纯函数，不碰 DOM）==================== */
+
+const BASE = { harvest: 55, quality: 55, ecology: 55 };   // 三项初始值
+const START_BUDGET = 5;                                    // 本钱：钱 + 工夫，合着算
+                                                           // 5 个本钱买不下所有"费事"选项（全买要 7 个），
+                                                           // 逼玩家挑：这一季我打算在哪几手上用心
+const USE_BUDGET = true;   // ← 改成 false 就是"没有本钱限制"的版本，方便对照
+
+const clamp = n => Math.max(0, Math.min(100, n));
+
+/* 开一季：返回一个全新的状态对象 */
+function newSeason() {
+  return {
+    stats: { ...BASE },
+    budget: START_BUDGET,
+    flags: {},
+    fired: {},      // 已经触发过的延迟后果，避免重复
+    log: [],        // 这一季显形过的所有后果 —— 秋收时一次性摊给玩家看
+    termIndex: 0
+  };
+}
+
+/* 把一组数值变化作用到状态上。返回实际变化量，供界面显示 +8 / -12 */
+function applyEffect(state, effect) {
+  const delta = {};
+  for (const key in (effect || {})) {
+    const before = state.stats[key];
+    state.stats[key] = clamp(before + effect[key]);
+    delta[key] = state.stats[key] - before;
+  }
+  return delta;
+}
+
+/* 在进入第 termIndex 个节气时，检查有哪些后果该显形了 */
+function dueEvents(state, termIndex) {
+  const out = [];
+  DELAYED.forEach((ev, i) => {
+    if (ev.at !== termIndex) return;
+    if (state.fired[i]) return;
+    if (!ev.when(state)) return;
+    state.fired[i] = true;
+    const delta = applyEffect(state, ev.effect);
+    const item = { line: ev.line, mood: ev.mood, delta };
+    out.push(item);
+    state.log.push(item);        // 记一辈子，秋收时一并翻出来
+  });
+  return out;
+}
+
+/* 这个节气里，玩家现在掏得起哪几个选项。
+   兜底：万一某一节气的两个选项都要花钱（内容表改出来的坑），
+   至少放最便宜的那个过去，否则玩家会卡在这里动不了。
+   返回 { list: [{i, o}], waived: bool } */
+function affordable(state, decision) {
+  const all = decision.options.map((o, i) => ({ o, i }));
+  if (!USE_BUDGET) return { list: all, waived: false };
+  const can = all.filter(x => x.o.cost <= state.budget);
+  if (can.length) return { list: can, waived: false };
+  const cheap = all.slice().sort((a, b) => a.o.cost - b.o.cost)[0];
+  return { list: [cheap], waived: true };
+}
+
+/* 玩家选了第 optionIndex 个选项 —— 改状态，并返回这一屏要给玩家看的东西 */
+function choose(state, decisionsIndex, optionIndex) {
+  const decision = DECISIONS[decisionsIndex];
+  const opt = decision.options[optionIndex];
+  const { list, waived } = affordable(state, decision);
+  if (!list.some(x => x.i === optionIndex)) return null;   // 掏不起，界面本来就该禁用
+
+  if (USE_BUDGET && !waived) state.budget -= opt.cost;
+
+  const delta = applyEffect(state, opt.effect);
+  (opt.flags || []).forEach(f => { state.flags[f] = true; });
+
+  return {
+    text: opt.result,
+    delta,
+    note: waived ? "本钱见底了。这一手是赊着账做的。" : (opt.note || null)
+  };
+}
+
+/* 秋收结算 —— 纯函数：只读状态，返回该说给玩家听的话和最终数字。
+   这里要给的是**整季的账**：之前每个节气显形过的后果，全部摊在一起。
+   玩家在这一屏才看得到"我这一年到底做成了什么样、哪一步变成了这样"。 */
+function settle(state) {
+  const s = JSON.parse(JSON.stringify(state));
+  dueEvents(s, 8);                         // 最后一波：收割之后的后果，只有结算时才显形
+  const lines = s.log.map(e => e.line);    // 连同这一波，整季的账一次摊开
+
+  // 什么坏事都没发生，也要给一句收尾，不能空着
+  if (lines.length === 0) {
+    lines.push("这一季顺顺当当。稻子该长的时候长，该黄的时候黄，没出什么岔子。");
+  }
+  return { stats: s.stats, lines };
+}
+
+
+/* ============================ 3. 渲染层 ============================ */
+
+const app = document.getElementById('app');
+
+const LABEL = { harvest: "产量", quality: "品质", ecology: "生态" };
+
+let state = newSeason();
+let screen = "intro";
+let pendingEvents = [];   // 当前这一屏要展示的延迟后果
+let lastResult = null;    // 选完之后要给玩家看的反馈
+let settlement = null;    // 结算结果
+let flash = {};           // 数值条上的 +8 / -12 高亮
+
+function reset() {
+  state = newSeason();
+  screen = "intro";
+  pendingEvents = [];
+  lastResult = null;
+  settlement = null;
+  flash = {};
+}
+
+/* 进入下一个节气：先看有没有后果要显形，有就先给一屏"事件"，再出决策 */
+function nextTerm() {
+  pendingEvents = dueEvents(state, state.termIndex);
+  flash = {};
+  pendingEvents.forEach(e => {
+    for (const k in e.delta) if (e.delta[k]) flash[k] = e.delta[k];
+  });
+  screen = pendingEvents.length ? "event" : "decision";
+  render();
+}
+
+function onChoose(i) {
+  const r = choose(state, state.termIndex, i);
+  if (!r) return;
+  lastResult = r;
+  flash = {};
+  for (const k in r.delta) if (r.delta[k]) flash[k] = r.delta[k];
+  screen = "result";
+  render();
+}
+
+/* 结果屏的「继续」 */
+function onContinue() {
+  state.termIndex++;
+  flash = {};
+  if (state.termIndex >= DECISIONS.length) {
+    settlement = settle(state);
+    screen = "end";
+    render();
+  } else {
+    nextTerm();
+  }
+}
+
+/* ---------- 小工具 ---------- */
+
+function hud() {
+  const cells = ["harvest", "quality", "ecology"].map(k => {
+    const v = state.stats[k];
+    const f = flash[k];
+    let cls = f > 0 ? "up" : f < 0 ? "down" : (v <= 25 ? "low" : "");
+    return `<div class="cell ${cls}"><b>${v}</b>${LABEL[k]}</div>`;
+  }).join("");
+  const b = USE_BUDGET
+    ? `<div class="cell ${state.budget <= 0 ? "low" : ""}"><b>${state.budget}</b>本钱</div>`
+    : "";
+  return `<div class="hud">${cells}${b}</div>`;
+}
+
+function deltaText(delta) {
+  const parts = [];
+  for (const k in delta) {
+    if (!delta[k]) continue;
+    parts.push(`${LABEL[k]} ${delta[k] > 0 ? "+" : ""}${delta[k]}`);
+  }
+  return parts.join("　");
+}
+
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+/* ---------- 各屏 ---------- */
+
+function viewIntro() {
+  return `
+    <div class="cover">
+      <h1 class="name">一亩稻</h1>
+      <p class="sub">京西稻 · 一季八节</p>
+      <div class="lead">
+        <p>上庄镇这亩水田，种了三百年的稻。</p>
+        <p>清朝时候，这米是要送进宫的。</p>
+        <p>如今归你种。</p>
+      </div>
+      <button class="go" onclick="startGame()">开 始</button>
+      <p class="foot">一局 = 一季稻 = 八个节气</p>
+    </div>`;
+}
+
+function viewEvent() {
+  const blocks = pendingEvents.map(e => `
+    <div class="event ${e.mood}">
+      <span class="tag">${e.mood === "good" ? "有 回 响" : "出 事 了"}</span>
+      <p>${esc(e.line)}</p>
+    </div>`).join("");
+  return `
+    ${hud()}
+    <div class="step">第 ${state.termIndex + 1} / ${TERMS.length} 个节气</div>
+    <h2 class="term">${TERMS[state.termIndex]}<small>${DECISIONS[state.termIndex].date}</small></h2>
+    <div class="spacer"></div>
+    ${blocks}
+    <div class="spacer"></div>
+    <button class="go" onclick="toDecision()">继 续</button>`;
+}
+
+function viewDecision() {
+  const d = DECISIONS[state.termIndex];
+  const { list } = affordable(state, d);
+  const canPick = new Set(list.map(x => x.i));
+  const buttons = d.options.map((o, i) => {
+    const poor = !canPick.has(i);
+    const costLine = o.cost > 0 ? `花 ${o.cost} 个本钱` : `不花本钱`;
+    return `<button class="btn ${poor ? "poor" : ""}" ${poor ? "disabled" : ""} onclick="onChoose(${i})">
+      ${esc(o.text)}
+      ${USE_BUDGET ? `<span class="cost">${poor ? "本钱不够" : costLine}</span>` : ""}
+    </button>`;
+  }).join("");
+  return `
+    ${hud()}
+    <div class="step">第 ${state.termIndex + 1} / ${TERMS.length} 个节气</div>
+    <h2 class="term">${TERMS[state.termIndex]}<small>${d.date}</small></h2>
+    <h3 class="title">${esc(d.title)}</h3>
+    <p class="brief">${esc(d.brief)}</p>
+    <div class="spacer"></div>
+    ${buttons}
+    <div class="spacer"></div>`;
+}
+
+function viewResult() {
+  const dt = deltaText(lastResult.delta);
+  const d = DECISIONS[state.termIndex];
+  return `
+    ${hud()}
+    <div class="step">${TERMS[state.termIndex]} · ${esc(d.title)}</div>
+    <div class="spacer"></div>
+    <p style="font-size:18px">${esc(lastResult.text)}</p>
+    ${dt ? `<p style="color:${lastResult.delta[Object.keys(lastResult.delta)[0]] > 0 ? "var(--good)" : "var(--bad)"};font-size:15px;letter-spacing:.06em">${dt}</p>` : ""}
+    ${lastResult.note ? `<p style="color:var(--dim);font-size:15px">${esc(lastResult.note)}</p>` : ""}
+    <div class="spacer"></div>
+    <button class="go" onclick="onContinue()">${state.termIndex + 1 >= DECISIONS.length ? "开 镰" : "继 续"}</button>`;
+}
+
+function viewEnd() {
+  const s = settlement.stats;
+  const finals = ["harvest", "quality", "ecology"].map(k => `
+    <div class="${s[k] <= 30 ? "lo" : ""}"><b>${s[k]}</b><span>${LABEL[k]}</span></div>`).join("");
+  const notes = settlement.lines.map(l => `<p class="note">${esc(l)}</p>`).join("");
+  return `
+    <div class="harvest">
+      <div class="big">开 镰</div>
+    </div>
+    <div class="final">${finals}</div>
+    <div class="notes">${notes}</div>
+    <div class="spacer"></div>
+    <button class="go ghost" onclick="restart()">再 种 一 季</button>
+    <p class="foot">这一季，你花了 ${START_BUDGET - state.budget} 个本钱</p>`;
+}
+
+function render() {
+  app.innerHTML =
+    screen === "intro"    ? viewIntro()    :
+    screen === "event"    ? viewEvent()    :
+    screen === "decision" ? viewDecision() :
+    screen === "result"   ? viewResult()   :
+                            viewEnd();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- 给按钮用的（内联 onclick 需要挂到全局）---------- */
+window.startGame = function () { screen = "decision"; nextTerm(); };
+window.toDecision = function () { screen = "decision"; render(); };
+window.onChoose = onChoose;
+window.onContinue = onContinue;
+window.restart = function () { reset(); render(); };
+
+render();
+</script>
+</body>
+</html>
