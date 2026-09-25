@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v5.6.1</title>
+<title>一亩稻 v5.7</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -623,6 +623,52 @@
   .foot{text-align:center;font-size:12.5px;color:var(--dim);letter-spacing:.08em;margin-top:18px}
   .bar{position:fixed;top:0;left:0;right:0;height:3px;background:var(--green);
     transform-origin:0 50%;transition:transform .4s;z-index:20}
+
+  /* 虫害小游戏：独立弹层，避免点击穿透到田里的决策。 */
+  .pest-dialog{width:min(480px,calc(100% - 24px));max-height:90dvh;overflow:auto;
+    padding:24px;border:2px solid var(--inkline);border-radius:20px;background:var(--paper);color:var(--ink)}
+  .pest-dialog::backdrop{background:rgba(32,43,27,.6)}
+  .pest-kicker{color:var(--bad);font-size:12px;letter-spacing:.16em}
+  .pest-dialog h2{margin:10px 0;font-size:26px}
+  .pest-copy{font-size:15px;line-height:1.8;color:var(--dim)}
+  .pest-meta{display:flex;justify-content:space-between;margin:16px 0 8px;font-size:14px}
+  .pest-meter{height:6px;border-radius:8px;background:var(--line);overflow:hidden}
+  .pest-meter span{display:block;height:100%;background:var(--green);width:100%;transition:width .1s linear}
+  .pest-field{position:relative;height:230px;margin-top:16px;overflow:hidden;border-radius:14px;background:#b5c395}
+  .pest-field .fieldart{width:100%;height:100%;object-fit:cover}
+  .pest-field>svg{width:100%;height:100%}
+  .pest-bug{position:absolute;width:56px;height:56px;transform:translate(-50%,-50%);
+    border:2px solid #f8eed4;border-radius:50%;background:#fff4d9;box-shadow:0 3px 0 #74653c;
+    cursor:pointer;touch-action:manipulation;display:grid;place-items:center;animation:pest-wiggle .8s ease-in-out infinite alternate}
+  .pest-bug svg{width:40px;height:40px;pointer-events:none}
+  .pest-bug:focus-visible{outline:3px solid var(--bad);outline-offset:3px}
+  .pest-bug.caught{pointer-events:none;animation:none;opacity:0;transition:opacity .15s}
+  .pest-dialog .go{width:100%;margin-top:18px}
+  .pest-practice{display:block;margin:12px auto;border:1px solid var(--inkline);border-radius:20px;
+    padding:9px 18px;background:var(--card);color:var(--green);font:inherit;font-size:13px;cursor:pointer}
+  @keyframes pest-wiggle{from{transform:translate(-50%,-50%) rotate(-9deg)}to{transform:translate(-50%,-50%) rotate(9deg)}}
+  @media(prefers-reduced-motion:reduce){.pest-bug{animation:none}.pest-meter span{transition:none}}
+  .practice-card{width:100%;display:flex;gap:18px;align-items:center;text-align:left;padding:22px;margin:14px 0;
+    border:1.5px solid var(--inkline);border-radius:16px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+  .practice-card:hover{border-color:var(--green);background:#edf1e3}
+  .practice-icon{font-size:36px}.practice-card b{display:block;font-size:20px;color:var(--green-d)}
+  .practice-card small{display:block;font-size:14px;line-height:1.7;margin:8px 0;color:var(--dim)}
+  .practice-card em{font-size:13px;color:var(--green);font-style:normal}
+  .pest-bug.drought{animation:none;background:#d4b187}.pest-bug.weeds{background:#e3ebca}
+  .pest-bug>span{font-size:30px;pointer-events:none}
+  .field-event-result{margin:12px 0 18px;padding:14px 18px;background:#eef2df;border:1px solid #cad5b7;border-radius:12px;font-size:14px;color:var(--green-d)}
+  .field-event-result p{margin:6px 0 0;line-height:1.7}
+  .field-event-animation{pointer-events:none}
+  .event-water{animation:event-water 1.6s ease-out 3 both}
+  .event-weed{animation:event-lift 1.6s ease-out 3 both}
+  .event-pest{animation:event-clear 1.6s ease-out 3 both}
+  @keyframes event-water{0%{opacity:0;transform:translateY(-14px)}35%{opacity:1}100%{opacity:0;transform:translateY(8px)}}
+  @keyframes event-lift{0%,20%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-30px)}}
+  @keyframes event-clear{0%,20%{opacity:1;transform:translateX(0)}100%{opacity:0;transform:translate(18px,-24px)}}
+  @media(prefers-reduced-motion:reduce){.event-water,.event-weed,.event-pest{animation:none}}
+  .pest-bug.pestFixed{animation:none}
+  .pest-bug.pest::after,.pest-bug.pestFixed::after{content:attr(data-left);position:absolute;right:-4px;top:-6px;min-width:22px;height:22px;
+    border-radius:50%;background:var(--bad);color:white;font:bold 13px/22px sans-serif;border:1px solid var(--paper)}
 </style>
 </head>
 <body>
@@ -630,6 +676,7 @@
 <div id="app"></div>
 <div class="pop" id="pop" onclick="onPop()"></div>
 <div class="toast" id="toast"></div>
+<dialog id="pest-dialog" class="pest-dialog" aria-labelledby="pest-title"></dialog>
 
 <script>
 /* ==========================================================================
@@ -4104,6 +4151,7 @@ let screen = "cover", pendingEvents = [], lastResult = null, flash = {},
 let 事件位 = 0;
 
 function reset() {
+  closePests(false); pestTerms.clear();
   S = newSeason(); screen = "cover"; pendingEvents = []; lastResult = null;
   已倒过 = false; 事件位 = 0;
   flash = {}; miban = null; result = null; newAch = [];
@@ -4303,6 +4351,7 @@ function viewCover() {
     </div>
     ${攒下来(S)}
     <button class="go" onclick="startGame()">下 田</button>
+    <button class="go sm ghost" onclick="openPractice()">突 发 事 件 练 习</button>
     <button class="go sm ghost" onclick="openBook('封面')">看 看 攒 下 的 东 西</button>
     <p class="foot">八 个 节 气 　·　验 米 　·　卖 米</p>
   </div>`;
@@ -4992,6 +5041,7 @@ function viewBook() {
 
 function render() {
   app.innerHTML =
+    screen === "practice" ? viewPractice() :
     screen === "cover"    ? viewCover()    :
     screen === "pull"     ? viewPull()     :
     screen === "event"    ? viewEvent()    :
@@ -5003,14 +5053,16 @@ function render() {
     screen === "chain"    ? viewChain()    :
     screen === "book"     ? viewBook()     :
                             viewYearEnd();
-  const p = screen === "cover" || screen === "pull" ? 0
+  const p = screen === "cover" || screen === "practice" || screen === "pull" ? 0
     : screen === "hangqing" ? 8/13
     : screen === "chain" ? (8 + (S.chainIndex||0)) / (8 + (S.后段.length||5))
     : screen === "miban" ? 8/12
     : Math.min(S.termIndex, 8) / 12;
   document.getElementById("bar").style.transform = `scaleX(${p})`;
+  showFieldEventResult();
   起动画();
   window.scrollTo(0, 0);
+  triggerFieldEvent();
 }
 
 /* ── 流程 ── */
@@ -5224,6 +5276,173 @@ window.restart = function () {
   存档({ 季: (档().季 || 1) + 1 });
   reset(); 成就队 = []; 弹牌(); render();
 };
+
+
+/* 处理结果留在本节气田地图下，动画只覆盖田图、不挡住操作。 */
+function showFieldEventResult() {
+  if (!["decision", "result", "event", "note"].includes(screen)) return;
+  const event = (S.fieldEvents || []).filter(e => e.term === S.termIndex).slice(-1)[0];
+  if (!event) return;
+  const field = app.querySelector(".bigfield, .field");
+  if (!field) return;
+  field.insertAdjacentHTML("afterend", `<div class="field-event-result" role="status"><b>${event.won ? "✓ 处理完成" : "本次处理结果"}</b><p>${esc(event.line)}</p></div>`);
+  const svg = field.querySelector("svg.tian");
+  if (!svg) return;
+  const positions = [[65,85],[125,100],[195,80],[255,105]];
+  const marks = positions.map(([x,y],i) => {
+    const style = `style="animation-delay:${i*.15}s"`;
+    if (event.kind === "drought") return `<g class="event-water" ${style}><path d="M${x} ${y-30}q-12 15 0 18q12-3 0-18" fill="#5eaec4"/><ellipse cx="${x}" cy="${y}" rx="18" ry="5" fill="none" stroke="#c4eef5" stroke-width="2"/></g>`;
+    if (event.kind === "weeds") return `<g class="event-weed" ${style}><path d="M${x} ${y}v-25m0 12q-18 0-15-15q15 0 15 15m0 4q17-1 15-16q-14 0-15 16" fill="#658d36" stroke="#42662c" stroke-width="2"/><path d="M${x-4} ${y+5}l4-5 4 5" fill="none" stroke="#957245"/></g>`;
+    return `<g class="event-pest" ${style}><ellipse cx="${x}" cy="${y}" rx="7" ry="10" fill="#80613d"/><path d="M${x-10} ${y-4}h20m-20 8h20" stroke="#59472d" stroke-width="2"/><path d="M${x+9} ${y-12}l4 4 8-10" fill="none" stroke="#fdf5d8" stroke-width="3"/></g>`;
+  }).join("");
+  svg.insertAdjacentHTML("beforeend", `<g class="field-event-animation" aria-hidden="true">${event.caught ? marks : ""}<rect x="65" y="12" width="190" height="23" rx="11" fill="#fffcf1" opacity=".94"/><text x="160" y="28" text-anchor="middle" font-size="11" fill="#41603a">${practiceEvents[event.kind].action} · ${event.won ? "处理完成" : "已处理，仍有遗漏"}</text></g>`);
+}
+
+/* 首页练习独立于正式季节进度，不写入收成、成就或存档。 */
+const practiceEvents = {
+  pest: { name: "虫害来袭 · 移动靶", action: "除虫", target: "虫子", verb: "清除", title: "点掉叶片上的虫子", win: "虫子清光了！", hint: "追着移动的虫子点，每只点三下才能清除，数字表示剩余次数。", icon: "🐛", hits: 3, seconds: 20, insect: true, moving: true },
+  pestFixed: { name: "虫害来袭 · 固定靶", action: "除虫", target: "虫子", verb: "清除", title: "清除停在叶片上的虫子", win: "虫子清光了！", hint: "虫子停在原地，每只点三下才能清除，数字表示剩余次数。", icon: "🐛", hits: 3, seconds: 20, insect: true, moving: false },
+  drought: { name: "旱情告急", action: "浇水", target: "干土", verb: "浇透", title: "给干裂的田地浇水", win: "田地喝饱水了！", hint: "每块干土点击两次：第一次润湿，第二次浇透。", icon: "💧", hits: 2, seconds: 10 },
+  weeds: { name: "杂草冒头", action: "拔草", target: "杂草", verb: "拔除", title: "拔掉稻苗间的杂草", win: "杂草拔干净了！", hint: "点击带标记的杂草，把养分留给稻苗。", icon: "🌿", hits: 1, seconds: 10 }
+};
+function openPractice() { screen = "practice"; render(); }
+function leavePractice() { screen = "cover"; render(); }
+function viewPractice() {
+  return `<div class="pest-kicker">田间练习场</div><h1 class="term">突发事件练习</h1>
+    <p class="brief">先练练手，再从容下田。选择一种事件，准备好后开始挑战。虫害 20 秒，浇水和拔草各 10 秒。</p>
+    <p class="pest-copy">随时重玩，不消耗体力，也不影响收成和存档。</p>
+    ${Object.entries(practiceEvents).map(([key,c]) => `<button class="practice-card" onclick="openPests(true,'${key}')">
+      <span class="practice-icon" aria-hidden="true">${c.icon}</span><span><b>${c.name}</b><small>${c.hint}</small><em>${c.seconds} 秒 · 开始${c.action} →</em></span></button>`).join("")}
+    <button class="go sm ghost" onclick="leavePractice()">回 到 首 页</button>`;
+}
+
+/* 突发事件只在前台种植决策时触发，每个节气至多一次；练习不改账。 */
+const pestDialog = document.getElementById("pest-dialog");
+let pestEvent = null, pestLastTick = performance.now();
+const pestTerms = new Set();
+document.addEventListener("visibilitychange", () => { pestLastTick = performance.now(); });
+pestDialog.addEventListener("cancel", event => {
+  event.preventDefault();
+  if (pestEvent?.phase === "done") closePests();
+  else finishPests(true);
+});
+function openPests(practice = false, kind = "pest") {
+  if (pestEvent || (practice ? screen !== "practice" : screen !== "decision" || S.选了 !== null)) return;
+  const config = practiceEvents[kind];
+  if (!config || (!practice && S.fieldEventSeen?.[kind])) return;
+  const count = kind === "pestFixed" ? 5 : config.insect ? 3 : 3 + Math.floor(Math.random() * 3);
+  pestEvent = { practice, kind, config, hits: {}, count, caught: new Set(), remaining: config.seconds * 1000, duration: config.seconds * 1000, phase: "ready", season: S };
+  if (!practice) {
+    pestTerms.add(S.termIndex);
+    if (!S.fieldEventSeen) S.fieldEventSeen = {};
+    S.fieldEventSeen[kind] = true;
+  }
+  pestDialog.innerHTML = `<div class="pest-kicker">${practice ? "田间练习 · 不影响收成" : "突发事件 · " + config.name}</div>
+    <h2 id="pest-title">${config.name}</h2>
+    <p class="pest-copy">这次有 ${count} 处${config.target}需要处理。${config.hint} 准备好后开始 ${config.seconds} 秒计时，也可用 Tab 和回车操作。</p>
+    <p class="pest-copy">${practice ? "放心练手，不奖励也不扣产量。" : "全部处理完成奖励 8 斤产量；每遗漏一处减产 2 斤。"} 切到后台会暂停。</p>
+    <button class="go" onclick="beginPests()">准备好了 · 开始${config.action}</button>
+    <button class="pest-practice" onclick="finishPests(true)">${practice ? "退出练习" : "这次交给自然"}</button>`;
+  pestDialog.showModal();
+  响("tap");
+}
+function beginPests() {
+  const e = pestEvent;
+  if (!e || e.phase !== "ready") return;
+  e.phase = "playing";
+  const config = e.config;
+  const positions = [[18,30],[50,28],[82,35],[32,72],[70,73]];
+  // 打乱固定分区，保留手机上互不重叠的点击范围。
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  e.positions = positions.slice(0,e.count);
+  pestDialog.innerHTML = `<div class="pest-kicker">${e.practice ? config.name + " · 练习" : "突发事件 · " + config.name}</div>
+    <h2 id="pest-title">${config.title}</h2>
+    <div class="pest-meta"><span id="pest-progress" role="status">已${config.verb} 0 / ${e.count}</span><b id="pest-time">${config.seconds}.0 秒</b></div>
+    <div class="pest-meter"><span id="pest-bar"></span></div>
+    <div class="pest-field">${田的画(S)}${positions.slice(0,e.count).map(([x,y],i) =>
+      `<button class="pest-bug ${e.kind}" data-pest-id="${i}" data-left="${config.hits}" style="left:${x}%;top:${y}%;animation-delay:-${i*.2}s" aria-label="${config.action}：第 ${i+1} 处${config.target}" onclick="catchPest(${i},this)">
+        ${config.insect ? `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 17 5 12M13 25 4 26M15 33 7 39M35 17 43 12M35 25 44 26M33 33 41 39" stroke="#614a2b" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="27" rx="12" ry="15" fill="#8f663a"/><path d="M24 14v28M15 25h18M16 33h16" stroke="#503b24" stroke-width="2"/><circle cx="24" cy="12" r="8" fill="#526438"/><circle cx="21" cy="10" r="2" fill="#fff"/><circle cx="27" cy="10" r="2" fill="#fff"/></svg>` : `<span aria-hidden="true">${config === practiceEvents.drought ? "🏜️" : "🌿"}</span>`}
+      </button>`).join("")}</div>
+    <p class="pest-copy">${config.hint} 离开页面自动暂停</p>
+    <button class="pest-practice" onclick="finishPests(true)">${e.practice ? "结束练习" : "结束处理，按剩余数量结算"}</button>`;
+  pestLastTick = performance.now();
+  pestDialog.querySelector(".pest-bug").focus();
+}
+function catchPest(id, button) {
+  const e = pestEvent;
+  if (!e || e.phase !== "playing" || e.caught.has(id)) return;
+  e.hits[id] = (e.hits[id] || 0) + 1;
+  if (e.hits[id] < e.config.hits) {
+    const left = e.config.hits - e.hits[id];
+    button.setAttribute("data-left", left);
+    button.setAttribute("aria-label", `${e.config.action}：第 ${id+1} 处${e.config.target}，还需 ${left} 次`);
+    if (e.kind === "drought") {
+      button.innerHTML = '<span aria-hidden="true">💧</span>';
+      button.style.background = "#cce3dd";
+    } else button.style.background = left === 2 ? "#ffe5b0" : "#ffd0a6";
+    响("tap"); return;
+  }
+  e.caught.add(id); button.disabled = true; button.classList.add("caught");
+  响("tap");
+  document.getElementById("pest-progress").textContent = `已${e.config.verb} ${e.caught.size} / ${e.count}`;
+  if (e.caught.size === e.count) finishPests();
+  else pestDialog.querySelector(".pest-bug:not(:disabled)").focus({ preventScroll: true });
+}
+function finishPests(skipped = false) {
+  const e = pestEvent;
+  if (!e || e.phase === "done") return;
+  e.phase = "done";
+  const missed = e.count - e.caught.size, won = missed === 0;
+  let message = "练习结束，不影响本季收成。";
+  if (!e.practice && e.season === S) {
+    const delta = applyEffect(S, { harvest: won ? 8 : -missed * 2 });
+    message = `本季产量 ${delta.harvest >= 0 ? "+" : ""}${delta.harvest} 斤。`;
+    const line = `${e.config.name}：已${e.config.verb} ${e.caught.size}/${e.count} 处${e.config.target}。${message}`;
+    S.log.push({ term: S.节气[S.termIndex].term, line, delta });
+    if (!S.fieldEvents) S.fieldEvents = [];
+    S.fieldEvents.push({ term: S.termIndex, kind: e.kind, line, won, caught: e.caught.size });
+  }
+  pestDialog.innerHTML = `<div class="pest-kicker">${e.practice ? "练习完成" : e.config.name + " · 处理结果"}</div>
+    <h2 id="pest-title">${won ? e.config.win : skipped ? "这次先到这里" : "时间到了"}</h2>
+    <p class="pest-copy">已${e.config.verb} ${e.caught.size} / ${e.count} 处${e.config.target}。${won ? "稻苗又能安心生长了。" : `还有 ${missed} 处没处理好，下次再加把劲。`}</p>
+    <p>${message}</p><button class="go" onclick="closePests()">${e.practice ? "返回练习场" : "回到田里"}</button>`;
+  响(won ? "好" : "tap");
+  pestDialog.querySelector(".go").focus();
+}
+function closePests(refresh = true) {
+  pestDialog.close(); pestEvent = null;
+  if (refresh) render();
+}
+// 进入决策页立即触发；每季每种只出现一次，退出或未完成也算已出现。
+function triggerFieldEvent() {
+  if (document.hidden || pestEvent || screen !== "decision" || S.选了 !== null
+      || S.termIndex < 1 || S.termIndex >= S.节气.length - 1 || pestTerms.has(S.termIndex)) return;
+  const kinds = ["drought", "weeds", "pest", "pestFixed"];
+  openPests(false, kinds[(S.termIndex - 1) % kinds.length]);
+}
+setInterval(() => {
+  const now = performance.now(), elapsed = Math.min(now - pestLastTick, 250);
+  pestLastTick = now;
+  if (document.hidden) return;
+  if (pestEvent?.phase === "playing") {
+    pestEvent.remaining = Math.max(0, pestEvent.remaining - elapsed);
+    document.getElementById("pest-time").textContent = `${(pestEvent.remaining/1000).toFixed(1)} 秒`;
+    document.getElementById("pest-bar").style.width = `${pestEvent.remaining/pestEvent.duration*100}%`;
+    if (pestEvent.config.moving) {
+      const t = (pestEvent.duration - pestEvent.remaining) / 1000;
+      pestEvent.positions.forEach(([x,y],i) => {
+        if (pestEvent.caught.has(i)) return;
+        const button = pestDialog.querySelector(`[data-pest-id="${i}"]`);
+        button.style.left = `${x + Math.sin(t * 1.7 + i) * 5}%`;
+        button.style.top = `${y + Math.sin(t * 1.3 + i * 2) * 7}%`;
+      });
+    }
+    if (!pestEvent.remaining) finishPests();
+  } else triggerFieldEvent();
+}, 100);
 
 render();
 </script>
