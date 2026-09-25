@@ -4,14 +4,42 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v5.5.1</title>
+<title>一亩稻 v5.5.2</title>
 <style>
   :root{
-    --paper:#f2efe4; --card:#fffdf6; --ink:#282c22; --dim:#8a8574;
-    --green:#41603a; --green-d:#2b3f26; --gold:#a87d24; --gold-l:#f7efd8;
-    --line:#ddd6c2; --bad:#9e4029; --good:#37623f; --clay:#8a6b4a;
+    --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
+    --green:#41603a; --green-d:#2b3f26; --gold:#a87d24; --gold-l:#f8eed4;
+    --line:#d9cdae; --bad:#9e4029; --good:#37623f; --clay:#8a6a45;
+    /* 描边用的暖墨 —— 比 --line 沉一档，专门给"能点的东西"。
+       --line 是分界线（表格、分隔），该轻；这一支是轮廓，该有分量。 */
+    --inkline:#b8a37a;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+  /* ── 纸 ──
+     全屏蒙一层纤维 + 一点压边。整张屏幕从"一块奶油色"变成"一张纸"。
+     ⚠ pointer-events:none 是命门：这游戏满地是热区（田里那些会呼吸的点），
+       蒙层只要接了事件，田里就点不动 —— 那是最坏的一种坏。
+     ⚠ z-index 要压过 .pop(30) / .bar(20) / .toast(9)。
+     ⚠ 噪点必须是**深色**的：白色噪点配 multiply 是白乘，什么也不会发生。
+     ⚠ 噪点的 alpha 要按 turbulence 的**实际取值范围**算。fractalNoise 三通道
+       之和常年在 1.5 上下（不是 0~3 均匀分布），照 0~3 去配线性映射，会得到
+       一条几乎永远为负的 alpha —— 整层是空的，而且不报错。
+     ⚠ alpha 的**零点**决定纸会不会被整体压暗。零点压在均值(1.5)上，一半
+       像素都在着墨，整张纸会悄悄暗 6% —— 色板是别处调好的，不该被纸纹拽走。
+       抬到 1.8：一半以上完全透明，只有最亮的那一小撮出纹，均值几乎不动。
+     ⚠ 瓦片要够大。200px 铺在 430px 宽的屏上，一屏两格半，fractalNoise 配
+       stitchTiles 也盖不住缝。260px 就退到画面外了。
+     ⚠ 颗粒之外还得有一层**纤维**（x 频率 .018 / y .8 拉出来的横絮）。
+       只有颗粒是数码噪点，不是纸。 */
+  body::after{content:"";position:fixed;inset:0;z-index:999;pointer-events:none;
+    mix-blend-mode:multiply;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .34 0 0 0 0 .27 0 0 0 0 .19 .28 .28 .28 0 -.5'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.018 .8' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .31 0 0 0 0 .22 .2 .2 .2 0 -.4'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23f)'/%3E%3C/svg%3E"),
+      radial-gradient(122% 88% at 50% 46%,
+        rgba(255,255,255,0) 44%, rgba(104,80,44,.10) 100%)}
+    background-size:260px 260px, 260px 260px, auto
   html,body{margin:0;padding:0;min-height:100%}
   body{
     background:var(--paper);color:var(--ink);
@@ -56,15 +84,15 @@
      「种到哪儿了、还剩几个」这件事，不该要玩家自己数。 */
   .tstrip{display:flex;gap:3px;padding-bottom:9px}
   .tstrip .td{flex:1;text-align:center;font-size:10.5px;line-height:1.3;
-    color:#c8c2b1;transition:color .3s}
-  .tstrip .td i{display:block;height:4px;border-radius:2px;background:#e3ddcb;
+    color:#cbc3aa;transition:color .3s}
+  .tstrip .td i{display:block;height:4px;border-radius:2px;background:#e6dfc8;
     margin-bottom:4px;transition:background .3s,box-shadow .3s}
   .tstrip .td.过{color:#8a8574}
   .tstrip .td.过 i{background:var(--green)}
   .tstrip .td.今{color:var(--green-d);font-weight:600}
   .tstrip .td.今 i{background:var(--gold);box-shadow:0 0 0 2px rgba(168,125,36,.22)}
-  .tstrip .td.收{color:#c8c2b1}
-  .tstrip .td.收 i{background:#cfc9b6}
+  .tstrip .td.收{color:#cbc3aa}
+  .tstrip .td.收 i{background:#d2cab0}
 
   .step{font-size:12.5px;color:var(--dim);letter-spacing:.16em;margin-bottom:8px}
   .term{font-size:38px;line-height:1.2;font-weight:600;letter-spacing:.06em;color:var(--green-d);margin:0}
@@ -74,12 +102,12 @@
   .term.cmp small{display:inline;margin:0 0 0 12px;letter-spacing:.14em}
   .title{font-size:21px;font-weight:600;margin:18px 0 8px}
   .title.cmp{font-size:19px;margin:8px 0 7px}
-  .brief{color:#5a5f4e;margin:0 0 18px}
+  .brief{color:#5d5b45;margin:0 0 18px}
   .brief.cmp{margin:0 0 14px;font-size:16px;line-height:1.75}
   .spacer{flex:1;min-height:16px}
 
-  .field{background:#eef1e6;border-radius:10px;padding:13px 16px;margin:0 0 16px;
-    font-size:15px;color:#4e5744;line-height:1.75}
+  .field{background:#f1efdf;border-radius:10px;padding:13px 16px;margin:0 0 16px;
+    font-size:15px;color:#525840;line-height:1.75}
   .field .wh{display:block;font-size:11.5px;letter-spacing:.18em;color:#7d8a6e;margin-bottom:3px}
   /* 那一屏里田占了满宽，就不再套 .field 的绿底框了 —— 框里再放图，是图和框打架。
      但"田里的样子"那句话有用（它说的是数字背后田里到底什么光景），留着当图注。 */
@@ -128,11 +156,11 @@
      现在第一句只写眼睛能看见的：颜色、斑点、形状、手感、气味。
      要知道那是什么，你得蹲下去、拔一根、或者去问老周。
      **认出来这件事本身，就是这个游戏的"知识"。** */
-  .kan{background:#f7f4e8;border:1px solid #e0d9c2;border-radius:12px;
+  .kan{background:#f8f3e4;border:1px solid #e4d9bd;border-radius:12px;
     padding:15px 17px;margin:0 0 13px;
     opacity:0;transform:translateY(8px);animation:rise .45s ease-out forwards}
   .kan .k{font-size:11.5px;letter-spacing:.2em;color:#8a8264;display:block;margin-bottom:8px}
-  .kan p{margin:0;font-size:16px;line-height:1.9;color:#3c4534;white-space:pre-line}
+  .kan p{margin:0;font-size:16px;line-height:1.9;color:#403c2b;white-space:pre-line}
   /* 你动手换来的那一条线索 —— 一条一条往上摞 */
   .zh{display:flex;flex-direction:column;gap:9px;margin:0 0 12px}
   .zh .cond{background:#fffdf6;border:1px solid #ddd6c2;border-left:3px solid var(--clay);
@@ -157,7 +185,7 @@
   .zh .got p{margin:0;font-size:14.5px;line-height:1.78;color:#4b5742}
   .zh .got p+p{margin-top:8px}
   /* 诊不出来 —— 事情照旧发生，你只是不知道那是什么 */
-  .zh .blind{background:#f4f1e6;border:1px dashed #cfc7ae;border-radius:12px;
+  .zh .blind{background:#f5f0e0;border:1px dashed #d2c8ab;border-radius:12px;
     padding:13px 16px;font-size:14.5px;line-height:1.75;color:#7d7767}
   @keyframes rise{to{opacity:1;transform:none}}
   @keyframes pop{to{opacity:1;transform:none}}
@@ -277,7 +305,7 @@
 
   /* 晚上回宿舍 —— 白天那个没想明白的事儿，翻书翻出来了。
      术语全部锁在「书上说」这一层，后面必须跟一句人话。 */
-  .note{background:#f6f3ea;border:1px solid #e2dbc6;border-radius:12px;
+  .note{background:#f7f2e3;border:1px solid #e5dbc2;border-radius:12px;
     padding:15px 17px;margin:16px 0 14px;
     opacity:0;transform:translateY(8px);animation:rise .5s .18s ease-out forwards}
   .note .k{font-size:11.5px;letter-spacing:.22em;color:var(--clay);
@@ -317,11 +345,13 @@
   .fb .row .b{width:48px;font-weight:600;font-variant-numeric:tabular-nums}
   .fb .row .b.up{color:var(--good)} .fb .row .b.dn{color:var(--bad)}
 
+  /* 能点的东西自己长一道轮廓 —— 玩家不用先读懂"这是个按钮"。
+     --line 是分界线，轻；这一道是轮廓，沉。 */
   .btn{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);
-    border:1px solid var(--line);border-radius:12px;padding:15px 17px;
+    border:1.5px solid var(--inkline);border-radius:12px;padding:15px 17px;
     font:inherit;line-height:1.7;cursor:pointer;margin-bottom:9px;
     transition:border-color .15s,transform .1s,background .15s}
-  .btn:hover{border-color:#bdb598;background:#fff}
+  .btn:hover{border-color:var(--clay);background:#fffdf6}
   .btn:active{transform:scale(.986)}
   /* 点下去先亮一下再翻屏 —— 让"我选了"这个动作有落点 */
   .btn.pick{border-color:var(--green);background:#eef4ee;box-shadow:0 0 0 1px var(--green)}
@@ -345,7 +375,7 @@
      那两样是别人给你的，这一条是**你自己想出来的**。
      所以用虚线框、米黄底：像随手记在书页边上的一行字。 */
   .ling{margin:12px 0 0;padding:13px 16px;border:1px dashed #c8b98a;border-radius:11px;
-    background:#fdfaef;opacity:0;transform:translateY(6px);
+    background:#fdf9ea;opacity:0;transform:translateY(6px);
     animation:rise .45s ease-out .14s forwards}
   .ling .k{display:block;font-size:11px;letter-spacing:.2em;color:#a3893f;margin-bottom:6px}
   .ling p{margin:0;font-size:15px;line-height:1.85;color:#4a4536;white-space:pre-line}
@@ -370,7 +400,7 @@
     color:var(--green-d);margin:0;text-align:center}
   .cover .sub{font-size:12.5px;letter-spacing:.3em;text-indent:.3em;color:var(--dim);
     margin:12px 0 30px;text-align:center}
-  .cover .lead{color:#4e5343;margin:0 0 26px;font-size:16.5px}
+  .cover .lead{color:#52503d;margin:0 0 26px;font-size:16.5px}
   .cover .lead p{margin:0 0 14px}
   .cover .lead em{font-style:normal;color:var(--green-d);font-weight:600}
 
@@ -409,7 +439,7 @@
   .praise{margin:16px 0 0;font-size:15px;line-height:1.85;color:#4e5544;
     text-align:left;padding-top:14px;border-top:1px solid rgba(0,0,0,.07);
     opacity:0;animation:rise .6s .62s ease-out forwards}
-  .grade-note{color:#5a5f4e;margin:22px 0 0}
+  .grade-note{color:#5d5b45;margin:22px 0 0}
   /* 星芒，颗数跟着档位走 */
   .spark{position:absolute;width:5px;height:5px;border-radius:50%;background:#f0d68a;
     box-shadow:0 0 10px 3px rgba(240,214,138,.95);opacity:0;
@@ -444,7 +474,7 @@
   .ledger .li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
     border-bottom:1px solid var(--line);font-size:15.5px;
     opacity:0;transform:translateY(6px);animation:rise .42s ease-out forwards}
-  .ledger .li .k{color:#5a5f4e}
+  .ledger .li .k{color:#5d5b45}
   .ledger .li .v{font-variant-numeric:tabular-nums;white-space:nowrap}
   .ledger .li.sub{padding-left:16px;font-size:14.5px;color:var(--dim)}
   .ledger .li.sub .k{color:var(--dim)}
@@ -497,7 +527,7 @@
   .mixbar span{display:block;height:100%}
   .mix-li{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:14.5px}
   .mix-li .dot{width:9px;height:9px;border-radius:50%;flex:none}
-  .mix-li .nm{flex:1;color:#5a5f4e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mix-li .nm{flex:1;color:#5d5b45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mix-li .pc{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
   .mix-li .amt{font-variant-numeric:tabular-nums;min-width:82px;text-align:right}
 
@@ -523,7 +553,7 @@
 
   /* 锁住的选项 —— 不是"不能选"，是"你手上没这个条件"。
      灰下去，并且把原因写清楚，别让人以为是坏了。 */
-  .btn.lockbtn{opacity:.45;cursor:not-allowed;background:#eceadf;
+  .btn.lockbtn{opacity:.45;cursor:not-allowed;background:#efeadd;
     box-shadow:none;border-style:dashed}
   .btn.lockbtn .cost{color:#a49c88}
 
@@ -556,7 +586,7 @@
   .cx.lock b{color:#b9b4a3} .cx.lock p{color:#c3bead;font-size:13.5px}
 
   .tabs{display:flex;gap:8px;margin-bottom:18px}
-  .tabs button{flex:1;padding:9px;border:1px solid var(--line);background:var(--card);
+  .tabs button{flex:1;padding:9px;border:1.5px solid var(--inkline);background:var(--card);
     border-radius:9px;font:inherit;font-size:14px;color:var(--dim);cursor:pointer}
   .tabs button.on{background:var(--green);color:#fff;border-color:var(--green)}
 
@@ -579,7 +609,7 @@
 
 <script>
 /* ==========================================================================
-   《一亩稻》 v5.5.1
+   《一亩稻》 v5.5.2
 
    数字全部来自本轮调研，出处标在注释里。凡调研明确"未查到"的，不编。
 
@@ -833,6 +863,72 @@
          顺带修：
            · 文件里混进了一批 LF 行（v5.2 两次插入时多行字符串直接写进去的），
              现在整份统一成 CRLF。
+   v5.5.2 两件：人事不再是抽签；美工（纸感 + 暖色 + 描边）。
+         （美工是挂了很久的一笔账 —— 用户在 v5.4 那轮就点了「画风（描边 +
+           暖色 + 纸感）」，一直排在机制后头。机制没停，这一版把外观补上。）
+
+         一、人事（最要紧的一件）。
+             起因是用户玩完一句「狗血事件呢？怎么一点没有？」。查下来是
+             我自己的账算漏了，而且是**两处静默的漏** —— 都不报错，只是
+             人就不出现：
+
+             ① 骰子。随机池尾部三条人事 p = 0.24/0.23/0.22，各自独立摇。
+                一季期望 0.69 件，一件都碰不到的季 = 46%。玩家玩一把，
+                一半几率整季没有一个人出现，然后合理地认为"这游戏没剧情"。
+
+             ② 轮到()。就算摇中了，还得过
+                `同阶.indexOf(ev) % 同位.length === 槽`。
+                这个函数是给"随机天气"摊节气用的（免得一个阶段的事全砸在
+                第一个节气上刷屏），人事却搭了这趟车：排到第几个节气，
+                撞不上就**永不触发**。现有三条恰好都过得去，纯属走运 ——
+                所以这个坑一直没露头，一并修掉。
+
+             改法：人事走**配额**（保底 1 件，45% 多一件，加权无放回），
+             并豁免 轮到()。p 的意思从"这一季会不会发生"变成"要发生的话，
+             多大概率是这一件"。变的是**有没有**，不是**是哪件**。
+
+             ③ 还有第三个漏，走真路径跑 2000 局才露头：99.3% 的季有戏，
+                差的那 0.7% 漏的全是**灌浆**那几件，一件不落。因为一季
+                8 个节气 = 4 个锚点（谷雨/芒种/大暑/秋分）+ 7 选 4，
+                而**灌浆段一个锚点都没有** —— 有的季压根没有灌浆的节气，
+                dueEvents 里 `段` 一次都不等于"灌浆"，抽中的人事就永远
+                排不上。跟 ② 是同一类毛病换了个入口：**抽中了却发不出来，
+                而且不出声。** 保底"1 件"这句话，得在所有入口上都成立
+                才叫保底。改法：挑人事之前先看这一季有哪些阶段，
+                抽不到阶段的直接不进池子。
+
+             配额修好之后池子只有 3 件，每件出现率 48% —— 玩两把就重样，
+             等于换了个方式没内容。所以顺势把人事从 3 件写到 9 件：
+
+               苗期  老周的地（公司要收他的田）
+               苗期  牌子（公司在你田边立了示范基地的牌，编号 07）
+               分蘖  你的苗，他的田（同学A 的田立枯了，来借苗）
+               孕穗  数字（技术员让你把报表的数往上抬）
+               灌浆  老陈来了（收粮的想提前包田，比市价高两成）
+               灌浆  拍照（公司带人来拍宣传照，摄影师让你拿把镰刀）
+
+             27 条岔路，没有一条当场告诉你对错；27 条回响，全落在更晚的
+             阶段。不造新名字（老周/同学A/老陈都是现成的，技术员、公司、
+             收购点写成身份不写成名字），不给主角编背景，一条术语都不放 ——
+             这一层是人，不是农技。
+
+         二、纸感：全屏一层纸纤维 + 一点压边（body::after，multiply）。
+             三个坑记在这儿，下次别再踩：
+             ① pointer-events:none —— 这游戏满地是热区，蒙层一接事件
+                田里就点不动了。
+             ② z-index:999 —— 要压过 .pop(30)/.bar(20)/.toast(9)。
+             ③ 噪点必须是深色。白色噪点配 multiply 是白乘，什么也不发生。
+
+         三、暖色：只动中性色（--paper/--card/--line/--ink/--dim/--clay），
+             **不动语义色**。稻绿、米金、好绿、坏红是玩家要读的信息 ——
+             暖一下就读不准了。变量改一处带一大片，另有十六处写死的界面
+             底色单独推了。文字灰刻意没动：本来就偏暖，且散在几十处。
+
+         四、描边：只描**能点的**（.btn、.tabs、气泡）。
+             全屏描边会变成连环画，太吵。只描可点的，意思才准确 ——
+             "长得像能按"就是"能按"。用新加的 --inkline（暖墨，比 --line
+             沉一档：--line 是分界线该轻，轮廓该有分量）。
+
    v5.5.1 「人事」—— 前面几版补机制，这一版补人。
          （版本号说明：上一版 v5.5 给"翻书"加了"翻到明天"——
            把明天那几步各自押的是什么摊开。那一块拆了。理由：「你怎么能
@@ -959,6 +1055,10 @@ const NUM = {
      这一组数把"学"和"干"焊成了一对矛盾：翻书就睡不够，睡够了就没翻书。
      前半夜熬出来的念头，后半夜是拿第二天的力气换的。 */
   睡觉恢复: 6, 翻书恢复: 4,
+  /* 人事（诊里带 岔 的那几条）不走骰子，走配额 —— 见 newSeason 里的说明。
+     保底 1 件：一季一个人都不出现，玩家会以为这游戏没有剧情。
+     45% 再多一件：两件是"这季有点事"，三件就变成串场了。 */
+  人事保底: 1, 人事加件: .45,
   /* 灵感的体力线 —— 低于这个数，翻着翻着眼皮就打架了：只剩下字，出不来念头。
      做成明码而不是概率，是因为概率会让玩家去 SL；明码他就能看一眼体力再决定今晚熬不熬。 */
   灵感体力线: 30,
@@ -1717,6 +1817,109 @@ const 随机池 = [
         { text: "把你看见的告诉他", 费: 3, 补: {}, 好: true, 旗: "同-说了",
           说: "你把你看见的跟他说了：秆子细、节间长、水一直没断过。\n他听完，说：「现在说这个，还有用吗。」\n你把剩下的话咽回去了。" },
       ] } },
+
+
+  /* ══════════════════════════ 人事（二） ══════════════════════════
+     v5.5.2 加的六件。规矩跟前面三条一样：看见 → 问 → 岔路，当场不表态，
+     账留到后面的阶段结。写法上多守一条 —— **一条术语都不放**：
+     这一层是人，不是农技；要知道为什么，去翻书。
+     ────────────────────────────────────────────────────────────── */
+
+  { at: "苗期", p: 0.26, mood: "bad", effect: {},
+    line: "老周蹲在你田埂上抽烟，一根抽完才开口。\n他说公司要收他这块，改观光稻田。他种了三十一年。\n他问你：「你们学院的人说话，管用不管用？」",
+    诊: { 岔: true, 成: 0, 步: [], 名: null,
+      题: "老 周 的 地",
+      问: "你打算怎么办？",
+      处置: [
+        { text: "替他写一份材料，递上去", 费: 4, 补: { harvest: -3 }, 好: true, 旗: "地-递材料",
+          说: "你熬了半宿，替他写了一份，落款签了学院实习生的名。\n材料交到镇上，没人接。\n第二天老周照旧来帮你看了水，什么也没提。" },
+
+        { text: "劝他签，说补偿不亏", 费: 2, 补: {}, 好: false, 旗: "地-劝签",
+          说: "你算给他听：一亩地九百块粮补，加上补偿款，比种十年稻子还多。\n他听着，把烟按灭在土里，说：「那是不亏。」\n他签了。" },
+
+        { text: "说你只是个实习生，管不了", 费: 0, 补: {}, 好: false, 旗: "地-没管",
+          说: "你说你是来实习的，说话不管用。\n老周点点头，说也是。\n他把烟屁股在鞋底上摁灭，站起来走了。" },
+      ] } },
+
+  { at: "苗期", p: 0.24, mood: "bad", effect: {},
+    line: "你去田里，发现埂上多了一块牌子。\n白底红字：京西稻示范基地，编号 07。\n从这块牌子往四周看，能看见的一共三块田 —— 只有中间那块是你的。",
+    诊: { 岔: true, 成: 0, 步: [], 名: null,
+      题: "牌 子",
+      问: "你打算怎么办？",
+      处置: [
+        { text: "去镇上问清楚，这牌子算谁的", 费: 3, 补: { harvest: -2 }, 好: true, 旗: "牌-问了",
+          说: "你去了镇上。管事的说，牌子先立着，年底数好看就挂你的名。\n你问，要是数不好看呢。\n他笑了笑，说那就拆了。" },
+
+        { text: "把牌子拔了，扔进沟里", 费: 2, 补: {}, 好: false, 旗: "牌-拔了",
+          说: "你把它拔出来，扔进了排水沟。\n第二天早上，沟里那块没了。埂上立了块新的，编号还是 07。" },
+
+        { text: "先不管，种自己的田", 费: 0, 补: {}, 好: false, 旗: "牌-没管",
+          说: "你没动它。\n往后每次下田，第一眼看见的都是那块牌子。\n它比你的稻子显眼。" },
+      ] } },
+
+  { at: "分蘖", p: 0.25, mood: "bad", effect: {},
+    line: "同学A 站在你田边，鞋上全是泥。\n他说他那块立枯了一大片，补不上了。\n他问你，能不能从你这儿匀点苗过去。",
+    诊: { 岔: true, 成: 0, 步: [], 名: null,
+      题: "你 的 苗，他 的 田",
+      问: "你打算怎么办？",
+      处置: [
+        { text: "匀一半给他", 费: 5, 补: { harvest: -6, ecology: 5 }, 好: true, 旗: "苗-匀了",
+          说: "你俩蹲在田里拔了一下午。\n他的筐装满的时候，你这边稀了一块。\n他临走说，回头还你。你说不用。" },
+
+        { text: "不匀，说自己这边也紧", 费: 1, 补: {}, 好: false, 旗: "苗-没匀",
+          说: "你说这边刚立住，再拔就散了。\n他站了一会儿，说行，那我再想别的办法。\n他走的时候鞋上的泥蹭了一路。" },
+
+        { text: "不匀苗，陪他去镇上买", 费: 4, 补: { harvest: -3 }, 钱: 60, 好: true, 旗: "苗-买苗",
+          说: "你俩搭车去了镇上。种子站的苗太贵，最后在农资店后面找到一批别人退的。\n你替他垫了六十块。他非要打欠条，你没让。\n回来的车上，他一直看着窗外。" },
+      ] } },
+
+  { at: "孕穗", p: 0.24, mood: "bad", effect: {},
+    line: "公司的技术员来了，在你田边站了很久。\n他说月底要交一份示范田的数，报镇上。\n他说去年那份数不好看，镇上批了。说完他就不说话了。",
+    诊: { 岔: true, 成: 0, 步: [], 名: null,
+      题: "数 字",
+      问: "你打算怎么办？",
+      处置: [
+        { text: "照实填，一个数不动", 费: 3, 补: {}, 好: true, 旗: "数-照实",
+          说: "你把本子上的原数抄了一遍，一个没动。\n他看了半天，说你这田长得是真好。\n他把表收起来走了，临走说：「我照实报。」" },
+
+        { text: "按他说的，往上抬一抬", 费: 1, 补: {}, 好: false, 旗: "数-改了",
+          说: "他念，你填。亩产多两成，品质提一档。\n填完他说，今年的简报好看，对大家都好。\n他走的时候拍了拍你的肩。" },
+
+        { text: "说数还没出来，先拖着", 费: 2, 补: {}, 好: false, 旗: "数-拖了",
+          说: "你说还得等一阵子才测得准。\n他说行，那我先记着。\n他走了。月底那份表还是交上去了，你没敢问填的是什么。" },
+      ] } },
+
+  { at: "灌浆", p: 0.25, mood: "bad", effect: {},
+    line: "老陈来了，站在田埂上捏了捏穗子。\n他说想提前把你这块田包下来，价比市面高两成。\n条件是不管最后收成什么样，都得卖给他。他手里那张纸已经写好了。",
+    诊: { 岔: true, 成: 0, 步: [], 名: null,
+      题: "老 陈 来 了",
+      问: "你打算怎么办？",
+      处置: [
+        { text: "签了，这价钱不差", 费: 2, 补: {}, 好: false, 旗: "陈-签了",
+          说: "你签了。他收起纸，说秋分前一准来。\n那天晚上你算了算，这一季就算种成这样，也不亏。\n算完你就睡了。往后好些天没下田。" },
+
+        { text: "不签，等收完再谈", 费: 0, 补: {}, 好: true, 旗: "陈-没签",
+          说: "你说等收上来再谈价。\n他劝了几句，见你不松口，留了张名片走了。\n名片你随手夹在本子里，没细看。" },
+
+        { text: "拿回去，先问老周", 费: 3, 补: { harvest: -2 }, 好: true, 旗: "陈-问老周",
+          说: "老周把那张纸凑到灯下看了三遍。\n他用指甲刮着底下一行小字说：「这行是说出芽的、发霉的不要 —— 不收的。」\n第二天你把纸还回去了。" },
+      ] } },
+
+  { at: "灌浆", p: 0.23, mood: "bad", effect: {},
+    line: "公司带了人来，说要拍一组宣传照。\n他们没去那几块样板田，直接进了你的。\n摄影师让你站到田中间，手里拿把镰刀。",
+    诊: { 岔: true, 成: 0, 步: [], 名: null,
+      题: "拍 照",
+      问: "你打算怎么办？",
+      处置: [
+        { text: "配合拍，站哪儿都行", 费: 2, 补: {}, 好: false, 旗: "拍-配合",
+          说: "拍了半个钟头。镰刀是道具，你其实没碰过。\n拍完他们上车走了，田里踩倒了两行稻子。" },
+
+        { text: "不在这儿拍，让他们去样板田", 费: 3, 补: {}, 好: true, 旗: "拍-拒了",
+          说: "你说这块是试验田，不是公司的示范基地，牌子还立在那儿呢。\n摄影师看了看那块牌子，又看了看你。\n他们转身去了样板田，拍了一下午。" },
+
+        { text: "可以拍，但得说清这是试验田", 费: 4, 补: {}, 好: true, 旗: "拍-说清",
+          说: "你站在田中间，把话说了：这是农大的试验田，不是公司的。\n摄影师记了下来。\n拍完你要了那张照片，自己存了一份。" },
+      ] } },
 ];
 
 
@@ -1892,6 +2095,80 @@ const EVENTS = [
   { at: "成熟", when: s => s.flags["同-说了"], mood: "good", effect: { harvest: 8, quality: 3 },
     from: ["灌浆", "把看见的告诉了他"],
     line: "同学A 后来拎了袋米过来，放在你门口。\n他说：「我那三成，比你这一亩收得早。你拿去尝尝。」\n他没说谢谢，你也没说什么。" },
+
+  /* ── 人事（二）的回响。旗 ↔ 回响一对一，一条不多一条不少 ── */
+
+  { at: "灌浆", when: s => s.flags["地-递材料"], mood: "good", effect: { harvest: 8, ecology: 6 },
+    from: ["苗期", "老周的地"],
+    line: "材料还是没回音。\n可老周这些天来得更勤了 —— 路过就弯腰替你拔两把稗子。\n你问他为什么。他说：「你这田，我看着顺眼。」" },
+
+  { at: "灌浆", when: s => s.flags["地-劝签"], mood: "bad", effect: { harvest: -6, ecology: -8 },
+    from: ["苗期", "老周的地"],
+    line: "老周那块地圈起来了，插了块效果图。\n从那以后，你田埂上再没人路过。\n有一回田里生了虫，你在埂上站了半天，想不出该问谁。" },
+
+  { at: "灌浆", when: s => s.flags["地-没管"], mood: "bad", effect: { harvest: -10 },
+    from: ["苗期", "老周的地"],
+    line: "老周那块还是收了。白露前后推土机进来，把田埂推平了。\n你站在自己田里看了一会儿。\n风从那边过来，没有挡的了。" },
+
+  { at: "成熟", when: s => s.flags["牌-问了"], mood: "good", effect: { harvest: 6, quality: 5 },
+    from: ["苗期", "牌子"],
+    line: "秋分那天公司来了两个人，把牌子上的编号换成了你的名字。\n他们说，今年的数是全片最好的。\n你没说什么。就是觉得那块牌子，好像顺眼了一点。" },
+
+  { at: "成熟", when: s => s.flags["牌-拔了"], mood: "bad", effect: { harvest: -8, ecology: -4 },
+    from: ["苗期", "牌子"],
+    line: "牌子立了又拔，拔了又立。后来他们直接用水泥浇死了。\n收粮那天，公司的车从你田边过，没停。" },
+
+  { at: "成熟", when: s => s.flags["牌-没管"], mood: "bad", effect: { quality: -7 },
+    from: ["苗期", "牌子"],
+    line: "白露过后，你在牌子上看见一行新字：示范面积 42 亩。\n你的田是一亩一。\n路过的人拍照，都站在你田这边。" },
+
+  { at: "灌浆", when: s => s.flags["苗-匀了"], mood: "good", effect: { harvest: 4, ecology: 8 },
+    from: ["分蘖", "你的苗，他的田"],
+    line: "你那块稀了的地方，后来自己分蘖补上了一半。\n同学A 那块活了。他隔三差五过来，蹲在埂上跟你聊半天。\n有一回你没注意，他顺手把你田里几丛稗子拔了。" },
+
+  { at: "灌浆", when: s => s.flags["苗-没匀"], mood: "bad", effect: { quality: -5 },
+    from: ["分蘖", "你的苗，他的田"],
+    line: "同学A 后来从别处弄到了苗，补上了，比你的晚半旬。\n期末交报告，他那块的数据赶了上来。\n你俩还是一起吃饭，只是不太聊田里的事了。" },
+
+  { at: "灌浆", when: s => s.flags["苗-买苗"], mood: "good", effect: { harvest: 5, quality: 3, ecology: 4 },
+    from: ["分蘖", "你的苗，他的田"],
+    line: "那批苗活了，长得比谁的都齐。\n他把六十块塞回你口袋，说多出来的算利息 —— 是两包烟。\n后来你田里缺人手的时候，他来得比谁都快。" },
+
+  { at: "成熟", when: s => s.flags["数-照实"], mood: "good", effect: { ecology: 8, quality: 5 },
+    from: ["孕穗", "数字"],
+    line: "表交上去过了半个月，技术员被调走了，没人说为什么。\n新来的那个见了你客客气气，什么也不多问。\n你田里的事，从此都是你自己拿主意。" },
+
+  { at: "成熟", when: s => s.flags["数-改了"], mood: "bad", effect: { harvest: 8, ecology: -10 },
+    from: ["孕穗", "数字"],
+    line: "简报上点了你的田，说是全片最好的示范。\n镇上按这个数，给公司定了明年的任务。\n技术员来找过你两回，让你再想想办法。" },
+
+  { at: "成熟", when: s => s.flags["数-拖了"], mood: "bad", effect: { quality: -6, harvest: -4 },
+    from: ["孕穗", "数字"],
+    line: "那份表最后还是按技术员的意思填了。\n你不知道上头写的亩产是多少。\n收完粮他对你说：「今年这个数，你可别往外说。」" },
+
+  { at: "成熟", when: s => s.flags["陈-签了"], mood: "bad", effect: { harvest: -9, quality: -4 },
+    from: ["灌浆", "老陈来了"],
+    line: "老陈秋分前来了，验收的时候专挑碎的、不饱满的往下压价。\n你翻出那张纸，上头写的是「按质论价」。\n你没吭声。他扫码转钱的时候，你看见他车上还装着别人家的粮。" },
+
+  { at: "成熟", when: s => s.flags["陈-没签"], mood: "good", effect: { harvest: 4, quality: 3 },
+    from: ["灌浆", "老陈来了"],
+    line: "收完粮你才下山去问的价。那阵子米价涨了点。\n你把名片翻出来，老陈来了，价也谈得比上次高。\n就是得自己装车。" },
+
+  { at: "成熟", when: s => s.flags["陈-问老周"], mood: "good", effect: { quality: 7 },
+    from: ["灌浆", "老陈来了"],
+    line: "你没签老陈那张。后来卖给镇上一家做包装的。\n验米那天，对方抓起一把米对着光看了半天，说你这米干净。\n你想起老周用指甲刮纸的样子。" },
+
+  { at: "成熟", when: s => s.flags["拍-配合"], mood: "bad", effect: { quality: -6, harvest: -3 },
+    from: ["灌浆", "拍照"],
+    line: "照片上了镇上的公众号，标题是「新农人」。\n底下有人留言问，这么年轻就来种地，图什么。\n你翻了半天评论，没找到一条问米怎么样的。\n田里被踩倒的那两行，后来没起来。" },
+
+  { at: "成熟", when: s => s.flags["拍-拒了"], mood: "good", effect: { quality: 4 },
+    from: ["灌浆", "拍照"],
+    line: "听说那组照片后来没用上 —— 样板田的稻子还没抽穗。\n你的稻子黄的时候，没人来拍。\n你自己站在埂上用手机拍了一张。" },
+
+  { at: "成熟", when: s => s.flags["拍-说清"], mood: "good", effect: { harvest: 6, quality: 5 },
+    from: ["灌浆", "拍照"],
+    line: "照片发了，底下附了一句：农大试验田。\n过了几天真有人顺着找过来，问你米怎么卖。\n你这才想起来 —— 你手上还没有米。" },
 ];
 
 
@@ -2387,8 +2664,45 @@ function newSeason(固定) {
   const f = 固定 || {};
   const 节气 = f.节气 || 一局节气();
   const 年景 = f.年景 || 抽年景();
-  /* 随机事件池：开局就把这一局会撞上哪几条定下来 */
+  /* 随机事件池：开局就把这一局会撞上哪几条定下来。
+     ── 但"人事"不走骰子 ──
+     诊里带 岔 的那几条是人，不是天气。骰子的问题不是"随机不好"，是它会
+     **静默地**让一整季一个人也不出现：三条人事的 p 加起来期望只有 0.69 件，
+     46% 的季一件都碰不到，而且不报错 —— 玩家只会得出"这游戏没剧情"。
+     "这一季撞上了什么人"是这个游戏唯一的故事线，故事线不能靠运气发不发。
+     改成配额：保底 NUM.人事保底 件，另有 NUM.人事加件 的概率多一件，
+     从人事池里加权无放回抽。
+     变的是**有没有**，不是**是哪件** —— 后者仍然随机。 */
   const 抽中 = 随机池.map(e => Math.random() < e.p);
+  /* 只在**这一季真的有的阶段**里挑人事。
+     一季 8 个节气 = 4 个锚点（谷雨/芒种/大暑/秋分）+ 7 选 4。灌浆段一个锚点
+     都没有 —— 立秋/处暑/白露全在随机池里等着被抽。所以有的季压根没有灌浆的
+     节气，dueEvents 里 `段` 一次都不会等于"灌浆"，抽中的灌浆人事就永远排不上，
+     而且是静默的：不报错，不出场。实测 0.33%，漏的全是灌浆那三件。
+     这跟 轮到() 那个漏是同一类毛病换了个人口 —— 保底"1 件"这句话，
+     得在所有入口上都成立才叫保底。 */
+  const 本季段 = new Set(节气.map(d => d.阶段));
+  const 人事位 = [];
+  随机池.forEach((e, i) => {
+    if (!(e.诊 && e.诊.岔)) return;
+    抽中[i] = false;                        // 骰子对人事一律作废
+    if (本季段.has(e.at)) 人事位.push(i);   // 挑不到阶段的，这一季就不出场
+  });
+  {
+    const 池 = 人事位.slice();
+    const 要 = Math.min(池.length,
+      NUM.人事保底 + (Math.random() < NUM.人事加件 ? 1 : 0));
+    for (let i = 0; i < 要; i++) {
+      /* 加权：p 在这儿的意思从"这一季会不会发生"变成"要发生的话，
+         多大概率是这一件"。所以给 p 的人事有轻重，没给的一律按 .2 算。 */
+      let 总 = 0;
+      for (const k of 池) 总 += 随机池[k].p || .2;
+      let r = Math.random() * 总, 选 = 池[池.length - 1];
+      for (const k of 池) { r -= (随机池[k].p || .2); if (r <= 0) { 选 = k; break; } }
+      抽中[选] = true;
+      池.splice(池.indexOf(选), 1);
+    }
+  }
   /* ── 从上一季带过来的那两样，在这儿算 ──
      季数从档里读，不读 state —— state 还没建出来。 */
   const 季数 = 档().季 || 1;
@@ -2516,6 +2830,10 @@ function dueEvents(state, termIndex) {
   const 同位 = state.节气.map((d, i) => (d.阶段 === 段 ? i : -1)).filter(i => i >= 0);
   const 槽 = 同位.indexOf(termIndex);
   const 轮到 = ev => {
+    /* 人事不摊 —— 摊到它那个阶段的哪个节气都该发生。
+       被 轮到 排掉是**静默**的：玩家不会知道这件本该发生的事没发生，
+       我们也不会。随机事件才需要摊开，那是为了别刷屏。 */
+    if (ev.诊 && ev.诊.岔) return true;
     if (同位.length <= 1) return true;
     const 同阶 = 随机池.filter(e => e.at === 段);
     return 同阶.indexOf(ev) % 同位.length === 槽;
@@ -2706,7 +3024,7 @@ const 家什 = {
   叶色卡: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
     <ellipse cx="0" cy="8" rx="9" ry="2" fill="#5f6b58" opacity=".2"/>
     <g transform="rotate(-6)">
-      <rect x="-12" y="-9" width="24" height="18" rx="1.6" fill="#f7f4e8"
+      <rect x="-12" y="-9" width="24" height="18" rx="1.6" fill="#f8f3e4"
         stroke="#c3bba2" stroke-width="1"/>
       ${["#8aa35c", "#6a8f3e", "#48742c", "#2a4d1c"].map((c, i) =>
         '<rect x="' + (-10 + i * 5.4) + '" y="-6.4" width="4.6" height="7.4" rx=".8" fill="' + c + '"/>').join("")}
