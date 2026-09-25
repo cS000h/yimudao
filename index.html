@@ -3,794 +3,3114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f6f3ea">
-<title>一亩稻</title>
+<meta name="theme-color" content="#f2efe4">
+<title>一亩稻 v4.8</title>
 <style>
   :root{
-    --paper:#f6f3ea;
-    --card:#fffdf7;
-    --ink:#2b3026;
-    --dim:#8b8776;
-    --green:#4a6b3f;
-    --green-d:#33492c;
-    --gold:#a87d24;
-    --line:#ded7c5;
-    --bad:#a8452f;
-    --good:#3f6b4a;
+    --paper:#f2efe4; --card:#fffdf6; --ink:#282c22; --dim:#8a8574;
+    --green:#41603a; --green-d:#2b3f26; --gold:#a87d24; --gold-l:#f7efd8;
+    --line:#ddd6c2; --bad:#9e4029; --good:#37623f; --clay:#8a6b4a;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;min-height:100%}
   body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",sans-serif;
-    font-size:17px;
-    line-height:1.8;
-    -webkit-font-smoothing:antialiased;
-    display:flex;
-    justify-content:center;
+    background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:17px;line-height:1.85;-webkit-font-smoothing:antialiased;
+    display:flex;justify-content:center;
   }
-  #app{
-    width:100%;
-    max-width:520px;
-    min-height:100vh;
-    min-height:100dvh;
-    padding:26px 22px 34px;
-    display:flex;
-    flex-direction:column;
+  #app{width:100%;max-width:520px;min-height:100vh;min-height:100dvh;
+    padding:24px 22px 40px;display:flex;flex-direction:column}
+
+  /* 顶上这一整块钉住 —— 手机上选项在下面，翻下去看选项就看不见数了。
+     里面两行：数值 + 进度表。你读选项的时候，账和走到哪儿了一直摆在眼前。 */
+  .head{position:sticky;top:0;z-index:8;background:var(--paper);
+    margin:0 -22px 20px;padding:15px 22px 0;border-bottom:1px solid var(--line);
+    box-shadow:0 7px 14px -12px rgba(0,0,0,.5)}
+  .hud{display:flex;gap:4px;font-size:12px;line-height:1.35;color:var(--dim);
+    padding-bottom:11px}
+  .hud .c{flex:1;text-align:center}
+  .hud .c b{display:block;font-size:18px;font-weight:600;color:var(--ink);}
+  /* 品质底下那一行 —— 等级和"离下一条线还差几点"。
+     这一行是全局最要紧的信息：米价是跳档的（3/8/15/25），
+     过了线以后再堆品质一分钱不多，而堆品质是要拿产量换的。 */
+  .hud .c i{display:block;font-style:normal;font-size:10.5px;letter-spacing:.03em;
+    margin-top:1px;color:var(--dim);white-space:nowrap}
+  .hud .c i.top{color:var(--gold)}
+  /* 线挪过的记号。↑ = 今年要更严，↓ = 今年松。数在年景卡上，这里只挂个钩。 */
+  .hud .c i b{font-weight:400;font-size:9px;vertical-align:1px;margin-left:2px}
+  .hud .c i b.up{color:var(--bad)}
+  .hud .c i b.dn{color:var(--good)}
+  .hud .c i.near{color:var(--bad)}
+  .hud .c b{font-variant-numeric:tabular-nums;transition:color .35s}
+  .hud .c.up b{color:var(--good)} .hud .c.dn b{color:var(--bad)}
+  .hud .c.low b{color:var(--bad);opacity:.6}
+  .hud .c.m b{font-size:15px;color:var(--gold);padding-top:3px}
+  .hud .c.s b{font-size:15px;color:var(--clay);padding-top:3px}
+  .hud .c.s.low b{color:var(--bad);opacity:1}
+  .hud .c.snd{flex:0 0 26px;cursor:pointer;user-select:none;font-size:15px;
+    color:var(--dim);opacity:.65;text-align:right}
+  .hud .c.snd.off{opacity:.3}
+
+  /* 一季的进程表 —— 八个格子，走过的沉下去，眼下的点着。
+     「种到哪儿了、还剩几个」这件事，不该要玩家自己数。 */
+  .tstrip{display:flex;gap:3px;padding-bottom:9px}
+  .tstrip .td{flex:1;text-align:center;font-size:10.5px;line-height:1.3;
+    color:#c8c2b1;transition:color .3s}
+  .tstrip .td i{display:block;height:4px;border-radius:2px;background:#e3ddcb;
+    margin-bottom:4px;transition:background .3s,box-shadow .3s}
+  .tstrip .td.过{color:#8a8574}
+  .tstrip .td.过 i{background:var(--green)}
+  .tstrip .td.今{color:var(--green-d);font-weight:600}
+  .tstrip .td.今 i{background:var(--gold);box-shadow:0 0 0 2px rgba(168,125,36,.22)}
+  .tstrip .td.收{color:#c8c2b1}
+  .tstrip .td.收 i{background:#cfc9b6}
+
+  .step{font-size:12.5px;color:var(--dim);letter-spacing:.16em;margin-bottom:8px}
+  .term{font-size:38px;line-height:1.2;font-weight:600;letter-spacing:.06em;color:var(--green-d);margin:0}
+  .term small{display:block;font-size:12.5px;font-weight:400;letter-spacing:.2em;color:var(--dim);margin-top:6px}
+  /* 决策屏的抬头收小一点 —— 手机上选项得尽早露出来 */
+  .term.cmp{font-size:27px}
+  .term.cmp small{display:inline;margin:0 0 0 12px;letter-spacing:.14em}
+  .title{font-size:21px;font-weight:600;margin:18px 0 8px}
+  .title.cmp{font-size:19px;margin:8px 0 7px}
+  .brief{color:#5a5f4e;margin:0 0 18px}
+  .brief.cmp{margin:0 0 14px;font-size:16px;line-height:1.75}
+  .spacer{flex:1;min-height:16px}
+
+  .field{background:#eef1e6;border-radius:10px;padding:13px 16px;margin:0 0 16px;
+    font-size:15px;color:#4e5744;line-height:1.75}
+  .field .wh{display:block;font-size:11.5px;letter-spacing:.18em;color:#7d8a6e;margin-bottom:3px}
+  /* 那一屏里田占了满宽，就不再套 .field 的绿底框了 —— 框里再放图，是图和框打架。
+     但"田里的样子"那句话有用（它说的是数字背后田里到底什么光景），留着当图注。 */
+  .tsay{margin:0 0 18px;font-size:14.5px;color:#5a6450;line-height:1.7}
+  .tsay .wh{display:block;font-size:11.5px;letter-spacing:.18em;color:#7d8a6e;margin-bottom:3px}
+
+  /* ── 田 ──
+     稻子会随风摆；倒了的那一批只演一次"倒下去"，之后每次重绘都直接画成躺着的，
+     不然每换一屏就倒一回。 */
+  .tian{display:block;width:100%;height:auto;border-radius:10px;margin:0 0 10px}
+  .tian .clump{transform-box:fill-box;transform-origin:50% 100%;
+    animation:sway 5.6s ease-in-out infinite}
+  .tian .clump:nth-of-type(2n){animation-duration:6.5s;animation-delay:-1.2s}
+  .tian .clump:nth-of-type(3n){animation-duration:7.4s;animation-delay:-2.7s}
+  .tian .clump.fall{animation:fall 1.15s cubic-bezier(.34,1.28,.64,1) both}
+  .tian .clump.lie{animation:none;transform:rotate(var(--lie,74deg))}
+  @keyframes sway{0%,100%{transform:rotate(-1.1deg)}50%{transform:rotate(1.1deg)}}
+  @keyframes fall{from{transform:rotate(0deg)}to{transform:rotate(var(--lie,74deg))}}
+  @media (prefers-reduced-motion:reduce){
+    .tian .clump{animation:none}
+    .tian .clump.fall{animation:none;transform:rotate(var(--lie,74deg))}
   }
 
-  /* ---------- 顶部数值条 ---------- */
-  .hud{
-    display:flex;
-    gap:6px;
-    font-size:13px;
-    line-height:1.4;
-    color:var(--dim);
-    letter-spacing:.02em;
-    padding-bottom:14px;
-    border-bottom:1px solid var(--line);
-    margin-bottom:26px;
-  }
-  .hud .cell{flex:1;text-align:center}
-  .hud .cell b{
-    display:block;
-    font-size:19px;
-    font-weight:600;
-    color:var(--ink);
-    font-variant-numeric:tabular-nums;
-    transition:color .3s;
-  }
-  .hud .cell.up b{color:var(--good)}
-  .hud .cell.down b{color:var(--bad)}
-  .hud .cell.low b{color:var(--bad);opacity:.55}
+  .say{background:var(--card);border-left:3px solid var(--clay);
+    border-radius:0 10px 10px 0;padding:13px 16px;margin:0 0 16px}
+  .say .who{font-size:12px;letter-spacing:.14em;color:var(--clay);display:block;margin-bottom:3px}
+  .say p{margin:0}
+  .say p+p{margin-top:8px}
 
-  /* ---------- 进度 ---------- */
-  .step{
-    font-size:13px;
-    color:var(--dim);
-    letter-spacing:.14em;
-    margin-bottom:10px;
-  }
-
-  /* ---------- 标题区 ---------- */
-  .term{
-    font-size:40px;
-    line-height:1.2;
-    font-weight:600;
-    letter-spacing:.06em;
-    color:var(--green-d);
-  }
-  .term small{
-    display:block;
-    font-size:13px;
-    font-weight:400;
-    letter-spacing:.2em;
-    color:var(--dim);
-    margin-top:8px;
-  }
-  .title{
-    font-size:22px;
-    font-weight:600;
-    margin:22px 0 10px;
-    letter-spacing:.02em;
-  }
-  .brief{
-    color:#5c6152;
-    margin:0 0 26px;
-  }
-
-  /* ---------- 通用块 ---------- */
-  .spacer{flex:1;min-height:22px}
-
-  .btn{
-    display:block;
-    width:100%;
-    text-align:left;
-    background:var(--card);
-    color:var(--ink);
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:17px 19px;
-    font:inherit;
-    line-height:1.7;
-    cursor:pointer;
-    margin-bottom:11px;
-    transition:border-color .15s, transform .1s, background .15s;
-  }
-  .btn:hover:not(:disabled){border-color:#bfb79e;background:#fff}
-  .btn:active:not(:disabled){transform:scale(.985)}
-  .btn:disabled{opacity:.4;cursor:default}
-  .btn .cost{
-    display:block;
-    font-size:12.5px;
-    color:var(--dim);
-    letter-spacing:.06em;
-    margin-top:5px;
-  }
-  .btn.poor .cost{color:var(--bad)}
-
-  .go{
-    display:block;
-    width:100%;
-    background:var(--green);
-    color:#fff;
-    border:none;
-    border-radius:12px;
-    padding:16px;
-    font:inherit;
-    font-size:17px;
-    letter-spacing:.14em;
-    cursor:pointer;
-    margin-top:6px;
-  }
-  .go:active{transform:scale(.985)}
-  .go.ghost{
-    background:transparent;
-    color:var(--green-d);
-    border:1px solid var(--green);
-    font-weight:600;
-  }
-
-  /* ---------- 事件块 ---------- */
-  .event{
-    background:#fbf6e6;
-    border-left:4px solid var(--gold);
-    border-radius:0 10px 10px 0;
-    padding:15px 18px;
-    margin-bottom:14px;
-  }
-  .event .tag{
-    font-size:12.5px;
-    letter-spacing:.16em;
-    color:var(--gold);
-    display:block;
-    margin-bottom:5px;
-  }
+  .event{background:var(--gold-l);border-left:3px solid var(--gold);
+    border-radius:0 10px 10px 0;padding:13px 16px;margin-bottom:11px;
+    opacity:0;transform:translateY(8px);animation:rise .45s ease-out forwards}
+  .event .tag{font-size:11.5px;letter-spacing:.16em;color:var(--gold);display:block;margin-bottom:3px}
   .event p{margin:0}
-  .event.bad{border-left-color:var(--bad);background:#fbf0ec}
-  .event.bad .tag{color:var(--bad)}
-  .event.good{border-left-color:var(--good);background:#eef5ee}
-  .event.good .tag{color:var(--good)}
+  .event .from{display:block;margin-top:7px;font-size:12px;color:var(--clay);
+    letter-spacing:.02em;border-top:1px dashed #ddd0b4;padding-top:6px}
+  .event .from b{font-weight:600;color:#7a5c3c}
+  .event .dl{display:block;margin-top:5px;font-size:13px;font-variant-numeric:tabular-nums}
+  .event .dl.neg{color:var(--bad)} .event .dl.pos{color:var(--good)}
+  .event.bad{border-left-color:var(--bad);background:#f9efea} .event.bad .tag{color:var(--bad)}
+  .event.good{border-left-color:var(--good);background:#eef4ee} .event.good .tag{color:var(--good)}
 
-  /* ---------- 结算 ---------- */
-  .harvest{text-align:center;margin:8px 0 4px}
-  .harvest .big{
-    font-size:52px;
-    font-weight:600;
-    letter-spacing:.14em;
-    color:var(--green-d);
-  }
-  .final{
-    display:flex;
-    justify-content:center;
-    gap:26px;
-    margin:30px 0 34px;
-  }
-  .final div{text-align:center}
-  .final b{
-    display:block;
-    font-size:34px;
-    font-weight:600;
-    font-variant-numeric:tabular-nums;
-  }
-  .final span{font-size:13px;color:var(--dim);letter-spacing:.1em}
-  .final .lo b{color:var(--bad)}
+  /* 年景是这一局的底牌 —— 抽到哪一档，一眼就得看出来。
+     上上（金·扫光）/ 上（青）/ 中（素）/ 下（暗红）/ 下下（深红·扫光） */
+  .yc{background:var(--green-d);color:#f0ede0;border-radius:12px;
+    padding:16px 18px;margin:0 0 22px;position:relative;overflow:hidden;
+    animation:flip .52s cubic-bezier(.2,.8,.3,1) both}
+  .yc .tier{position:absolute;top:0;right:0;font-size:12px;letter-spacing:.2em;
+    text-indent:.2em;padding:5px 13px;border-radius:0 12px 0 10px;
+    background:rgba(255,255,255,.08);color:#b6c2b0}
+  .yc .k{font-size:11.5px;letter-spacing:.24em;color:#9fb39a;display:block;margin-bottom:5px}
+  .yc b{font-size:22px;font-weight:600;letter-spacing:.08em}
+  .yc b.a{color:#e8c86a} .yc b.d{color:#e79a7e}
+  .yc p{margin:7px 0 0;font-size:14.5px;color:#c9d3c4;line-height:1.7}
+  /* 年景卡上那行"今年的线"。整张卡最要紧的一行，所以给它自己一条分隔。 */
+  .yc p.ln{margin-top:11px;padding-top:10px;border-top:1px solid rgba(200,220,190,.18);
+    font-size:13.5px;color:#e4ddc8}
+  .yc p.ln b{font-size:15px;font-weight:600;letter-spacing:.02em;color:#fff}
+  .yc p.ln span{display:block;margin-top:3px;font-size:12.5px;color:#9fb39a;line-height:1.6}
 
-  .notes{margin:0 0 8px}
-  .notes .note{
-    padding:12px 0;
-    border-top:1px solid var(--line);
-    margin:0;
-    color:#4d5245;
-  }
-  .notes .note:last-child{border-bottom:1px solid var(--line)}
+  /* ── 田里点 ──
+     田放大到占满整幅，成为这一屏的主角。原来它只是 HUD 底下一条小图，
+     读者的眼睛直接从数值跳到正文，中间那块地根本没过脑子。 */
+  .bigfield{position:relative;margin:2px -22px 14px;border-radius:0;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    box-shadow:0 10px 22px -18px rgba(0,0,0,.7);overflow:visible}
+  .bigfield svg.tian{display:block;width:100%;height:auto}
 
-  .foot{
-    text-align:center;
-    font-size:12.5px;
-    color:var(--dim);
-    letter-spacing:.08em;
-    margin-top:22px;
-  }
+  /* 热区。锚点是一个会呼吸的圆点，气泡挂在它上头 —— 跟"可摘"是同一个念头：
+     先告诉你**这儿有件事**，再告诉你是什么事。 */
+  /* 按钮是个 58×58 的实心盒，负 margin 把它的**中心**对到热区坐标上。
+     以前它是 0×0、靠里头的圆点撑出可点范围 —— 家什不画圆点之后就没得撑了，
+     手指按不准。现在无论有没有圆点，这一块都收得到。
+     （田在手机上只有 340px 宽左右，58px 差不多是一根手指。） */
+  .hot{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;
+    padding:0;border:0;background:none;
+    cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* 圆点是要在"稻子那一片绿"上头站住的，所以不能半透明 ——
+     半透明的奶白压在稻叶上就变成一块更浅的绿，等于没画。要实心。 */
+  .hot .dot{position:absolute;left:50%;top:50%;width:30px;height:30px;
+    margin:-15px 0 0 -15px;border-radius:50%;background:#fffdf6;
+    border:2px solid #3d5c36;box-shadow:0 2px 9px rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center}
+  /* 家什自己当记号：不打圆点，换成一层会呼吸的光晕。
+     一圈白边就够了 —— 田里全是绿的，白边最跳；
+     而且它不是个"标记物"，是那件东西本人在亮，所以点它不需要先理解"这是个按钮"。 */
+  @keyframes 家什亮{
+    0%,100%{filter:drop-shadow(0 0 0 rgba(255,253,246,0))}
+    50%{filter:drop-shadow(0 0 3px rgba(255,253,246,.95)) drop-shadow(0 0 8px rgba(255,253,246,.7))}}
+  .shi{animation:家什亮 2.1s ease-in-out infinite}
+  .shi.on{animation:none;filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 11px rgba(255,255,255,.9))}
+  .hot .dot::after{content:"";width:9px;height:9px;border-radius:50%;
+    background:var(--green);animation:呼吸 2.1s ease-in-out infinite}
+  @keyframes 呼吸{0%,100%{transform:scale(.72);opacity:.75}50%{transform:scale(1.12);opacity:1}}
+  .hot .bub{position:absolute;bottom:50%;margin-bottom:26px;background:var(--card);color:var(--ink);
+    border:1px solid var(--line);border-radius:11px;padding:6px 11px 7px;
+    box-shadow:0 6px 18px -8px rgba(0,0,0,.55);white-space:nowrap;text-align:left;
+    animation:飘 2.1s ease-in-out infinite}
+  .hot .bub::after{content:"";position:absolute;left:50%;bottom:-5px;width:9px;height:9px;
+    margin-left:-4.5px;background:var(--card);border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);transform:rotate(45deg)}
+  /* 尖嘴得指着圆点。居中那套天然对（尖嘴就在正中）；
+     贴了边的两套要把它从正中挪回挨着圆点的那一头 —— 圆点离气泡边 6px，
+     尖嘴 9px 宽，让它跨在 6px 上就是 left/right: 1.5px。 */
+  .hot .bub.l::after{left:1.5px;margin-left:0}
+  .hot .bub.r::after{left:auto;right:1.5px;margin-left:0}
+  .hot .bub b{display:block;font-size:14.5px;font-weight:600;line-height:1.35}
+  .hot .bub i{display:block;font-style:normal;font-size:11.5px;color:var(--dim);margin-top:1px}
+  /* ⚠ 这里必须用 translate 而不是 transform —— 气泡的定位是靠行内 transform
+     摆的（靠左/居中/靠右三套），动画再去写 transform 就把定位冲掉了，
+     气泡会瞬间跳到屏幕中间。translate 是独立属性，跟 transform 各走各的。 */
+  @keyframes 飘{0%,100%{translate:0 0}50%{translate:0 -4px}}
+  /* 按下去那一下 —— 点住了、认了，才换屏 */
+  .hot.on .dot{background:var(--green);border-color:var(--green);transform:scale(1.35);
+    transition:transform .12s ease-out}
+  .hot.on .dot::after{background:var(--card);animation:none}
+  .hot.on .bub{background:var(--green);border-color:var(--green);color:#fff;animation:none}
+  .hot.on .bub b{color:#fff} .hot.on .bub i{color:rgba(255,255,255,.8)}
+  .hot.on .bub::after{background:var(--green);border-color:var(--green)}
 
-  /* ---------- 开场 ---------- */
-  .cover{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    text-align:center;
-    padding:20px 0 40px;
-  }
-  .cover .name{
-    font-size:58px;
-    font-weight:600;
-    letter-spacing:.24em;
-    text-indent:.24em;
-    color:var(--green-d);
-    margin:0;
-  }
-  .cover .sub{
-    font-size:13.5px;
-    letter-spacing:.28em;
-    text-indent:.28em;
-    color:var(--dim);
-    margin:16px 0 40px;
-  }
-  .cover .lead{
-    color:#555a4c;
-    text-align:left;
-    margin:0 0 38px;
-    padding:0 4px;
-  }
+  .tianhint{font-size:13px;color:var(--dim);text-align:center;margin:16px 0 0;
+    letter-spacing:.04em}
+
+  .yc.SR{border:1px solid rgba(150,182,136,.5);
+    box-shadow:0 8px 24px -12px rgba(0,0,0,.6)}
+  .yc.SR .tier{background:rgba(150,182,136,.2);color:#d6e2cf}
+  .yc.SSR{border:1px solid #c9a227;
+    box-shadow:0 0 0 1px rgba(201,162,39,.25), 0 10px 30px -10px rgba(201,162,39,.55)}
+  .yc.SSR .tier{background:linear-gradient(180deg,#e8c86a,#c9a227);color:#3a2c08;font-weight:600}
+  .yc.xiong{border-color:rgba(200,84,58,.5);
+    box-shadow:0 8px 24px -12px rgba(0,0,0,.6)}
+  .yc.xiong .tier{background:rgba(200,84,58,.22);color:#f0c3b4}
+  .yc.xiong.SSR{border-color:#c8543a;
+    box-shadow:0 0 0 1px rgba(200,84,58,.28), 0 10px 30px -10px rgba(200,84,58,.6)}
+  .yc.xiong.SSR .tier{background:linear-gradient(180deg,#e79a7e,#c8543a);color:#3a1008;font-weight:600}
+  /* 上上和下下独有的那道扫光 —— 稀有的东西该有稀有的动静 */
+  .yc.SSR::after{content:"";position:absolute;inset:0;border-radius:inherit;
+    background:linear-gradient(105deg,transparent 38%,rgba(255,240,200,.32) 50%,transparent 62%);
+    animation:sweep 1.15s .35s ease-out both}
+  @keyframes sweep{from{transform:translateX(-135%)}to{transform:translateX(135%)}}
+  @keyframes flip{0%{opacity:0;transform:translateY(16px) scale(1.045)}
+                  100%{opacity:1;transform:none}}
+
+  /* 翻牌那一屏：整张卡单独占一屏，抽完再进田 */
+  .pull{display:flex;flex-direction:column;justify-content:center;flex:1;
+    padding:8px 0 22px}
+  .pull .lead2{text-align:center;font-size:12.5px;letter-spacing:.34em;
+    text-indent:.34em;color:var(--dim);margin:0 0 18px}
+
+  /* 晚上回宿舍 —— 白天那个没想明白的事儿，翻书翻出来了。
+     术语全部锁在「书上说」这一层，后面必须跟一句人话。 */
+  .note{background:#f6f3ea;border:1px solid #e2dbc6;border-radius:12px;
+    padding:15px 17px;margin:16px 0 14px;
+    opacity:0;transform:translateY(8px);animation:rise .5s .18s ease-out forwards}
+  .note .k{font-size:11.5px;letter-spacing:.22em;color:var(--clay);
+    display:block;margin-bottom:11px}
+  .note .q{font-weight:600;color:#3f4636;margin:0 0 11px;font-size:15.5px;line-height:1.7}
+  .note .s{font-size:13.5px;color:#7a7867;line-height:1.72;margin:0 0 11px;
+    padding-left:12px;border-left:2px solid #ded7c2}
+  .note .s b{display:block;font-size:10.5px;font-weight:600;letter-spacing:.18em;
+    color:#a8a28e;margin-bottom:3px}
+  .note .p{font-size:15.5px;color:#333a2c;margin:0;line-height:1.85}
+  .note .p b{display:block;font-size:10.5px;font-weight:600;letter-spacing:.18em;
+    color:var(--green);margin-bottom:3px}
+
+  /* 编号变化才是反馈屏的主角 —— 大字、带色，不用去表里找 */
+  .deltas{display:flex;gap:10px;margin:8px 0 20px}
+  .deltas .dl-big{flex:1;border-radius:12px;padding:13px 8px;text-align:center;
+    border:1px solid var(--line);background:var(--card);
+    opacity:0;transform:translateY(10px) scale(.96);
+    animation:pop .46s cubic-bezier(.2,.9,.3,1) forwards}
+  .deltas .dl-big b{display:block;font-size:31px;font-weight:600;line-height:1.1;
+    font-variant-numeric:tabular-nums}
+  .deltas .dl-big span{font-size:11.5px;letter-spacing:.14em;color:var(--dim)}
+  .deltas .dl-big.u{border-color:#bdd3bc;background:#f1f7f0}
+  .deltas .dl-big.u b{color:var(--good)}
+  .deltas .dl-big.d{border-color:#e5c5ba;background:#fbf1ed}
+  .deltas .dl-big.d b{color:var(--bad)}
+  @keyframes pop{to{opacity:1;transform:none}}
+
+  .fb{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;margin-bottom:14px}
+  .fb .k{font-size:11.5px;letter-spacing:.2em;color:var(--dim);display:block;margin-bottom:7px}
+  .fb .row{display:flex;align-items:center;gap:9px;font-size:13.5px;margin-bottom:6px}
+  .fb .row:last-child{margin-bottom:0}
+  .fb .row .n{width:32px;flex:none;color:var(--dim)}
+  .fb .row .a{color:#b0aa98;width:44px;text-align:right;font-variant-numeric:tabular-nums}
+  .fb .row .ar{color:#c9c3b0;flex:none;font-size:11px}
+  .fb .row .b{width:48px;font-weight:600;font-variant-numeric:tabular-nums}
+  .fb .row .b.up{color:var(--good)} .fb .row .b.dn{color:var(--bad)}
+
+  .btn{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);
+    border:1px solid var(--line);border-radius:12px;padding:15px 17px;
+    font:inherit;line-height:1.7;cursor:pointer;margin-bottom:9px;
+    transition:border-color .15s,transform .1s,background .15s}
+  .btn:hover{border-color:#bdb598;background:#fff}
+  .btn:active{transform:scale(.986)}
+  /* 点下去先亮一下再翻屏 —— 让"我选了"这个动作有落点 */
+  .btn.pick{border-color:var(--green);background:#eef4ee;box-shadow:0 0 0 1px var(--green)}
+  .btn .cost{display:block;font-size:12.5px;color:var(--dim);margin-top:6px;letter-spacing:.02em}
+  .btn .cost i{font-style:normal;color:var(--clay)}
+  .btn .cost i.hard{color:var(--bad)}
+
+  .go{display:block;width:100%;background:var(--green);color:#fff;border:none;
+    border-radius:12px;padding:15px;font:inherit;font-size:17px;letter-spacing:.14em;
+    cursor:pointer;margin-top:4px}
+  .go:active{transform:scale(.986)}
+  .go.ghost{background:transparent;color:var(--green-d);border:1px solid var(--green);font-weight:600}
+  .go.sm{padding:12px;font-size:15px;letter-spacing:.08em}
+
+  .cover{flex:1;display:flex;flex-direction:column;justify-content:center;padding:14px 0 26px}
+  .cover .name{font-size:50px;font-weight:600;letter-spacing:.2em;text-indent:.2em;
+    color:var(--green-d);margin:0;text-align:center}
+  .cover .sub{font-size:12.5px;letter-spacing:.3em;text-indent:.3em;color:var(--dim);
+    margin:12px 0 30px;text-align:center}
+  .cover .lead{color:#4e5343;margin:0 0 26px;font-size:16.5px}
   .cover .lead p{margin:0 0 14px}
-  .cover .lead p:last-child{margin-bottom:0}
+  .cover .lead em{font-style:normal;color:var(--green-d);font-weight:600}
+
+  /* 揭晓台 —— 四档四套排面。
+     a 特级：金底 + 扫光 + 五颗星芒 + 砸字
+     b 一级：银绿底 + 扫光 + 三颗星芒 + 砸字（稍轻）
+     c 二级：青绿底 + 一颗星芒 + 淡入上浮
+     d 等外：土黄底 + 淡入上浮　　　　—— 没种好也是种出来了，一样有台子站
+     四档都有的一样东西：那句话（.praise）。先夸人，再讲米。 */
+  .grade-wrap{position:relative;text-align:center;padding:26px 22px 22px;
+    border-radius:14px;overflow:hidden;margin:4px 0 14px;
+    box-shadow:inset 0 0 0 1px var(--line);animation:rise .6s ease-out both}
+  .grade-wrap.a{background:linear-gradient(180deg,#fdf7e3,#f5e9c6);
+    box-shadow:inset 0 0 0 1px #e3ce92, 0 14px 38px -16px rgba(168,125,36,.65)}
+  .grade-wrap.b{background:linear-gradient(180deg,#f2f7ee,#e4efdf);
+    box-shadow:inset 0 0 0 1px #b9d0b2, 0 12px 32px -18px rgba(74,110,68,.5)}
+  .grade-wrap.c{background:linear-gradient(180deg,#f6f8f2,#eaf0e4);
+    box-shadow:inset 0 0 0 1px #cfd9c4}
+  .grade-wrap.d{background:linear-gradient(180deg,#faf6ec,#f2ead8);
+    box-shadow:inset 0 0 0 1px #ddcfae}
+  /* 扫光只给 a 和 b —— 到了这个成色，才配一道光擦过去 */
+  .grade-wrap.a::after,.grade-wrap.b::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(105deg,transparent 34%,rgba(255,251,235,.8) 50%,transparent 66%);
+    animation:sweep 1.05s .4s ease-out both}
+  .grade-name{font-size:46px;font-weight:600;letter-spacing:.16em;text-indent:.16em;
+    color:var(--green-d);animation:slam .6s cubic-bezier(.12,.9,.24,1) both}
+  .grade-name.a{color:var(--gold);text-shadow:0 2px 20px rgba(232,200,106,.7)}
+  .grade-name.b{color:#3f6b38;text-shadow:0 2px 16px rgba(120,164,110,.5)}
+  .grade-name.c{font-size:40px;color:#5c7a52}
+  .grade-name.d{font-size:36px;color:#8a7440;animation:rise .7s ease-out both}
+  @keyframes slam{0%{opacity:0;transform:scale(1.65);letter-spacing:.62em;
+    filter:blur(7px)}100%{opacity:1;transform:none;letter-spacing:.16em;filter:none}}
+  .grade-tag{font-size:12.5px;letter-spacing:.24em;color:var(--dim);margin-top:6px;
+    opacity:0;animation:rise .5s .42s ease-out forwards}
+  /* 那句话 —— 每档都有。不教训人，只说这一季做成了什么 */
+  .praise{margin:16px 0 0;font-size:15px;line-height:1.85;color:#4e5544;
+    text-align:left;padding-top:14px;border-top:1px solid rgba(0,0,0,.07);
+    opacity:0;animation:rise .6s .62s ease-out forwards}
+  .grade-note{color:#5a5f4e;margin:22px 0 0}
+  /* 星芒，颗数跟着档位走 */
+  .spark{position:absolute;width:5px;height:5px;border-radius:50%;background:#f0d68a;
+    box-shadow:0 0 10px 3px rgba(240,214,138,.95);opacity:0;
+    animation:spark 1.5s ease-out forwards}
+  .grade-wrap.b .spark{background:#cfe6c4;box-shadow:0 0 9px 3px rgba(190,222,176,.9)}
+  @keyframes spark{0%{opacity:0;transform:scale(.2)}
+    30%{opacity:1}100%{opacity:0;transform:translateY(-30px) scale(1)}}
+
+  /* ── 成就弹牌 —— 种到一半蹦出来那一下，得有落到手上的分量 ── */
+  .pop{position:fixed;left:50%;top:16px;transform:translate(-50%,-130%);
+    width:min(420px,calc(100% - 32px));z-index:30;pointer-events:none;
+    display:flex;gap:13px;align-items:center;
+    padding:15px 18px;border-radius:14px;background:var(--card);
+    box-shadow:0 16px 40px -14px rgba(0,0,0,.5),inset 0 0 0 1px var(--line);
+    opacity:0;transition:transform .42s cubic-bezier(.16,.9,.3,1.05),opacity .3s}
+  .pop.on{transform:translate(-50%,0);opacity:1;pointer-events:auto;cursor:pointer}
+  .pop .lv{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;
+    font-size:15px;font-weight:600;color:#fff;background:#b0a68e}
+  .pop b{display:block;font-size:16.5px;font-weight:600;margin-bottom:2px}
+  .pop p{margin:0;font-size:13px;color:var(--dim);line-height:1.5}
+  .pop.铜{box-shadow:0 16px 40px -14px rgba(0,0,0,.45),inset 0 0 0 1px #d8cbb0}
+  .pop.铜 .lv{background:linear-gradient(160deg,#c9b48a,#a08a5e)}
+  .pop.银{box-shadow:0 16px 40px -14px rgba(0,0,0,.5),inset 0 0 0 1px #c3d0c0}
+  .pop.银 .lv{background:linear-gradient(160deg,#b9c9be,#8ba394)}
+  .pop.金{background:linear-gradient(180deg,#fffdf4,#fbf3d9);
+    box-shadow:0 18px 46px -14px rgba(168,125,36,.7),inset 0 0 0 1px #e3ce92}
+  .pop.金 .lv{background:linear-gradient(160deg,#e8c86a,#c39a2e);
+    box-shadow:0 0 0 3px rgba(232,200,106,.32),0 0 18px 2px rgba(232,200,106,.6)}
+  .pop.金 b{color:var(--gold)}
+
+  .ledger{margin:4px 0 0}
+  .ledger .li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
+    border-bottom:1px solid var(--line);font-size:15.5px;
+    opacity:0;transform:translateY(6px);animation:rise .42s ease-out forwards}
+  .ledger .li .k{color:#5a5f4e}
+  .ledger .li .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ledger .li.sub{padding-left:16px;font-size:14.5px;color:var(--dim)}
+  .ledger .li.sub .k{color:var(--dim)}
+  .ledger .li.sum{border-bottom:none;border-top:2px solid var(--ink);margin-top:4px;
+    padding-top:12px;font-weight:600;font-size:17px}
+  .ledger .li.big .v{font-size:26px;font-weight:600;color:var(--green-d)}
+  .ledger .li .v.neg{color:var(--bad)}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+  /* ── 年终：季评 + 净收益 + 收入构成 ──
+     这一屏是八个节气的收口，不能比验米那一屏还素。
+     顺序是刻意的：先给一句人话（季评），再给数（净收益），
+     最后给这个数的来路（构成条）—— 先被认可，再被说服。 */
+  .yearend-wrap{position:relative;text-align:center;padding:26px 22px 22px;
+    border-radius:14px;overflow:hidden;margin:6px 0 18px;
+    box-shadow:inset 0 0 0 1px var(--line);animation:rise .6s ease-out both}
+  .yearend-wrap.a{background:linear-gradient(180deg,#fdf7e3,#f5e9c6);
+    box-shadow:inset 0 0 0 1px #e3ce92,0 14px 38px -16px rgba(168,125,36,.65)}
+  .yearend-wrap.b{background:linear-gradient(180deg,#f2f7ee,#e4efdf);
+    box-shadow:inset 0 0 0 1px #b9d0b2,0 12px 32px -18px rgba(74,110,68,.5)}
+  .yearend-wrap.c{background:linear-gradient(180deg,#f6f8f2,#eaf0e4);
+    box-shadow:inset 0 0 0 1px #cfd9c4}
+  .yearend-wrap.d{background:linear-gradient(180deg,#faf6ec,#f2ead8);
+    box-shadow:inset 0 0 0 1px #ddcfae}
+  .yearend-wrap.a::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(105deg,transparent 34%,rgba(255,251,235,.8) 50%,transparent 66%);
+    animation:sweep 1.05s .4s ease-out both}
+  .yr-name{font-size:52px;font-weight:600;letter-spacing:.2em;text-indent:.2em;
+    color:var(--green-d);animation:slam .62s cubic-bezier(.12,.9,.24,1) both}
+  .yr-name.a{color:var(--gold);text-shadow:0 2px 20px rgba(232,200,106,.7)}
+  .yr-name.b{color:#3f6b38;text-shadow:0 2px 16px rgba(120,164,110,.5)}
+  .yr-name.c{font-size:44px;color:#5c7a52}
+  .yr-name.d{font-size:40px;color:#8a7440;animation:rise .7s ease-out both}
+  .yr-tag{font-size:12.5px;letter-spacing:.26em;color:var(--dim);margin-top:8px;
+    opacity:0;animation:rise .5s .42s ease-out forwards}
+
+  .netbig{text-align:center;padding:20px 0 6px;margin:0 0 22px;
+    border-radius:14px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+  .netbig .k{display:block;font-size:12.5px;letter-spacing:.26em;color:var(--dim)}
+  .netbig b{font-size:52px;font-weight:600;line-height:1.15;letter-spacing:-.01em;
+    font-variant-numeric:tabular-nums;color:var(--green-d)}
+  .netbig.u b{color:var(--good)} .netbig.d b{color:var(--bad)}
+  .netbig i{font-style:normal;font-size:17px;color:var(--dim);margin-left:5px}
+  .netbig .sub{display:block;margin-top:8px;font-size:13px;color:var(--dim)}
+
+  .mixbar{display:flex;height:20px;border-radius:6px;overflow:hidden;margin:2px 0 14px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.07);
+    transform:scaleX(0);transform-origin:0 50%}
+  .mixbar.go{transform:scaleX(1);transition:transform .85s cubic-bezier(.2,.8,.3,1)}
+  .mixbar span{display:block;height:100%}
+  .mix-li{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:14.5px}
+  .mix-li .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .mix-li .nm{flex:1;color:#5a5f4e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mix-li .pc{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .mix-li .amt{font-variant-numeric:tabular-nums;min-width:82px;text-align:right}
+
+  /* 两个转折 —— 直接写清是哪一步、前因是什么、后果是什么。
+     这一块不用任何"你心里有数"式的话：日志里写着呢，摊开给人看。 */
+  .keymoves{margin:0 0 4px}
+  .km{padding:13px 15px;margin-bottom:9px;border-radius:11px;
+    box-shadow:inset 0 0 0 1px var(--line);background:var(--card);
+    opacity:0;transform:translateY(8px);animation:rise .45s ease-out forwards}
+  .km.u{background:#f1f7f0;box-shadow:inset 0 0 0 1px #bdd3bc}
+  .km.d{background:#fbf1ed;box-shadow:inset 0 0 0 1px #e5c5ba}
+  .km .tag{display:inline-block;font-size:11.5px;letter-spacing:.18em;padding:2px 9px;
+    border-radius:20px;margin-bottom:8px;color:#fff;background:#9aa08c}
+  .km.u .tag{background:var(--good)} .km.d .tag{background:var(--bad)}
+  .km b{display:block;font-size:15.5px;font-weight:600;margin-bottom:6px;color:var(--ink)}
+  .km p{margin:0;font-size:14.5px;line-height:1.75;color:#525a48}
+
+  .lvdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;
+    vertical-align:1px;background:#b0a68e}
+  .lvdot.金{background:linear-gradient(160deg,#e8c86a,#c39a2e)}
+  .lvdot.银{background:linear-gradient(160deg,#b9c9be,#8ba394)}
+  .lvdot.铜{background:linear-gradient(160deg,#c9b48a,#a08a5e)}
+
+  /* 锁住的选项 —— 不是"不能选"，是"你手上没这个条件"。
+     灰下去，并且把原因写清楚，别让人以为是坏了。 */
+  .btn.lockbtn{opacity:.45;cursor:not-allowed;background:#eceadf;
+    box-shadow:none;border-style:dashed}
+  .btn.lockbtn .cost{color:#a49c88}
+
+  .note-line{padding:10px 0;border-top:1px solid var(--line);margin:0;color:#4c5142;font-size:15px}
+  .note-line:last-child{border-bottom:1px solid var(--line)}
+
+  /* 牌子 —— 金银铜三档，边框和牌子底色跟着走。
+     金牌那张卡本身就得比铜牌好看，不然攒它干什么。 */
+  .ach{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;margin-bottom:8px;
+    border-radius:11px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);
+    opacity:0;transform:translateY(8px);animation:rise .45s ease-out forwards}
+  .ach .d{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;
+    font-size:13px;font-weight:600;color:#fff;background:#b0a68e}
+  .ach b{font-weight:600;display:block;margin-bottom:2px}
+  .ach span{display:block;font-size:13.5px;color:var(--dim);line-height:1.6}
+  .ach.铜 .d{background:linear-gradient(160deg,#c9b48a,#a08a5e)}
+  .ach.银{box-shadow:inset 0 0 0 1px #c3d0c0}
+  .ach.银 .d{background:linear-gradient(160deg,#b9c9be,#8ba394)}
+  .ach.金{background:linear-gradient(180deg,#fffdf4,#fbf3d9);
+    box-shadow:inset 0 0 0 1px #e3ce92,0 8px 22px -14px rgba(168,125,36,.7)}
+  .ach.金 .d{background:linear-gradient(160deg,#e8c86a,#c39a2e);
+    box-shadow:0 0 0 3px rgba(232,200,106,.3)}
+  .ach.金 b{color:var(--gold)}
+
+  .cx{border-bottom:1px solid var(--line);padding:13px 0}
+  .cx .h{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .cx b{font-weight:600;font-size:16.5px}
+  .cx .cat{font-size:11.5px;letter-spacing:.14em;color:var(--dim);flex:none}
+  .cx p{margin:5px 0 0;font-size:14.5px;color:#525a48;line-height:1.75}
+  .cx.lock b{color:#b9b4a3} .cx.lock p{color:#c3bead;font-size:13.5px}
+
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tabs button{flex:1;padding:9px;border:1px solid var(--line);background:var(--card);
+    border-radius:9px;font:inherit;font-size:14px;color:var(--dim);cursor:pointer}
+  .tabs button.on{background:var(--green);color:#fff;border-color:var(--green)}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+    background:var(--green-d);color:#fff;padding:11px 20px;border-radius:24px;
+    font-size:14.5px;letter-spacing:.04em;opacity:0;pointer-events:none;
+    transition:opacity .3s,transform .3s;z-index:9;max-width:88vw;text-align:center}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+
+  .foot{text-align:center;font-size:12.5px;color:var(--dim);letter-spacing:.08em;margin-top:18px}
+  .bar{position:fixed;top:0;left:0;right:0;height:3px;background:var(--green);
+    transform-origin:0 50%;transition:transform .4s;z-index:20}
 </style>
 </head>
 <body>
+<div class="bar" id="bar"></div>
 <div id="app"></div>
+<div class="pop" id="pop" onclick="onPop()"></div>
+<div class="toast" id="toast"></div>
 
 <script>
 /* ==========================================================================
-   《一亩稻》最小原型
-   —— 验证："一局 8 个节气 + 决策后果延迟显现"，会不会让人想再来一局。
+   《一亩稻》 v4.7
 
-   代码分两层：
-     1) 数据层（下面那三个大表）—— 改内容只改这里，不用碰逻辑
-     2) 逻辑层（newSeason / dueEvents / settle）—— 纯函数，完全不碰 DOM
-        将来搬去小程序时，逻辑层可以整个复制，只重写渲染层
+   数字全部来自本轮调研，出处标在注释里。凡调研明确"未查到"的，不编。
+
+   v1    病根：决策只有"省事/费事"一个轴 → 退化成拿钱买分数
+   v2    选项改成两难、本钱改成账本上的一行成本、加上一二三产变现
+   v3    补"像不像在种地"：体力 / 田的样子 / 图鉴 / 成就 / 剧情
+   v3.1  补"像不像京西稻"：北方稻区真实病虫害、地理标志规范、经营主体处境
+   v4    节气抽签（锚点 4 + 随机 4 ＝ 35 种组合）；延迟后果改挂生长阶段；
+         回宿舍查资料（术语锁在"书上说"，后面必跟一句"说白了"）
+   v4.1  扣题与 NPC：老周 / 同学A 变成能"找"的人，花体力换情报；
+         年景抽卡分档（上上／上／中／下／下下）；数值条钉顶
+   v4.2  反馈层：八格进度表 / 数字滚动 / WebAudio 合成音效 / 点选手感
+   v4.3  删掉"花体力问人"（问了也不说人话）；
+         结果屏只留大字增量，查资料挪成单独一屏，翻不翻由你定；
+         揭晓分四档排面 —— 特级金底扫光砸字、一级银绿、二级青绿、等外土黄，每档都配一句夸；
+         成就 10 条扩到 24 条，金/银/铜三档，种到一半就弹牌；
+         结算重做：季评 + 净收益滚动 + 一二三产构成条 + 今年最赚/最亏的一手
+   v4.4  后半段（收完粮之后的 5 步）重做 —— 原来是 4 个固定屏幕、选项还通吃；
+         现在立冬/小雪/大雪三步固定，小寒、大寒各从池子里抽一步，每步都有 NPC 说话。
+         救活两条死路：
+           · 深加工：v4.3 里净收益垫底（6 元/斤米 ＝ 3.5 元/斤谷，比卖原粮还亏三分之二）。
+             现在 20 元/斤收、8 元/斤加工费 —— 加工是给次米的出路，好米这么走反而亏。
+           · 卖原粮：加了本钱（7500 元启动金）和行情。提前卖一半换现钱，
+             但那一半就再也装不了礼盒。手头没钱，后头什么都铺不开。
+         三条路现在抢同一笔现金（礼盒先垫包装 12 元/斤，加工先垫 8 元/斤）——
+         铺了这边就铺不了那边，铺不下去的按原粮价认赔。
+         自碾设备的卖点是"地头现碾鲜米"：礼盒多吃 50%，否则它在数学上永远亏。
+         小寒的认养/研学改成"生态决定给多少，不决定给不给"，不再人人抽到"歇着"。
+         修：年末走原粮的米按"元/斤谷"算，少算 42%（米／谷单位搞混）；
+             现金见底会显示负数；小寒池抽签前没过滤"锁"选项。
+   v4.5  田里终于有画了。以前每屏底下只有一行字（"田里稀，风一吹能看见地皮"），
+         现在字上面是一张会动的田 —— 稻子随风摆，参数不同，画出来的就是不同的田：
+           · 高度看生长阶段，颜色看品质（贪青是墨绿，熟了是一片金）
+           · 水色看生态，缺苗看产量（成片地缺，不是均匀少几株 —— 均匀了就看不出来）
+           · 天看年景（灾年压得低、发灰；好年亮得发白）
+           · 倒伏不再只是一句"倒了一片"—— 揭晓那一下，前排整片躺下去，
+             中排倒七成，后排还立着，像风刚从田里扫过去。倒下去只演一次。
+         田挂在事件屏上，所以"出事了"这四个字底下的稻子，已经倒了。
+   v4.5.1 修：田里的活物画错了。文案写着"田埂上能碰见青蛙"，画里一只青蛙没有 ——
+         画的是鸭子，还按生态高低白送。可鸭子是「大暑 赶鸭子下田」那一步的结果，
+         不是生态养出来的赠品；没走那步就冒出一只鸭，等于游戏在撒谎。
+         现在：鸭子只认 flags["稻鸭"]；青蛙／螺蛳／小虫按生态给，
+         生态 50 以下一只不画 —— 文案原话就是"田里没什么活物"。
+         顺手加了道田埂（就是你站的地方）：青蛙蹲在上头，螺蛳爬在边上，
+         白膜也从水里挪到埂边积着，跟"田埂边积着一层白膜"对上。
+   v4.6  年景真正开始管事了，品质那条线也终于看得见了。
+         起因是「玩多了就不想玩了」这个问题，一量才发现两件事。
+
+         一、对冲原来是个摆设。
+             年景是"某一步做对了就躲得过去"，可它翻牌的时机写错了：
+             它在那个阶段的最后一步就翻，而**那一步往往正是做对冲的那一步** ——
+             这一步是先出事件、再让你决定。于是你读到"寒潮来了"的时候，
+             盖膜那个按钮还没弹出来。实测：倒春寒只有 29% 的局算数，
+             伏旱和秋淋干脆 0%，等于死代码。玩家做对了，游戏没记账。
+             推后一步再算，19% → 64%，而且"对冲选项一出现就 100% 认账"。
+
+         二、对冲原来是单向的 —— 做对了只是"少亏一点"，做错了没事。
+             现在拆成三种下场：
+               撞上（有反冲的年景，你走了反方向）→ 好年景也罚你
+               挡住（你做的事正好接住这一年的脾气）→ 真的赚，不是少亏
+               都不是 → 年景按它自己的脾气来
+             新加两个年景专门治条件反射：
+               「暖春」回暖早，看着是好签 —— 你还照着去年的经验盖膜，
+                       棚里窜到三十五度，苗蹿得又细又软，一揭膜趴下一片。
+               「早霜」九月底就来霜。你要是贪那五天晚收，稻子冻在田里。
+             另外三个好年景（雨水匀/丰年/暖秋）也各自认了一件该做的事 ——
+             以前它们什么都不认，抽到了等于白抽。
+
+         三、品质底下多了一行字：你在哪一档、离下一条线差几点。
+             米价是跳档的（等外 3 / 二级 8 / 一级 15 / 特级 25 元一斤），
+             不是按点数涨的。所以"品质 +9"这个按钮值多少，全看它有没有
+             把你顶过那条线。以前这行字不显示，玩家只看到"品质 +9、产量 −25"，
+             那当然一路选品质 —— 不是他不会玩，是这局没给他能玩的信息。
+             （为什么是 78 这条线、为什么要整精米率，那还是"回宿舍翻资料"那头的事。）
+
+         四、修了两笔算反的账：秋淋和早霜，做对了对冲反而亏钱。
+   v4.7  两条线：年景开始动那个"几级米"的分界线；立夏那一屏改成用手点。
+         这一版是拿来看手感的 —— 别管好不好看，先玩两局，
+         看"点田里那两处"跟"点底下那两个按钮"哪个更像在种地。
+
+         一、年景改的是米厂门口那条线，不是田里的分。
+             原来是直接扣品质，玩家看到自己的数往下掉，只能认。
+             现在一样是亏，但你看见的是"今年二级要 63 分，往常 45 就够"——
+             同一个决定，不同的一年，答案不一样了。这才是"选项对错看年景"
+             真正落地的地方。只有灌浆/成熟那四个年景配这一手（暖秋/凉夏/
+             秋淋/早霜）：伤的是整精米率，而整精米率正是国标划级那一项。
+
+             年景卡上直接印出来："今年验米的线　二级 63　一级 80　特级 96
+             往常是 45 / 62 / 78。今年籽粒不实，碾出来碎米多 —— 线往上抬。"
+             HUD 里品质底下那行也挂个 ↑ / ↓，提醒今年的线和往年不一样。
+
+         二、立夏·育秧那一屏，选项搬到田里去了。
+             以前这一屏是「一段故事 + 两个按钮」。玩家三分钟读了两千字，
+             手上一下没动过 —— 人的手不动，就不觉得在玩。
+             现在田占满宽，两处能点的东西摆在那儿：
+               一处是那片敞着的秧田，一处是田埂上那摞塑料膜。
+             点哪儿，就是把哪儿的事做了。点下去先按住、响一声，
+             等 280ms 才翻屏（手指抬起来屏幕就变，人根本看不清自己点了哪儿）。
+             盖了膜，下一屏那块田真的蒙上一层膜 —— 同一个位置，
+             只有一样东西变了，这就是"我这一手干了什么"最直接的答复。
+
+             只改了立夏这一屏，先看手感。别的七屏还是按钮，不动。
+   v4.8  八屏全改成动手点了 —— 而且动手的对象是**田里的家什**。
+         立夏那一屏试下来是对的，所以铺开到全部 11 条决策。
+
+         一、田埂上、稻丛里摆上了东西，一共十二件：
+             簸箕、种袋、膜卷、秧把、水口、稗草、药桶、化肥袋、镰刀、铁锹、鸭、沟。
+             每一件都长在它该在的地方：稗子插在稻丛里（这一屏要教的就是
+             在稻子里认出它），鸭浮在水面上，铁锹插在埂上。
+             **选项不再是一行字，是田里那件东西。**
+
+             这么改是因为：按钮上写「打除草剂」，谁都点得下去；
+             可田埂上立着个药桶、稻丛里插着一棵稗子，你得先认出哪个是稗子 ——
+             知识就从一段话挪到了手上。
+
+         二、有家什的那一处，**家什自己就是记号**，不再画圆点。
+             圆点 30px 压在一件 45px 宽的家什上，等于把它糊住了：玩家看见的是
+             个白圈，不是"田埂上那摞膜"。现在它改成一层会呼吸的白光晕 ——
+             不是个"标记物"，是那件东西本人在亮，点它不用先理解"这是个按钮"。
+             指田本身的那种（没有东西可指）还留着圆点。
+
+         三、按钮盒从 0×0 改成 58×58。原来可点范围全靠圆点撑着，
+             不画圆点就没得撑了，手指按不准。58px 差不多一根手指。
+
+         顺带修：家什放大 1.5 倍之后底部伸到田的下沿外头，被切掉了半截。
    ========================================================================== */
 
 
-/* ============================ 1. 数据层 ============================ */
+/* ══════════════════════════ 1. 数值 ══════════════════════════ */
 
-/* 一局 = 一季稻 = 这 8 个节气，每个节气做 1 个决策 */
-const TERMS = ["谷雨", "立夏", "芒种", "夏至", "小暑", "大暑", "立秋", "秋分"];
+const NUM = {
+  /* 亩产：联拓口径「由 650 斤提升至 850 斤以上」（北京日报 2025-01-24）
+     政府目标 500 公斤/亩＝1000 斤（海政发〔2023〕9号）—— 本作里的"理想结局" */
+  亩产基准: 850,
+  品质基准: 50, 生态基准: 50,
 
-/* 每个决策：节气 / 标题 / 引子 / 若干选项
-   选项字段：
-     text    按钮上的文案
-     cost    花掉多少本钱（本钱 = 钱 + 工夫，合在一起算）
-     effect  立刻生效的数值变化
-     flags   给这一季打的标记，后面用来判断延迟后果
-     result  选完之后给玩家看的一句话（只描述"发生了什么"，不评价对错）
-     note    可选。数值变化之外，额外补一句说明
-*/
+  /* 体力＝你一季能投进去的工夫。不够就得雇工（北京农村日工价） */
+  体力基准: 70, 雇工价: 160,
+
+  /* 出米率 ≈58.8%，由「精米亩产 500 斤 ÷ 稻谷亩产 850 斤」推算（官媒口径） */
+  出米率_代碾: 0.58, 出米率_自碾: 0.66, 自碾设备费: 1200,
+  /* 自碾的卖点不只是多出米 —— 是"地头现碾鲜米"这六个字。
+     等级表里一级/特级写的口感就是这句。米厂代碾出来的米，你没资格在盒子上这么说。
+     没有这一条，自碾在数学上永远亏：礼盒上限卡死，多出的米只能走加工，
+     一斤多挣 4 块，1800 块的设备一辈子收不回来。 */
+  自碾礼盒加成: 1.5,
+  原粮折扣: 0.70,
+
+  /* 礼盒溢价 2.2：特级 25×2.2＝55 元/斤，落在公开报道的礼盒价格带 50–80 内。
+     包装 12 元/斤 —— 礼盒不是白来的：纸盒、内衬、手提袋、封口贴，一斤米摊下来就是这个数。
+     ⚠ v4.3 之前深加工价写成 6 元/斤米，折成原粮只有 3.5 元/斤谷，
+       比直接卖原粮（10.15 元/斤谷）还亏三分之二 —— 那不是"低利润"，是负收益。
+     ⚠ v4.4 改名"深加工费"：加工是要预付本钱的，一斤米 8 元。
+       于是二产的两条路（礼盒 / 深加工）抢同一笔现金 —— 铺了这边就铺不了那边。
+       折成净价：米价 ×0.7 是卖原粮，20−8＝12 是加工，米价×2.2−12 是礼盒。
+       二级(8) 原粮 5.6 / 加工 12 / 礼盒 5.6  → 加工赢
+       一级(15) 原粮 10.5 / 加工 12 / 礼盒 21  → 礼盒赢
+       特级(25) 原粮 17.5 / 加工 12 / 礼盒 43  → 礼盒大赢，加工反而亏
+       好米别拿去加工，加工是给次米的出路 —— 这条曲线是设计的重点。 */
+  礼盒溢价: 2.2, 礼盒包装: 12, 深加工价: 20, 深加工费: 8,
+
+  /* 启动金 —— 学院拨的实习经费加上公司先垫的。一季的开销从这里出，
+     出剩下的就是"手头现金"。收完粮以后，买设备、做包装都得看这笔钱。
+     这一条是"卖原粮"唯一的活路：不卖，你手上就是没有活钱。 */
+  本钱: 7500,
+
+  /* 牌子系数 —— 生态养得怎么样，决定了你的米能不能卖出牌子价。
+     生态 50（基准）→ 0.71，礼盒卖不动多少；生态 90 → 1.29，礼盒抢着要。
+     这一条把"生态"从一个干巴巴的分数，变成了真能换钱的东西。 */
+  牌子基数: 70, 牌子下限: 0.4, 牌子上限: 1.3,
+
+  /* 三产门槛 68 → 45：原来是硬门槛（生态不到就没人来），结果是随机玩的人
+     十有八九抽到「歇着」，小寒那一格等于没有。改成"生态决定给多少，不决定给不给" ——
+     谁都能碰上这段剧情，只是养得好的拿得多。 */
+  三产门槛: 45,
+  /* 认养：官方唯一可考数字是 2011 年 15000 元/亩（海淀区信息公开大厅 11F/2011-33111）。
+     ⚠ v3 把它错写成 5 份 × 1500 = 7500 元/亩 —— 只有调研数字的一半，导致生态路线不挣钱。
+     ⚠ v4.4 份数 10 → 8：10 份 ×1500＝15000 会盖过二产（v4.3 里三产占 74% 就是这么来的）。
+     8 份是"一笔好外快"，不是主菜。稻田认养不是京西稻现有业务 —— 游戏里标为"你想出来的新路子"。 */
+  认养份数: 8, 认养单价: 1500, 认养兑米: 20,
+  /* 研学：2022 年基地研学收入 140 万元 / 1200 亩 ≈ 1170 元/亩。
+     单价 90 元/人是公开报价；人数按一亩地一年能接下多少团估。
+     研学的意义在于它不兑米 —— 米照样装盒卖，所以它和认养是两条不同的路。 */
+  研学人数: 60, 研学单价: 90,
+
+  /* 区级粮食生产补贴 900 元/亩·年（海农发〔2026〕1号）。
+     限定：补贴对象是"本区从事粮食和蔬菜种植的集体经济组织及国有农场" */
+  粮补: 900,
+};
+
+const LIMITS = { harvest: [400, 1250], quality: [0, 100], ecology: [0, 100] };
+
+/* 等级价：一级 15 元/斤 = 北京日报 2023-11-07 报道的地头现碾鲜米实价。
+   普通东北粳米批发 2.15–3.36 元/斤（新发地 2026-09-20）→ 京西稻溢价约 5–6 倍 */
+/* 气 = 视觉档位。每一档都得有排面 —— 不是只有特级才配。
+   种成什么样是能力问题，可你毕竟真种了一季，这一下得让你看见。
+   夸 = 揭晓时说的话。不给教训，先给人话。 */
+/* ⚠ v4.6 这一列（礼盒）整体调大了，原因值得记一笔 ——
+   它是"这个等级的市场能吃下多少斤米"。原来写 120/170/150，而你一亩地
+   碾出来大约 320–650 斤米 —— **市场永远比你手上的米小**。
+   于是 `礼盒上限 = min(可售米, 等级.礼盒 × 牌子 × 行情)` 这个 min
+   永远取右边那一头，"产量"整个被架空了：
+   你多打 300 斤谷，一斤都进不了礼盒这条路，只能按原粮价 17.5 元卖掉。
+   实测：只堆产量的打法把产量从 827 干到 1131 斤，净收益反而掉一半 ——
+   因为产量根本不值钱，值钱的只有"米有多好"。
+   调大之后 min 取的是左边那一头，**你收上来多少斤，直接决定礼盒能做多少**。
+   产量这才成了和品质对等的另一根轴：品质管一斤卖多少钱，产量管能卖多少斤。 */
+const 等级表 = [
+  { 名: "等外", min: 0,  价: 3,  ico: "d", 礼盒: 0,   气: "d",
+    口感: "跟普通粳米一个价，进不了等级",
+    夸: "八个节气，一亩地，米是实打实收进仓了 —— 第一季能干完这一趟的人不多。今年这米进不了等级，但你手里有了一份完整的账：什么时候下的种、什么时候放的水、最后收上来多少斤，一步不落。" },
+  { 名: "二级", min: 45, 价: 8,  ico: "c", 礼盒: 460, 气: "c",
+    口感: "家常吃着没问题，端不上席",
+    夸: "种成了。这一亩地头一年就把米交出来了 —— 不是荒着，也不是白贴钱，这在海淀已经算件稀罕事。" },
+  { 名: "一级", min: 62, 价: 15, ico: "b", 礼盒: 560, 气: "b",
+    口感: "米粒匀、有光。这就是地头现碾鲜米的实价",
+    夸: "一级。地头现碾的鲜米卖的就是这个等级 —— 米粒匀、有光，抓一把从指缝里漏下去，手上是滑的。" },
+  { 名: "特级", min: 78, 价: 25, ico: "a", 礼盒: 620, 气: "a",
+    口感: "透亮、没白肚。装礼盒走，一斤能卖到五十往上",
+    夸: "够得上贡米。玉泉山的水浇出来的稻子，三百年前送进宫的，就是这个成色。" },
+];
+
+
+/* ══════════════════════════ 2. 八个节气 ══════════════════════════
+   cost 单位＝元　stam＝体力　两个方向都得有代价，没有正确答案
+   ────────────────────────────────────────────────────────────── */
 const DECISIONS = [
   {
-    term: "谷雨",
-    date: "4月20日前后",
-    title: "选种",
-    brief: "谷雨前后，该泡种了。缸里的种子，有饱满的，也有瘪的。",
+    term: "谷雨", date: "4月20日前后", title: "落谷", 序: 1, 阶段: "苗期", 锚: true,
+    brief: "泡种之前，先定用哪一路种子。",
+    story: { who: "老周", text: "老周从田埂上走过来，蹲下抓了把你摊在簸箕里的种。\n「我小时候，这一片都用这个种。」他把手一松，谷子落回去，「现在人家都买新种了。你这，杂。」" },
+    /* 热区 —— 见立夏那条注释。x/y 是 SVG viewBox(320×140) 里的坐标，
+       画在哪儿、点在哪儿是同一个数。画 = 家什表里的名字，不写就是不画东西
+       （那处指的是田本身）。下标必须跟 options 对齐。 */
+    热区: [
+      { x: 44,  y: 124, 标: "簸箕里自家留的种", 画: "簸箕" },
+      { x: 276, y: 124, 标: "原种站的新种",     画: "种袋" },
+    ],
     options: [
-      {
-        text: "都留着，一块儿泡下去",
-        cost: 0, effect: {}, flags: [],
-        result: "种子下了缸。水面上一层瘪谷，你没去管它。"
-      },
-      {
-        text: "兑盐水，把浮起来的捞掉",
-        cost: 1, effect: { quality: 8 }, flags: ["壮苗"],
-        result: "三成种子浮了上来，你拿笊篱一片片捞掉。沉在底下的，粒粒都坠手。"
-      }
+      { text: "用自家留的种，晒一天、盐水选一遍再下缸",
+        cost: 0, stam: 8, effect: { quality: -6, harvest: -25 }, flags: ["老品种"],
+        result: "盐水兑到鸡蛋能浮出硬币大一块。瘪谷漂上来，捞掉；沉底的才是壮苗。选完拿清水冲了两遍 —— 盐分不冲掉，会烧种胚。",
+        note: "可盐水选不掉病菌。稻瘟病的粒、恶苗病的粒，照过。",
+        codex: "盐水选种" },
+      { text: "去原种站买新种，包过衣的",
+        cost: 60, stam: 3, effect: { quality: 10, harvest: 40 }, flags: [],
+        result: "新种是包过衣的，红皮，一袋六十块。纯度好，出苗齐整。",
+        note: "老周没再说话。",
+        codex: "恶苗病" }
     ]
   },
   {
-    term: "立夏",
-    date: "5月5日前后",
-    title: "育秧",
-    brief: "秧田该整出来了。这几年的倒春寒，说不准什么时候来。",
+    term: "立夏", date: "5月5日前后", title: "育秧", 序: 2, 阶段: "苗期",
+    brief: "北京的春天说翻就翻。五月上旬历史上最低到过 2.5℃ —— 秧苗烂不烂，就看这几天的日均温守不守在 12℃ 以上。",
+    /* 热区 —— 选项在田里站着的位置（SVG viewBox 320×140 的坐标）。
+       有热区的那一屏就不弹按钮了：点田里的东西，点哪儿就是选哪个。
+       index 跟 options 对齐。标 = 气泡上的话（要短，田埂上没地方写字）。 */
+    热区: [
+      { x: 118, y: 98,  标: "敞着，不上膜" },
+      { x: 266, y: 124, 标: "那摞塑料膜", 画: "膜卷" },
+    ],
     options: [
-      {
-        text: "露天育秧，省事",
-        cost: 0, effect: {}, flags: ["露天"],
-        result: "秧田整好了，种子撒下去，盖上薄薄一层土。"
-      },
-      {
-        text: "搭个棚，夜里给它盖上",
-        cost: 1, effect: {}, flags: ["棚育"],
-        result: "竹片弯成拱，蒙上膜。棚里比外头暖和不少。"
-      }
+      { text: "露地育秧，就让它在外头长",
+        cost: 0, stam: 7, effect: { ecology: 8, harvest: -30 }, flags: ["露地"],
+        result: "种子撒下去，盖一层薄土。夜里凉，白天晒，全凭天。",
+        note: "没上膜，省了钱，也少了一堆塑料。倒春寒要真来，你认。",
+        codex: "露地育秧" },
+      { text: "盖膜育秧，给秧苗搭个棚",
+        cost: 80, stam: 12, effect: { harvest: 45, ecology: -5 }, flags: ["盖膜"],
+        result: "竹片弯成拱，蒙上膜。棚里暖和，秧苗出得又快又齐。",
+        note: "可膜一盖上，就多出一件要天天盯着的事 —— 什么时候揭。",
+        codex: "青枯" }
     ]
   },
   {
-    term: "芒种",
-    date: "6月6日前后",
-    title: "插秧",
-    brief: "秧苗有三寸高了。老话说：「京稻不插五月秧。」节气不等人。",
+    term: "芒种", date: "6月6日前后", title: "插秧", 序: 4, 阶段: "分蘖", 锚: true,
+    brief: "农谚说「春稻不插六月秧」。京西稻正常是五月下旬插完 —— 你已经在窗口末段了。",
+    story: { who: "老周", text: "「再晚，抽穗就压到八月下旬去。」老周蹲在田埂上，用手在泥里划了道线，「粳稻安全齐穗，日均温得稳过 20℃。压线上了，你就得赌。」" },
+    热区: [
+      { x: 46,  y: 124, 标: "扎好的秧把",   画: "秧把" },
+      { x: 196, y: 104, 标: "再等五天" },
+    ],
     options: [
-      {
-        text: "再等五天，让秧再壮一壮",
-        cost: 0, effect: {}, flags: ["误农时"],
-        result: "又等了五天。田里的水晒得暖透了。"
-      },
-      {
-        text: "今天就插",
-        cost: 0, effect: {}, flags: [],
-        result: "天没亮就下田。一上午，六行秧插得笔直。"
-      }
+      { text: "今天就插，把生长期拉满",
+        cost: 0, stam: 14, effect: { harvest: 50, quality: -6 }, flags: ["早插"],
+        result: "天没亮就下田，一天插下来腰直不起来。行距 30 公分，穴距 15 公分 —— 稀植，为的是分蘖别太密，秆子站得住。",
+        note: "插得早，水温低，返青慢。苗色黄了好几天。",
+        codex: "返青" },
+      { text: "再等五天，让秧壮一壮",
+        cost: 0, stam: 9, effect: { quality: 6, harvest: -35 }, flags: ["晚插"],
+        result: "又等了五天。秧壮实了才下田，插下去就立住了。",
+        note: "可节气不等人。生长期短一截，灌浆就得往秋天推。",
+        codex: "安全齐穗" }
     ]
   },
   {
-    term: "夏至",
-    date: "6月21日前后",
-    title: "水位",
-    brief: "日头最毒的几天。田里的水，一天浅一层。",
+    term: "夏至", date: "6月21日前后", title: "水", 序: 5, 阶段: "分蘖",
+    brief: "够苗了。这时候田里的水怎么管，定的是根往哪儿扎。",
+    热区: [
+      { x: 40,  y: 124, 标: "把水灌满",  画: "水口" },
+      { x: 204, y: 102, 标: "把水放干" },
+    ],
     options: [
-      {
-        text: "灌深水，水多压得住热气",
-        cost: 0, effect: {}, flags: ["深水"],
-        result: "水放满了，稻苗只露出个尖。看着挺安稳。"
-      },
-      {
-        text: "把水排干，晒田，让田裂一裂",
-        cost: 2, effect: {}, flags: ["晒田"],
-        result: "水放干了。第三天，田面裂开细密的纹路，稻根往下扎了一截。"
-      }
+      { text: "灌深水，把草闷在水底下",
+        cost: 0, stam: 5, effect: { ecology: 8, harvest: -30 }, flags: ["深水"],
+        result: "水放满了，稻苗只露个尖。水下见不到光、也喘不上气，草芽发不起来。",
+        note: "稻子的分蘖节也跟着往上抬 —— 贴到水面，低位蘖就发不出来了。",
+        codex: "深水" },
+      { text: "排水晒田，让根往下追",
+        cost: 0, stam: 13, effect: { harvest: 55, quality: 4, ecology: -6 }, flags: ["晒田"],
+        result: "水放干了。第三天田面裂开细纹，稻根顺着裂缝往下走了一截。",
+        note: "最优是土壤含水量 60% 上下 —— 裂成鸡爪纹就够。裂大了反而拉断根。",
+        codex: "晒田" }
     ]
   },
   {
-    term: "小暑",
-    date: "7月7日前后",
-    title: "除草",
-    brief: "稗子和稻子长得几乎一样，只是它的秆更滑、叶更挺。",
+    term: "小暑", date: "7月7日前后", title: "草", 序: 6, 阶段: "孕穗",
+    brief: "稗子和稻子长得几乎一样。区别在：稻子有叶舌和叶耳，稗子两样都没有 —— 叶脉发白、叶面光滑的，是稗子。",
+    /* 稗子摆在稻丛里，不摆在埂上 —— 这一屏要教的就是"在稻子里认出它"。
+       画得比稻子淡一档，那点差别就是提示。 */
+    热区: [
+      { x: 110, y: 108, 标: "那棵稗子",  画: "稗草" },
+      { x: 272, y: 124, 标: "除草剂",    画: "药桶" },
+    ],
     options: [
-      {
-        text: "薅一遍，差不多就得了",
-        cost: 0, effect: {}, flags: ["草未净"],
-        result: "薅了一遍，腰就直不起来了。田里看着是清爽了些。"
-      },
-      {
-        text: "薅三遍，一根一根地认",
-        cost: 2, effect: { ecology: 5 }, flags: [],
-        result: "薅了三遍。到最后，你能隔着老远一眼认出哪棵是稗子。"
-      }
+      { text: "人工薅，一根一根认",
+        cost: 0, stam: 26, effect: { quality: 11, ecology: 9, harvest: -25 }, flags: ["无除草剂"],
+        result: "薅了三遍。到最后，你能隔着老远一眼认出哪棵是稗子。",
+        note: "一分钱不花，全花在腰上。可稗草是分批出的苗 —— 薅一遍，只薅掉了已经站出来的。",
+        codex: "稗草" },
+      { text: "打除草剂，一遍下去干净",
+        cost: 45, stam: 6, effect: { harvest: 45, ecology: -15 }, flags: ["除草剂"],
+        result: "药兑上水，背着桶走了一圈。三天后，田里的草和稗子一起黄了。",
+        note: "四十多块钱。可要是你这块地里已经有抗性稗草，打下去才知道白打。",
+        codex: "抗性稗草" }
     ]
   },
   {
-    term: "大暑",
-    date: "7月22日前后",
-    title: "虫害",
-    brief: "稻叶上出现了卷尖，掰开一看，里头有条小青虫。",
+    term: "大暑", date: "7月22日前后", title: "虫", 序: 7, 阶段: "孕穗", 锚: true,
+    brief: "二化螟第一代幼虫上来了，纹枯病也在发。同时——这是花粉母细胞的减数分裂期，田里最不能断水的就是这几天。",
+    /* 鸭子画在水面上等着 —— 点它就是把鸭群赶下去。
+       赶下去之后它会挪到水里游（水里那段已有），前后是同一只鸭。 */
+    热区: [
+      { x: 44,  y: 124, 标: "打药",       画: "药桶" },
+      { x: 208, y: 98,  标: "赶鸭子下田", 画: "鸭" },
+    ],
     options: [
-      {
-        text: "打药，一遍下去最干脆",
-        cost: 0, effect: { harvest: 6, ecology: -12 }, flags: ["打药"],
-        result: "药兑上水，背着桶走了一圈。第二天，田埂上落了一层虫。"
-      },
-      {
-        text: "赶一群鸭子下田",
-        cost: 1, effect: {}, flags: ["稻鸭"],
-        result: "二十只麻鸭下了田，扑腾着在秧行间钻来钻去。"
-      }
+      { text: "打药，一遍下去最干脆",
+        cost: 85, stam: 9, effect: { harvest: 55, ecology: -17 }, flags: ["打药"],
+        result: "甲氧虫酰肼加噻呋酰胺，一遍打下去。第二天田埂上落了一层虫。",
+        note: "可必须打在卵孵高峰、幼虫蛀进去之前。等看见枯心苗，药已经打不到虫了。",
+        codex: "二化螟" },
+      { text: "赶一群鸭子下田",
+        cost: 1480, stam: 16, effect: { ecology: 17, quality: 4, harvest: -25 }, flags: ["稻鸭"],
+        result: "二十只麻鸭下了田，在秧行间钻来钻去，嘴不停。",
+        note: "鸭苗 360、围网 720、一季补饲 400 —— 鸭苗要 15–20 日龄的，分蘖初期放、齐穗前必须收。上庄这一带没人这么干过，这是你自己加的试验。",
+        codex: "稻鸭共作" }
     ]
   },
   {
-    term: "立秋",
-    date: "8月7日前后",
-    title: "追肥",
-    brief: "稻子开始拔节了。追不追肥、追多少，全看这一手。",
+    term: "立秋", date: "8月7日前后", title: "穗肥", 序: 8, 阶段: "灌浆",
+    brief: "抽穗前最后一次追肥，窗口是抽穗前 15 天左右。",
+    story: { who: "老周", text: "「你先看叶色。」老周捏着一片剑叶对着光，「还黑绿着不褪，就别施了。穗肥得建立在叶色落黄的基础上 —— 不落黄你就施，那是往倒伏上推。」" },
+    热区: [
+      { x: 44,  y: 124, 标: "多撒一遍氮肥",   画: "化肥袋" },
+      { x: 196, y: 100, 标: "少施，够用就行" },
+    ],
     options: [
-      {
-        text: "多追一遍，穗子才压得住秤",
-        cost: 2, effect: { harvest: 8, quality: -8, ecology: -6 }, flags: ["多肥"],
-        result: "化肥撒下去，稻叶眼见着黑了一层。"
-      },
-      {
-        text: "少追一点，够用就行",
-        cost: 0, effect: {}, flags: [],
-        result: "只撒了薄薄一层。稻子长得不算快，但叶色正。"
-      }
+      { text: "多施氮肥，穗大粒多",
+        cost: 130, stam: 7, effect: { harvest: 70, ecology: -8 }, flags: ["多氮"],
+        result: "化肥撒下去，稻叶眼见着黑了一层，穗头也鼓起来了。",
+        note: "看着真喜人。可京西稻的地理标志规范里写着：后期不施粒肥，蛋白质控制在 6%–8%。",
+        codex: "氮肥与食味" },
+      { text: "少施，够用就行",
+        cost: 60, stam: 4, effect: { quality: 10, ecology: 5, harvest: -40 }, flags: ["少氮"],
+        result: "只撒了薄薄一层。稻子长得不猛，叶色正，秆子捏着硬。",
+        note: "产量上你主动放弃了一截 —— 换的是米粒里那点蛋白质别超标。" }
     ]
   },
   {
-    term: "秋分",
-    date: "9月23日前后",
-    title: "收割",
-    brief: "稻穗垂下来了，掐一粒用牙一咬，已经硬了。",
+    term: "秋分", date: "9月23日前后", title: "开镰", 序: 11, 阶段: "成熟", 锚: true,
+    brief: "黄颖壳粒到九成五就该收了。京西稻的规范写的是「完熟期，黄颖壳粒 95% 左右收割」。",
+    story: { who: "老周", text: "老周掐了一穗，在手里搓开，吹掉糠皮，捏了两粒扔进嘴。\n「再等五天。」他说，「等它灌满。可要是这几天来雨，你就白等。」" },
+    热区: [
+      { x: 46,  y: 124, 标: "今天开镰",   画: "镰刀" },
+      { x: 194, y: 100, 标: "再等五天" },
+    ],
     options: [
-      {
-        text: "再等五天，让米再饱满些",
-        cost: 0, effect: {}, flags: ["晚收"],
-        result: "你没动镰刀，又多等了五天。"
-      },
-      {
-        text: "今天就开镰",
-        cost: 0, effect: {}, flags: [],
-        result: "镰刀磨好了。天亮下田，稻把子一捆一捆码在田埂上。"
-      }
+      { text: "今天开镰，趁天还稳",
+        cost: 0, stam: 14, effect: { harvest: -25 }, flags: ["早收"],
+        result: "镰刀磨好，天亮下田。稻把子一捆一捆码在田埂上。",
+        note: "抽穗后每早割一天，大约少收 1%。有青粒，也不饱满。",
+        codex: "适期收获" },
+      { text: "再等五天，让它灌满最后一截",
+        cost: 0, stam: 10, effect: { quality: 9 }, flags: ["晚收"],
+        result: "你没动镰刀，又等了五天。稻穗一天比一天沉。",
+        note: "可等过头也有代价：掉粒、穗发芽，水分太低反而整精米率下降。",
+        codex: "灌浆" }
+    ]
+  },
+
+  /* ── 以下三个不在必经之路上，每局随机抽 ── */
+  {
+    term: "小满", date: "5月21日前后", title: "田埂", 序: 3, 阶段: "苗期",
+    brief: "雨季要来之前，围沟得清一遍。这活儿没人爱干 —— 它不长在账上。",
+    热区: [
+      { x: 44,  y: 124, 标: "清沟理墒",      画: "铁锹" },
+      { x: 208, y: 128, 标: "看着是通的，不管", 画: "沟" },
+    ],
+    options: [
+      { text: "清沟理墒，把围沟和田埂都过一遍",
+        cost: 0, stam: 13, effect: { harvest: 15, ecology: 5 }, flags: ["清沟"],
+        result: "铁锹把围沟里的淤泥一锹一锹起出来，田埂上被黄鳝钻的洞也堵了。干了两天。",
+        note: "看不出收成的一摊活。可水从哪儿走、往哪儿退，全看这几锹。",
+        codex: "田埂" },
+      { text: "沟面看着是通的，先不管",
+        cost: 0, stam: 2, effect: { harvest: -8 }, flags: ["未清沟"],
+        result: "你绕着田走了一圈。沟里水在流，表面上看不出什么。",
+        note: "淤在底下那层，这会儿谁也不知道有多厚。",
+        codex: "涝害" }
+    ]
+  },
+  {
+    term: "处暑", date: "8月23日前后", title: "断水", 序: 9, 阶段: "灌浆",
+    brief: "什么时候把田里的水放干 —— 早了米不饱满，晚了田烂得下不去脚。",
+    热区: [
+      { x: 40,  y: 124, 标: "把水放干",     画: "水口" },
+      { x: 200, y: 102, 标: "保水到黄熟" },
+    ],
+    options: [
+      { text: "提早断水，让田干透好下脚",
+        cost: 0, stam: 6, effect: { harvest: 8, quality: -6 }, flags: ["早断水"],
+        result: "水放干了。几天之后田面能站人，收割机开进来不打滑。",
+        note: "可灌浆还没结束就断水，米粒上半截是饱的，下半截是空的 —— 整精米率要掉。",
+        codex: "断水" },
+      { text: "保水到黄熟，让灌浆走完",
+        cost: 0, stam: 11, effect: { quality: 9, harvest: -15 }, flags: ["保水"],
+        result: "水一直留着，浅水层，白天晒得温热。稻子灌得踏实。",
+        note: "代价是收的时候田里是烂的。人踩进去到小腿，机器进不来，只能请人割。",
+        codex: "断水" }
+    ]
+  },
+  {
+    term: "白露", date: "9月7日前后", title: "叶面肥", 序: 10, 阶段: "灌浆",
+    brief: "灌浆期最后一趟肥。喷不喷，是拿粒重换早熟。",
+    热区: [
+      { x: 44,  y: 124, 标: "喷一遍",   画: "药桶" },
+      { x: 198, y: 100, 标: "不喷" },
+    ],
+    options: [
+      { text: "喷一遍磷酸二氢钾，促早熟",
+        cost: 45, stam: 7, effect: { quality: 9, harvest: -14 }, flags: ["叶面肥"],
+        result: "磷酸二氢钾兑水，背着桶走了一圈。叶子吸得快，三天就看出颜色不一样。",
+        note: "可它促早熟 —— 叶片提前落黄，光合的日子少几天，粒重是要折一点的。",
+        codex: "磷酸二氢钾" },
+      { text: "不喷，让叶子多绿几天",
+        cost: 0, stam: 2, effect: { harvest: 6 }, flags: ["未喷叶面肥"],
+        result: "你没动。叶子该绿到什么时候，就绿到什么时候。",
+        note: "灌浆靠的就是最后这几片功能叶 —— 它们多撑一天，粒里就多进一点淀粉。",
+        codex: "功能叶" }
     ]
   }
 ];
 
-/* 延迟后果 —— 原型的心脏。
-   玩家在某个节气做的决定，当时毫无反应，直到后面某个节气才显形。
 
-   字段：
-     at     在第几个节气触发（0=谷雨 … 7=秋分，8=秋收结算）
-     when   判断条件，参数是当前状态
-     effect 数值变化
-     mood   "bad" / "good"，只影响颜色
-     line   给玩家看的那句话 —— 说"因为什么"，不说"你做错了"
-     once   默认 true，触发过就不再触发
-*/
-const DELAYED = [
-  /* —— 育秧的回声，最早的一次延迟，让玩家先摸到这个机制 —— */
-  {
-    at: 4, when: s => s.flags["露天"], mood: "bad",
-    effect: { harvest: -5 },
-    line: "露天的那批秧，缓了半个月才立住。分蘖比别家少。"
-  },
-  {
-    at: 4, when: s => s.flags["棚育"], mood: "good",
-    effect: { harvest: 6 },
-    line: "棚里的秧出得齐。插下去三天就立住了，分蘖一串一串地冒。"
-  },
+/* ══════════════════════════ 3. 年景 ══════════════════════════
+   一局一局，每一局的天不一样。开局就告诉你 —— 随机要能提前规划，
+   才叫运气；事到临头才知道，那叫不讲理。
+   ────────────────────────────────────────────────────────────── */
+/* 级 = 抽卡的稀有度，重 = 抽中它的权重。上上和下下都少见 ——
+   一头是丰年，一头是秋淋，抽到哪个都得重新打算盘。
 
-  /* —— 链 1（负向·单因）：夏至灌深水 → 立秋徒长 —— */
-  {
-    at: 6, when: s => s.flags["深水"], mood: "bad",
-    effect: { harvest: -10 },
-    line: "稻子一个劲儿往上蹿，秆子又细又软，风一吹整片地都在晃。"
-  },
-  {
-    at: 6, when: s => s.flags["晒田"], mood: "good",
-    effect: { harvest: 6 },
-    line: "晒过田的稻根扎得深。别家的稻在晃，你家的站得笔直。"
-  },
+   ⚠ 字段有两组，别混：
+     effect / 对冲后 / 反后  —— 改你的三个数（产量、品质、生态）
+     移线 / 冲移 / 反移      —— 改**今年验米的那三条线**，一格 1 点
 
-  /* —— 链 2（负向·复合）：深水 + 多追肥 → 秋分倒伏 —— */
-  {
-    at: 7, when: s => s.flags["深水"] && s.flags["多肥"], mood: "bad",
-    effect: { harvest: -15 },
-    line: "穗子沉，秆子软——稻子成片倒在水里。扶不起来。"
-  },
+   为什么后三个要单独存在：灌浆期低温、收获期淋雨、早霜，伤的都是整精米率
+   （碾出来碎米多不多），而整精米率正是国标划级的那一项。所以这几种年景
+   不该扣你田里的分（你的活儿没做错），该抬米厂门口那条线。
+   账是一样的，玩法完全不一样：扣分你只能认，抬线你能看见、能重新打算盘 ——
+   "今年特级要 93，那我守住一级、把产量留住"是一句真话，而"你品质 -14"不是。
+   只有灌浆/成熟这四个年景配移线（暖秋/凉夏/秋淋/早霜）——
+   苗期分蘖期的年景伤的是穗数和株型，那是产量的事。 */
+const 年景池 = [
+  { 名: "平年", 色: "", 级: "R", 签: "中", 重: 3, hit: null, effect: {},
+    说: "风调雨顺。该下雨下雨，该晒晒。",
+    报: "镇上的气象站说，今年跟前几年差不多。" },
 
-  /* —— 链 3（正向·回报延迟）：大暑放鸭 → 秋分才知道值 —— */
-  {
-    at: 7, when: s => s.flags["稻鸭"] && s.flags["露天"], mood: "bad",
-    effect: { harvest: -8, ecology: 18 },
-    line: "鸭子把虫子和小草都啄干净了，可秧苗本来就弱，被它们踩倒、啄散了一片。"
-  },
-  {
-    at: 7, when: s => s.flags["稻鸭"] && !s.flags["露天"], mood: "good",
-    effect: { ecology: 25, quality: 5 },
-    line: "秧苗本来就壮，鸭子踩不倒。虫子和小草都啄干净了，一季省了药钱，还多拣了一篮鸭蛋。"
-  },
+  { 名: "雨水匀", 色: "a", 级: "SR", 签: "上", 重: 2, hit: "分蘖", effect: { harvest: 35, ecology: 4 },
+    对冲: "清沟", 对冲后: { harvest: 52, ecology: 8 },
+    反: "未清沟", 反后: { harvest: 12, ecology: -6 },
+    说: "六月里下了几场透雨，不大不小，正好接上。",
+    报: "老周说：今年这雨，下得有分寸。",
+    line: "雨下得有分寸 —— 该下的时候下透，下完就晴。分蘖一茬接一茬，田里一天没缺过水。",
+    对冲线: "雨下得匀，你那条围沟又是清的 —— 水进得来、排得出，一滴没糟蹋。稻子一茬接一茬地发。",
+    反线: "雨是真匀。可你那条围沟从开春就没动过，淤了半截 —— 下透的那两场，低洼那一片泡了三天，苗都黄了。" },
 
-  /* —— 另外两条小回响 —— */
-  {
-    at: 7, when: s => s.flags["草未净"] && s.flags["深水"], mood: "good",
-    effect: {},
-    line: "田里的水一夏天没断过，稗子没能发起来。"
-  },
-  {
-    at: 7, when: s => s.flags["草未净"] && !s.flags["深水"], mood: "bad",
-    effect: { quality: -10 },
-    line: "没除净的稗子，跟稻子抢了一季的肥。打下来的米，粒儿不够沉。"
-  },
-  {
-    at: 7, when: s => s.flags["误农时"], mood: "bad",
-    effect: { quality: -12 },
-    line: "插得晚了。灌浆那阵子赶上头一场早霜，米没长足。"
-  },
+  { 名: "丰年", 色: "a", 级: "SSR", 签: "上上", 重: 1, hit: "孕穗", effect: { harvest: 80, quality: 4 },
+    对冲: "早插", 对冲后: { harvest: 115, quality: 9 },
+    反: "晚插", 反后: { harvest: 45, quality: -4 },
+    说: "雨热都踩在点上。老周说，这样的年景三五年碰不上一回。",
+    报: "老周看了半天云，说：今年能种个好稻。",
+    line: "整个一季的雨热都踩在点上 —— 该热的时候热，该晴的时候晴。稻子一天一个样。",
+    对冲线: "这种年景三五年碰不上一回，你还插了个早 —— 生长期拉满，光热一点没漏。穗子压得秆子都弯了。",
+    反线: "年景是好年景，可你插晚了。等你抽穗，最好那一段光热已经过去了 —— 老天爷给了，你没接住。" },
 
-  /* —— 收尾：同一个决定，好还是坏，要看前面种成什么样 —— */
-  {
-    at: 8, when: s => s.flags["晚收"] && s.flags["深水"], mood: "bad",
-    effect: { harvest: -8 },
-    line: "多等的这五天，一场秋雨把熟透的稻子打趴了。谷粒掉在泥里，捡不起来。"
-  },
-  {
-    at: 8, when: s => s.flags["晚收"] && !s.flags["深水"], mood: "good",
-    effect: { quality: 10 },
-    line: "多等的这五天没白等。稻子站得直，谷粒灌得饱，一咬一个响。"
-  }
+  { 名: "暖秋", 色: "a", 级: "SR", 签: "上", 重: 2, hit: "成熟", effect: { harvest: 20 },
+    移线: -10,
+    对冲: "晚收", 对冲后: { harvest: 32 }, 冲移: -20,
+    反: "早收", 反后: { harvest: 10 }, 反移: 4,
+    说: "九月里一直晴，白天暖，夜里凉，温差拉得开。",
+    报: "老周说：这种天，米好吃。",
+    line: "处暑之后一直是这种天 —— 白天晒得足，夜里凉得下来。淀粉往里积，米粒透亮。碾出来整米多、碎米少，今年的验米线整个往下走。",
+    对冲线: "这种天就该让它多留五天。你等了 —— 最后一截灌得饱饱的，抓一把，米粒匀得挑不出毛病。今年这条线，你站得比谁都高。",
+    反线: "天是好天，可你收早了。往后那五天正是拉开温差的时候 —— 白晒了。青粒多，碾出来碎米也多，线白挪了。" },
+
+  { 名: "倒春寒", 色: "d", 级: "SR", 签: "下", 重: 2, hit: "苗期", effect: { harvest: -45, quality: -4 },
+    对冲: "盖膜", 对冲后: { harvest: 8, quality: 3 },
+    说: "四月底一场寒潮，五月上旬日均温连着四天没过 12℃。",
+    报: "老周说：今年这天，秧田要当心。",
+    line: "寒潮真来了。连着四天，日均温没过 12℃。露地那一片秧，叶尖先发白，然后整株软下去。烂秧。",
+    对冲线: "寒潮真来了，连着四天没过 12℃。可你的秧在膜底下 —— 只黄了个叶尖，缓两天就回来了。隔壁露地的，烂了一片，得补种。" },
+
+  { 名: "暖春", 色: "a", 级: "SR", 签: "上", 重: 2, hit: "苗期", effect: { harvest: 26, quality: 3 },
+    反: "盖膜", 反后: { harvest: -26, quality: -9 },
+    说: "四月里就暖起来了，日均温稳过 15℃，比往年早了半个月。",
+    报: "老周说：今年回暖早，棉袄脱得比哪年都快。",
+    line: "回暖早。四月的积温比往年多了一大截，秧返青快，一天一个样。早插的那几家，苗已经封行了。",
+    反线: "你按去年的经验，把膜盖上了。可今年不冷 —— 棚里中午窜到三十五度，苗蹿得又细又软，一揭膜就趴下一片。烧苗了。" },
+
+  { 名: "伏旱", 色: "d", 级: "SR", 签: "下", 重: 2, hit: "分蘖", effect: { harvest: -45, ecology: -5 },
+    对冲: "晒田", 对冲后: { harvest: -8 },
+    说: "六月下旬到七月上旬没下透雨，上庄水库的水位一直在掉。",
+    报: "渠里的水比往年少了一截。水利站说，要省着用。",
+    line: "旱得厉害。灌一次水，两天就渗没了，渠里的水还不够分。稻子中午卷叶，到傍晚才展开。",
+    对冲线: "旱是旱了，可你晒过田 —— 根比别家往下多追了一截。同样的水，你能多撑两天。别家的稻中午卷叶，你的到下午还立着。" },
+
+  { 名: "凉夏", 色: "d", 级: "R", 签: "下", 重: 2, hit: "灌浆", effect: { harvest: -12 },
+    移线: 12,
+    对冲: "少氮", 对冲后: {}, 冲移: -3,
+    说: "七月下旬连着阴雨，日均温一直上不去。",
+    报: "老周说：就怕这种 —— 看着不热，可稻子它不长。",
+    line: "凉夏。低温正赶上减数分裂期，花粉母细胞发育不全 —— 当时看不出来，等到灌浆，穗上会空一片。空粒碾不出整米，今年的线，往上抬了一截。",
+    对冲线: "凉夏，低温正赶上减数分裂期。好在你穗肥没敢多施 —— 稻子没被催起来，穗上空的比别家少得多，碾出来整米也比别家多。别家忙着补肥，越补越空，线抬得越高。" },
+
+  { 名: "秋淋", 色: "d", 级: "SSR", 签: "下下", 重: 1, hit: "成熟", effect: { harvest: -38 },
+    移线: 18,
+    对冲: "早收", 对冲后: { harvest: -4 }, 冲移: -12,
+    说: "预报说九月底有一场连阴雨。",
+    报: "老周说：今年秋天，可能要多抢两天。",
+    line: "连阴雨下了六天。熟透的稻穗吸了水，穗子沉，茎秆撑不住；有些穗上直接发了芽。发了芽的谷子碾出来是碎米，今年的线，抬得比哪年都高。",
+    对冲线: "连阴雨下了六天。可你抢先收了 —— 稻把子早码进棚里了。隔壁没抢的，穗子在田里发了芽，一年的收成就这么废了。线挪上去那一截，你没跟着吃。" },
+
+  { 名: "早霜", 色: "d", 级: "SR", 签: "下", 重: 2, hit: "成熟", effect: { harvest: -26 },
+    移线: 15,
+    对冲: "早收", 对冲后: {}, 冲移: -10,
+    说: "九月下旬一场初霜，比往年早了十来天。",
+    报: "老周抬头看了看天，说：今年秋天来得急。",
+    line: "霜来得早。晚收的那一片，稻子冻在田里 —— 穗子发暗，捏上去是硬的，出米率掉了一截。冻过的谷子一碾就碎，今年的线，抬上去了。",
+    对冲线: "霜下来之前你就收了。稻把子码在棚里，一颗没冻着。晚收的邻家，田里那一片发黑，人站在田埂上不说话 —— 他们的线，今年是白抬了。" },
+];
+
+/* ── 随机事件池 ──
+   每局重抽。坏事件不是「无差别打击」—— 同一件事，你怎么种的，挨的程度不一样。
+   at = 生长阶段，不是节气名 —— 节气是抽的，阶段是定的。 */
+const 随机池 = [
+  /* ── 苗期 ── */
+  { at: "苗期", p: 0.45, mood: "good", effect: { ecology: 6 },
+    line: "田埂上落了两只白鹭，站着看了一会儿，又飞走了。老周说，他小时候这样的鸟多得很，后来有十来年看不见了。" },
+  { at: "苗期", p: 0.36, mood: "bad", effect: { ecology: -5, quality: -3 },
+    line: "隔壁那家打药，风往你这边吹。药雾飘过来，田埂上的草第二天黄了一道边。" },
+  { at: "苗期", p: 0.38, mood: "good", effect: { ecology: 6, harvest: 22 },
+    对冲: "清沟", 对冲后: { ecology: 6, harvest: 32 },
+    line: "老周扛来一捆草木灰，撒在田埂上。「补钾的，比化肥强。」他说完就走了，也没要钱。" },
+  { at: "苗期", p: 0.28, mood: "bad", effect: { harvest: -14 },
+    line: "五月里连着几天阴，水温上不来，秧苗返青慢了一截。你去田里看，苗色一直不转绿。" },
+  { at: "苗期", p: 0.28, mood: "good", effect: { quality: 4, harvest: 12 },
+    line: "镇上把这条渠的进水口修了，水泥抹的，不再漏水。往年这时候，为抢水要跟邻田吵一架。" },
+
+  /* ── 分蘖 ── */
+  { at: "分蘖", p: 0.36, mood: "bad", effect: { harvest: -22 },
+    对冲: "稻鸭", 对冲后: { harvest: -7 },
+    line: "稻潜叶蝇。叶子上一道一道的白条，是幼虫钻在叶肉里吃的。",
+    对冲线: "稻潜叶蝇是来了，可鸭子在水里一趟一趟地趟 —— 能啄掉的都啄掉了。叶上只剩几道浅白条。" },
+  { at: "分蘖", p: 0.38, mood: "good", effect: { quality: 6, harvest: 30 },
+    line: "整个六月都晴得好。光照足，稻叶天天晒得发亮，分蘖一天比一天密。" },
+  { at: "分蘖", p: 0.30, mood: "bad", effect: { harvest: -14 },
+    line: "一场冰雹，下了十来分钟。冰碴子有黄豆大，稻叶被打得千疮百孔。好在正是分蘖期，还能长回来一些。" },
+  { at: "分蘖", p: 0.32, mood: "good", effect: { harvest: 26, ecology: 5 },
+    line: "上庄水库放水，渠里的水大了一截。你把田里的水换了一遍活水，稻根透气，看着就精神。" },
+  { at: "分蘖", p: 0.26, mood: "bad", effect: { quality: -4, harvest: -12 },
+    对冲: "晒田", 对冲后: { harvest: -4 },
+    line: "田里的水一直退不下去，稻根泡在里头，发黑。",
+    对冲线: "田里积了水，可你晒过田 —— 土是紧的，根还透气。别家泡了三天，你的第二天就渗下去了。" },
+
+  /* ── 孕穗 ── */
+  { at: "孕穗", p: 0.34, mood: "bad", effect: { harvest: -24 },
+    对冲: "深水", 对冲后: { harvest: -10 },
+    line: "高温热害。连续三天最高温过了 35℃，田里的水温烫手。水稻开花的时候怕这个 —— 花粉会失活。",
+    对冲线: "高温热害，连着三天过 35℃。好在你田里水层深 —— 水深能压住几度，穗子受害比别家轻。" },
+  { at: "孕穗", p: 0.30, mood: "bad", effect: { harvest: -20 },
+    对冲: "打药", 对冲后: { harvest: -6 },
+    line: "二化螟上来了，田里出现了枯心苗 —— 一根一根，心叶先黄，抽出来就死了。",
+    对冲线: "二化螟是来了，可你药打得是时候 —— 卵孵高峰那几天打下去的。田里只见零星几根枯心。" },
+  { at: "孕穗", p: 0.28, mood: "bad", effect: { quality: -6, harvest: -14 },
+    对冲: "晒田", 对冲后: { quality: -2, harvest: -4 },
+    line: "纹枯病从基部起来了。叶鞘上一圈一圈的云纹，往上爬。",
+    对冲线: "纹枯病是发了一点，可你晒过田 —— 株间湿度压下来了，病斑爬到一半就停住。" },
+  { at: "孕穗", p: 0.32, mood: "good", effect: { ecology: 8 },
+    line: "有人在田埂上拍照。是两个骑行的年轻人，说这一片稻子比公园里好看。老周在旁边站着，没说话，但看得出来挺高兴。" },
+  { at: "孕穗", p: 0.30, mood: "good", effect: { quality: 5, harvest: 20 },
+    line: "镇上请了农技站的人来巡田。他扒开你家稻丛看了看基部，说：这蘖发得匀，秆子也硬。" },
+
+  /* ── 灌浆 ── */
+  { at: "灌浆", p: 0.32, mood: "bad", effect: { quality: -7, harvest: -16 },
+    对冲: "少氮", 对冲后: { quality: -3, harvest: -6 },
+    line: "稻曲病上来了。几个穗上长了墨绿色的孢子球，一碰就散。这穗就废了，还得小心别让它沾到别的穗上。",
+    对冲线: "稻曲病还是发了几个穗。好在你氮没多施 —— 要是穗肥催上去，孢子球能多一倍。" },
+  { at: "灌浆", p: 0.32, mood: "good", effect: { quality: 9 },
+    line: "处暑之后昼夜温差拉大了。白天晒、夜里凉，米粒里的淀粉积得实 —— 老周说，这就是京西稻好吃的原因之一。" },
+  { at: "灌浆", p: 0.28, mood: "bad", effect: { quality: -8, harvest: -18 },
+    对冲: "打药", 对冲后: { quality: -3, harvest: -7 },
+    line: "穗颈瘟。穗脖子上一段发黑，上头整穗都是瘪的 —— 这个比叶瘟狠，一发病就不可逆。",
+    对冲线: "穗颈瘟零星发了几株。你在破口初期打过一遍药，压住了 —— 这病等看见白穗再打，就晚了。" },
+  { at: "灌浆", p: 0.30, mood: "good", effect: { ecology: 7, harvest: 12 },
+    需: s => s.flags["无除草剂"],
+    line: "田里的蜘蛛多起来了，结的网挂在稻丛之间，早上全是露水。没打过除草剂的地，才有这个。" },
+  { at: "灌浆", p: 0.30, mood: "good", effect: { quality: 4, harvest: 24 },
+    line: "灌浆这阵子天天大晴，日头足。稻穗一天比一天压手，你捏一粒，硬得硌牙。" },
+
+  /* ── 成熟 ── */
+  { at: "成熟", p: 0.28, mood: "bad", effect: { harvest: -12 },
+    line: "麻雀来了。刚开始是几只，后来越来越多，站在稻穗上啄。你在地头插了两根竹竿挂上反光带，管一点用。" },
+  { at: "成熟", p: 0.30, mood: "good", effect: { quality: 5, harvest: 14 },
+    line: "收的那几天全是大晴天。晒场上一片金黄，翻两遍就干透了 —— 老周说，抢的就是这几天。" },
+  { at: "成熟", p: 0.26, mood: "good", effect: { quality: 6, harvest: 10 },
+    line: "谷子收上来，水分正好，不用多晒。老周抓一把在手里掂了掂，说：今年这谷子，实。" },
 ];
 
 
-/* ==================== 2. 逻辑层（纯函数，不碰 DOM）==================== */
 
-const BASE = { harvest: 55, quality: 55, ecology: 55 };   // 三项初始值
-const START_BUDGET = 5;                                    // 本钱：钱 + 工夫，合着算
-                                                           // 5 个本钱买不下所有"费事"选项（全买要 7 个），
-                                                           // 逼玩家挑：这一季我打算在哪几手上用心
-const USE_BUDGET = true;   // ← 改成 false 就是"没有本钱限制"的版本，方便对照
 
-const clamp = n => Math.max(0, Math.min(100, n));
+/* ═══════════════════════ 3b. 延迟后果 ═══════════════════════
+   在 A 节气做的决定，当时毫无反应，到 C 阶段才显形。
+   from = 这条账是从哪一步来的 —— 把因果当场摊开给玩家看。
+   at = 生长阶段（节气是抽的，阶段是定的）
+   ────────────────────────────────────────────────────────────── */
+const EVENTS = [
+  /* ── 苗期的因，分蘖的时候见 ── */
+  { at: "分蘖", when: s => s.flags["露地"], mood: "good", effect: { harvest: 18 },
+    from: ["立夏", "露地育秧"],
+    line: "露地育的秧皮实。别家棚里的苗一揭膜就打蔫，你的没缓，直接就长了。" },
 
-/* 开一季：返回一个全新的状态对象 */
-function newSeason() {
+  { at: "分蘖", when: s => s.flags["盖膜"], mood: "bad", effect: { harvest: -18, ecology: -3 },
+    from: ["立夏", "盖膜育秧"],
+    line: "久雨之后暴晴。你从两头把膜一揭，棚里湿度一下就掉了，叶子卷成针，青着就枯了一片。老周说这叫青枯 —— 不是病菌，是揭膜揭出来的。",
+    codex: "青枯" },
+
+  { at: "分蘖", when: s => s.flags["老品种"], mood: "bad", effect: { harvest: -28, quality: -4 },
+    from: ["谷雨", "自家留的种"],
+    line: "秧田里有一片苗，颜色比别处黄，秆子却比别处细高。拔起来一看，根是烂的。老周说这是恶苗病 —— 自家留的种，年年都有这么一片。",
+    codex: "恶苗病" },
+
+  { at: "分蘖", when: s => s.flags["未清沟"], mood: "bad", effect: { harvest: -32 },
+    from: ["小满", "没清沟"],
+    line: "一场急雨，水排不出去。田里积了两天水才慢慢退下去，稻苗泡黄了一片。你蹲下去看围沟 —— 底下那层淤的，把水路堵死了。",
+    codex: "涝害" },
+
+  /* ── 分蘖的因，孕穗的时候见 ── */
+  { at: "孕穗", when: s => s.flags["深水"], mood: "bad", effect: { harvest: -38 },
+    from: ["夏至", "灌深水"],
+    line: "稻子一个劲儿往上蹿，秆子又细又软。扒开稻丛看基部 —— 该从底下发出来的那几枝，一枝也没出来。" },
+
+  { at: "孕穗", when: s => s.flags["晒田"], mood: "good", effect: { harvest: 40 },
+    from: ["夏至", "排水晒田"],
+    line: "晒过田的稻根扎得深。别家的稻在晃，你家的站得笔直。" },
+
+  /* ── 孕穗的因，灌浆的时候见 ── */
+  { at: "灌浆", when: s => s.flags["稻鸭"] && s.flags["无除草剂"], mood: "bad", effect: { harvest: -55, ecology: 10 },
+    from: ["小暑 人工薅草", "＋", "大暑 赶鸭子下田"],
+    line: "鸭子把虫啄了一遍，纹枯病也确实压下去了。可它们不碰稗子 —— 稗草灌浆比稻子快，穗子都压弯了。而且秧苗本来就弱，被它们踩倒、啄散了一片。" },
+
+  { at: "灌浆", when: s => s.flags["稻鸭"] && !s.flags["无除草剂"], mood: "good", effect: { ecology: 14, quality: 5, harvest: -35 },
+    from: ["大暑", "赶鸭子下田"],
+    line: "鸭子下田，纹枯病压下去了 —— 不是它们吃菌核，是踩踏把基部的枯叶蹬掉，通风透光了。可对已经蛀进秆里的二化螟，它们没办法。" },
+
+  { at: "灌浆", when: s => s.flags["除草剂"], mood: "bad", effect: { harvest: -40 },
+    from: ["小暑", "打除草剂"],
+    line: "田里的蜘蛛、青蛙跟着草一起没了。稻鸭田的蜘蛛是常规田的一点六到两点六倍 —— 你这里是反过来的。等灌浆的时候虫再上来，没人替你吃了。",
+    codex: "天敌" },
+
+  { at: "灌浆", when: s => s.flags["晒田"] && s.flags["多氮"], mood: "bad", effect: { quality: -8, harvest: -28 },
+    from: ["夏至 晒田", "＋", "立秋 多施氮肥"],
+    line: "基部叶鞘上一圈一圈的云纹，往上爬。老周说这叫纹枯病 —— 晒田和控氮，本来是配套的两件事，你做了一个，没做另一个。",
+    codex: "纹枯病" },
+
+  /* ── 灌浆的因，开镰的时候见 —— 这是全季最重的一记回响 ── */
+  { at: "成熟", when: s => s.flags["多氮"], mood: "bad", effect: { quality: -15 },
+    from: ["立秋", "多施氮肥"],
+    line: "穗子是比别人家大。可晒干了一碾，米粒发乌、发暗，没光。氮催出来的粒，灌浆快，不中用。" },
+
+  { at: "成熟", when: s => s.flags["少氮"], mood: "good", effect: { quality: 6 },
+    from: ["立秋", "少施氮肥"],
+    line: "秆子硬，穗子站得住。米粒摸上去滑，透着亮。" },
+
+  { at: "成熟", when: s => s.flags["深水"] && s.flags["多氮"], mood: "bad", effect: { harvest: -115 },
+    from: ["夏至 灌深水", "＋", "立秋 多施氮肥"],
+    line: "穗沉，秆软，根又浅 —— 一场风过，稻子成片倒在泥里。倒了的稻子，穗一沾泥，灌浆就停了。",
+    codex: "倒伏" },
+
+  { at: "成熟", when: s => s.flags["早插"], mood: "bad", effect: { quality: -8 },
+    from: ["芒种", "今天就插"],
+    line: "插得早，返青那几天苗色一直发黄。虽然后来追上来了，米粒还是没长足。" },
+
+  { at: "成熟", when: s => s.flags["晚插"], mood: "bad", effect: { quality: -10 },
+    from: ["芒种", "再等五天"],
+    line: "插得晚了。灌浆那阵子赶上头一场早霜，米没长足，青粒多。",
+    codex: "早霜" },
+
+  { at: "成熟", when: s => s.flags["叶面肥"], mood: "good", effect: { quality: 6 },
+    from: ["白露", "喷磷酸二氢钾"],
+    line: "喷过叶面肥的那几行，黄得比别处早，可穗子压手 —— 早熟了五六天，赶在雨前收的。" },
+
+  { at: "成熟", when: s => s.flags["未喷叶面肥"], mood: "good", effect: { harvest: 14 },
+    from: ["白露", "没喷叶面肥"],
+    line: "叶子一直绿到最后。最后那十来天，功能叶还在往里送淀粉 —— 粒重比喷过肥的地块还沉一点。" },
+
+  /* ── 收尾：粮已经进场了，才回过味来 ── */
+  { at: "收尾", when: s => s.flags["保水"], mood: "good", effect: { quality: 7 },
+    from: ["处暑", "保水到黄熟"],
+    line: "灌浆一直没断水，米粒饱满。收的时候田里是烂的，人是踩着泥割的 —— 可米是真的好。" },
+
+  { at: "收尾", when: s => s.flags["早断水"], mood: "bad", effect: { quality: -7 },
+    from: ["处暑", "提早断水"],
+    line: "断水早了。米粒上半截饱、下半截空，碾出来碎米多。",
+    codex: "断水" },
+
+  { at: "收尾", when: s => s.flags["晚收"] && s.flags["深水"], mood: "bad", effect: { harvest: -85 },
+    from: ["秋分 等五天", "＋", "夏至 深水"],
+    line: "多等的这五天，一场秋雨把熟透的稻子打趴了。谷粒掉在泥里，捡不起来。" },
+
+  { at: "收尾", when: s => s.flags["晚收"] && !s.flags["深水"], mood: "good", effect: { quality: 11 },
+    from: ["秋分", "再等五天"],
+    line: "多等的这五天没白等。稻子站得直，谷粒灌得饱，一咬一个响。" },
+];
+
+
+/* ══════════════════════════ 4. 二三产 ══════════════════════════ */
+/* ══════════════════════ 后半段：收了之后 ══════════════════════
+   v4.4 之前这里是一根死管子 —— 永远四步、永远那几个选项、没有人说话。
+   现在按前半段的规矩重做：
+   ① 三步必走（收粮 / 碾米 / 卖米），后两步从池子里抽；
+   ② 有行情 —— 立冬揭晓，跟年景一样是抽卡，有稀有度；
+   ③ 有人说话 —— 老陈、米厂的老赵、来认养的人、老周；
+   ④ 选项跟着局面走 —— 生态不够就没有认养，手头没钱就上不了设备。
+   ────────────────────────────────────────────────────────── */
+
+/* 老陈 —— 收粮的。四十来岁，跑这一带十几年了。
+   他不是坏人，可他也不是来做慈善的。 */
+const 行情卡 = (y, 已发) => `<div class="yc ${y.级 || "R"} ${y.色 === "d" ? "xiong" : ""}">
+  <span class="tier">${y.签 || ""}</span>
+  <span class="k">今 年 的 行 情</span>
+  <b class="${y.色}">${y.名}</b>
+  <p>${esc(y.说)}</p>
+  <p style="color:#a8b8a2">${esc(y.报)}</p></div>`;
+
+function 建后段(S) {
+  const 现金 = S.现金, 生态 = S.stats.ecology, 牌 = 牌子(生态),
+        cap = Math.round(miban.grade.礼盒 * 牌 * S.行情.礼盒);
+  const 步 = [];
+
+  /* ── 一 · 立冬：收粮的来了 ── */
+  步.push({ id:"收粮", term:"立冬", who:"老陈", title:"收粮的来了",
+    brief: `老陈的卡车停在田埂上，车斗里放着台磅秤。他按等级给价，现金当场结。今年他这个价，比去年${S.行情.原粮 > 1 ? "高" : S.行情.原粮 < 1 ? "低" : "一样"}。`,
+    say: S.行情.原粮 < 1
+      ? "「不是我要压你。」老陈把烟掐了，「粮库那边满了，我收回去也是压手里。」\n他踢了踢磅秤，「你卖，我就这个价；你不卖，我也不劝。」"
+      : S.行情.原粮 > 1
+      ? "「今年这个价，你猜不着吧。」老陈笑得挺高兴，「南边减产，收粮的都往北边跑。」\n他拍了拍秤，「趁这会儿，卖不卖？」"
+      : "「还是去年的价。」老陈把秤摆正，「我这儿不兴讨价还价，你也别跟我磨。」",
+    options: [
+      { text: "卖一半，先把本钱收回来",
+        sub: st => `${yuan(Math.round(st.grain*0.5))} 斤当场结 ${yuan(Math.round(st.grain*0.5*谷价(S)))} 元现钱，手头就有 ${yuan(Math.round(st.现金 + st.grain*0.5*谷价(S)))} 元 —— 代价是往后装盒、认养，都只有一半米`,
+        pick: st => { st.soldGrain = Math.round(st.grain * 0.5); st.现金 += Math.round(st.soldGrain * 谷价(S)); } },
+      { text: "一粒不卖，全留着自己做",
+        sub: st => `米全在你手上，往后能装盒、能认养 —— 但后头的设备、包装、加工费，都从这 ${yuan(Math.round(st.现金))} 元里出`,
+        pick: st => { st.soldGrain = 0; } },
+    ]});
+
+  /* ── 二 · 小雪：怎么碾 ── */
+  const 买得起 = 现金 >= NUM.自碾设备费;
+  步.push({ id:"碾米", term:"小雪", who:"米厂的老赵", title:"怎么碾",
+    brief: "稻谷要变成米，才谈得上价钱。代碾省事，可出米率是人家说了算。",
+    say: 买得起
+      ? "老赵叼着烟在机器边上转：「送过来我给你碾，58%。」\n他瞟了一眼你手上的钱，又说：「你要自己买机器也行，一千二。你自己算。」"
+      : "老赵叼着烟在机器边上转：「送过来我给你碾，58%。」\n「想自己买机器？一千二。」他看了一眼你空着的手，「……你还是送过来吧。」",
+    options: [
+      { text: "送米厂代碾",
+        sub: st => `出米率 ${Math.round(NUM.出米率_代碾*100)}% —— ${yuan(Math.round(st.grain*(1-(st.soldGrain||0)/st.grain)*NUM.出米率_代碾))} 斤米，一分钱不用掏`,
+        pick: st => { st.rate = NUM.出米率_代碾; } },
+      { text: "自己上套小设备",
+        sub: st => 买得起
+          ? `出米率 ${Math.round(NUM.出米率_自碾*100)}%，多出 ${yuan(Math.round(st.grain*(1-(st.soldGrain||0)/st.grain)*(NUM.出米率_自碾-NUM.出米率_代碾)))} 斤米；礼盒还能多吃下 ${Math.round((NUM.自碾礼盒加成-1)*100)}% —— 因为"地头现碾鲜米"这六个字，只有自己碾才写得上去。先掏 ${yuan(NUM.自碾设备费)} 元，掏完剩 ${yuan(Math.round(st.现金 - NUM.自碾设备费))} 元做包装`
+          : `要 ${yuan(NUM.自碾设备费)} 元 —— 你手头只有 ${yuan(现金)}，买不起`,
+        锁: !买得起,
+        pick: st => { st.rate = NUM.出米率_自碾; st.cost += NUM.自碾设备费; st.现金 -= NUM.自碾设备费; } },
+    ]});
+
+  /* ── 三 · 大雪：这米卖给谁 ──
+     三条路各自赢在一种局面上：米少 → 礼盒；米多 → 混合；等级差 → 加工。
+     牌子和行情决定礼盒能吃下多少。 */
+  步.push({ id:"卖米", term:"大雪", who:"你自己", title:"这米卖给谁",
+    brief: "米碾出来了。包装和加工都得先掏现钱 —— 你手上就那么多。",
+    say: cap > 0
+      ? `老陈给你算了笔账：「礼盒一斤能顶好几斤散米，可你一斤得先垫 ${NUM.礼盒包装} 块包装钱。」\n「就那么大个市场，你做出三百斤盒子，人家最多要你 ${cap} 斤。剩下的你想怎么办？」\n「送米酒厂也行，人家一斤收 ${NUM.深加工费} 块加工费 —— 也是先掏。」`
+      : `老陈把话说明白了：「你这个等级，礼盒装不出来 —— 人家送礼不送这个。」\n「送米酒厂吧，一斤 ${NUM.深加工费} 块加工费，先掏。好米这么走是亏的，你这米倒是合适。」`,
+    options: [
+      { text: "全做品牌礼盒",
+        sub: st => cap > 0
+          ? `封顶 ${cap} 斤，这批就压上 ${yuan(cap * NUM.礼盒包装)} 元包装钱 —— 装不下的按原粮价卖给粮库`
+          : "你的等级装不出礼盒",
+        锁: cap <= 0,
+        pick: st => { st.channel = "礼盒"; } },
+      { text: "礼盒装满，剩下的送米酒厂",
+        sub: st => cap > 0
+          ? `包装 ${yuan(cap * NUM.礼盒包装)} 元 + 加工费 —— 你手头 ${yuan(Math.round(st.现金))} 元，够铺多少铺多少`
+          : `先垫 ${NUM.深加工费} 元一斤，手头 ${yuan(Math.round(st.现金))} 元能铺多少铺多少`,
+        pick: st => { st.channel = "混合"; } },
+      { text: "一斤不包装，全送米酒厂",
+        sub: st => `${NUM.深加工价} 元一斤收，先垫 ${NUM.深加工费} 元 —— 省下包装钱，但好米这么走是亏的`,
+        pick: st => { st.channel = "深加工"; } },
+    ]});
+
+  /* ── 四 · 小寒：从池子里抽一件 ──
+     这一格是后半段真正"随机"的地方 —— 今年来的是谁，看你这一季种成什么样。 */
+  const 小寒池 = [
+    { 需: 生态 >= NUM.三产门槛, 重: 3, step: {
+      id:"认养", term:"小寒", who:"来看田的人", title:"田闲下来了",
+      brief: "稻子收了，田空着。有人从城里来看，说这块田能不能认一份。",
+      say: "来的是个三十多岁的女的，带着孩子。她在田埂上站了一会儿，说：\n「我们家孩子没见过稻子长什么样。」\n「一年一千五，秋天来割，给我们二十斤米 —— 行不行？」",
+      options: [
+        { text: "做稻田认养，让城里人认一份",
+          sub: () => `${NUM.认养单价} 元一份，兑 ${NUM.认养兑米} 斤米。这条路上庄还没人走`,
+          pick: st => { st.third = "认养"; } },
+        { text: "算了，田歇着吧", sub: () => "不折腾，也不挣这份钱", pick: st => { st.third = "无"; } },
+      ]}},
+    { 需: 生态 >= NUM.三产门槛 - 12, 重: 3, step: {
+      id:"研学", term:"小寒", who:"小学的老师", title:"学校要来",
+      brief: "一个小学老师打电话来，说想带孩子来看看稻子是怎么长的。",
+      say: "「我们排了三个班。」老师在电话里说，\n「孩子们没见过真的稻田 —— 就在课本上见过。」\n「一人八十，你看行吗？」",
+      options: [
+        { text: "接研学团，让学校带孩子来",
+          sub: () => `一人 ${NUM.研学单价} 元。他们不看米，只看田 —— 上庄 2022 年靠这个收了 140 万`,
+          pick: st => { st.third = "研学"; } },
+        { text: "算了，田歇着吧", sub: () => "不折腾，也不挣这份钱", pick: st => { st.third = "无"; } },
+      ]}},
+    { 需: true, 重: 2, step: {
+      id:"歇着", term:"小寒", who:"老周", title:"田闲下来了",
+      brief: "稻子收了，田空着。老周过来看了一眼，什么也没说。",
+      say: "老周在田埂上蹲了一会儿。\n「这一季的草籽都落在地里了。」他说，\n「明年你要是不管，春天一化冻，全出来。」",
+      options: [
+        { text: "冬天把田翻一遍，冻一冻",
+          sub: () => "费工夫，不出钱 —— 但明年的草能少一半",
+          pick: st => { st.third = "无"; st.冬翻 = true; st.stats.ecology = clampStat("ecology", st.stats.ecology + 4); } },
+        { text: "算了，田歇着吧", sub: () => "不折腾，也不挣钱", pick: st => { st.third = "无"; } },
+      ]}},
+  ];
+  步.push(抽一步(小寒池));
+
+  /* ── 五 · 大寒：这一季的最后一件小事 ──
+     不改变大局，只让这一年收得有个人味儿。 */
+  const 大寒池 = [
+    { 重: 3, step: { id:"结账", term:"大寒", who:"老陈", title:"老陈来结账",
+      brief: "老陈把车开回来，说是尾款算错了，少给了你一点。",
+      say: "他掏出个皱巴巴的本子：「我回去扒拉了一遍，磅秤那天有点飘。」\n他把几张票子拍在你手里，「差的补上。做买卖，讲个长久。」",
+      options: [{ text: "收下", sub: () => "+300 元", pick: st => { st.额外 += 300; st.大寒说明 = "老陈回头补了 300 元"; } }] }},
+
+    { 重: 3, step: { id:"看田", term:"大寒", who:"镇上来的人", title:"镇里来人看田",
+      brief: "镇上来了两个人，站在田埂上拍了几张照。",
+      say: "「区里年底有个评选。」其中一个说，\n「你这田，冬天还留着草籽和稻桩 —— 我们拍两张，行吗？」\n他们没提给钱，也没提不给。",
+      options: [{ text: "让他们拍", sub: () => "没现钱，但田里这份样子被记下了 · 生态 +3",
+        pick: st => { st.额外 += 0; st.stats.ecology = clampStat("ecology", st.stats.ecology + 3); st.大寒说明 = "镇里来人拍了照"; } }] }},
+
+    { 重: 2, step: { id:"定金", term:"大寒", who:"订米的人", title:"有人要订明年的米",
+      brief: "一个老客户打电话来，说今年这米好，明年的先订下。",
+      say: "「今年这个米，我家老头说比往年的香。」电话那头说，\n「明年的我先给你打点定金，你留一份，别卖光了。」",
+      options: [{ text: "收下定金", sub: () => `先拿 ${yuan(2000)} 元现钱 —— 明年的事明年再说`,
+        pick: st => { st.额外 += 2000; st.大寒说明 = "有人订了明年的米，先付 2000 元定金"; } }] }},
+
+    { 重: 2, step: { id:"雪", term:"大寒", who:"你自己", title:"一场大雪",
+      brief: "夜里下了一场大雪。你早上起来，先去的不是宿舍，是仓房。",
+      say: "仓房的檐口压弯了一块，雪水渗进去，最底下那几袋稻谷受潮了。\n你把袋子拖出来，一袋一袋摊开 —— 有几袋已经发了霉点。",
+      options: [{ text: "把好的挑出来", sub: () => `折了 ${yuan(Math.round(miban.grade.价*40))} 元，但剩下的还是好的`,
+        pick: st => { st.额外 -= Math.round(miban.grade.价*40); st.大寒说明 = "雪压仓房，折了一批谷子"; } }] }},
+
+    { 重: 1, step: { id:"名头", term:"大寒", who:"镇上的电话", title:"区里给了个名头",
+      brief: "镇上的电话打过来，说区里评了个「京西稻种植能手」。",
+      say: "「没啥奖金。」电话里的人说得挺实在，\n「就是有个牌子，挂在田埂上。你要不要？」\n你说要。",
+      options: [{ text: "领回来挂在田埂上", sub: () => `镇上给了 ${yuan(3000)} 元奖励，外加一块牌子`,
+        pick: st => { st.额外 += 3000; st.大寒说明 = "评上了区里的种植能手"; } }] }},
+
+    { 重: 1, step: { id:"本子", term:"大寒", who:"老周", title:"老周把本子给你",
+      brief: "老周来找你，手里拿着个塑料皮的本子，边角都磨圆了。",
+      say: "「我记了四十年。」他把本子递过来，\n「哪天下的种，哪天放的水，哪年什么天，收了多少 —— 都在上头。」\n「你比我强，你认字。你拿着。」",
+      options: [{ text: "接过来", sub: () => "没有一分钱 —— 但你手里有了四十年的账 · 生态 +5",
+        pick: st => { st.stats.ecology = clampStat("ecology", st.stats.ecology + 5); st.大寒说明 = "老周把四十年的种稻笔记给了你"; } }] }},
+  ];
+  步.push(抽一步(大寒池));
+
+  return 步;
+}
+
+/* 按权重抽一步 —— 需 是建池的时候就算好的布尔值，false 的整条不参与 */
+function 抽一步(池) {
+  const 能 = 池.filter(x => x.需 !== false);
+  const 总 = 能.reduce((a, x) => a + (x.重 || 1), 0);
+  let r = Math.random() * 总;
+  for (const x of 能) { r -= (x.重 || 1); if (r < 0) return x.step; }
+  return 能[0].step;
+}
+
+/* 谷价 —— 原粮给价。行情好就高，行情差就低。 */
+const 谷价 = S => Math.round(miban.grade.价 * NUM.原粮折扣 * NUM.出米率_代碾 * (S.行情 ? S.行情.原粮 : 1) * 10) / 10;
+
+
+/* ══════════════════════════ 5. 回宿舍查资料 ══════════════════════════
+   白天在地里做的决定，当时谁也不知道对不对。
+   晚上回宿舍，你把白天那个没想明白的事儿翻出来查了一遍。
+
+   这条设计针对两件事：
+   ① 知识不能拿术语砸脸 —— 所以术语全部挪到「书上说」这一层，
+      后面必须跟一句「说白了」，用人话再讲一遍。
+   ② 你是个农大来实习的学生 —— 那就得有个学生的样子：
+      白天动手，晚上翻书。这一层是身份，也是这套知识真正落地的地方。
+   ────────────────────────────────────────────────────────────────── */
+const 查资料 = {
+
+  /* ── 谷雨 ── */
+  "谷雨-0": { 问: "老周说我这一袋种「杂」。杂在哪儿？",
+    书: "常规稻品种连续自留 2–3 代后，群体内基因型发生分离，纯度逐代下降；同时種子带菌，恶苗病病菌潜伏于种皮。",
+    白: "说白了：这袋里其实已经混进了好几种稻子 —— 长得有高有矮，熟得有早有晚，收的时候没法一起收。而且病菌就藏在种皮上，盐水选得掉瘪谷，选不掉菌。" },
+  "谷雨-1": { 问: "新种贵六十块，这钱花在哪了？",
+    书: "种子包衣剂多含咪鲜胺、氰烯菌酯等杀菌成分与成膜剂。包衣后药剂附着种皮外层，播种后直接抑制恶苗病与稻瘟病的初侵染。",
+    白: "说白了：这六十块买的不是种子，是「今年不用再为恶苗病操心」。老周当时没接话 —— 他家种了几代稻，都没有过这个选项。" },
+
+  /* ── 立夏 ── */
+  "立夏-0": { 问: "不盖膜，我到底在跟什么赌？",
+    书: "北京五月上旬历史极端最低气温 2.5℃。粳稻出苗与根系生长要求日均温稳定通过 12℃；连续 3–5 天低于 12℃，出苗延迟、根系停止发育，严重时烂秧。",
+    白: "说白了：稻子是南方来的，怕冷，12℃ 是它的门槛线。露地就是拿这几天赌天气 —— 赌赢了，苗在真实气温里长出来，皮实；赌输了，一棚秧全没。" },
+  "立夏-1": { 问: "盖了膜不是就万无一失了吗？",
+    书: "保温育秧棚内温湿度高，秧苗生长快而根系相对弱。揭膜遇久雨暴晴时，棚内湿度骤降、蒸腾陡增，根系供水无法匹配，形成非病原性生理失水（青枯）。",
+    白: "说白了：你花八十块，把「冻害」这个风险换成了「揭膜」这个风险。棚里的苗是娇养出来的，哪天掀被子得挑时候 —— 掀错了，一下子全蔫。" },
+
+  /* ── 芒种 ── */
+  "芒种-0": { 问: "早插生长期更长，怎么反而掉品质？",
+    书: "插秧期水温低，根系受伤后新根发生缓慢，返青期延长。返青拖延推迟分蘖始期，前期营养积累不足，后期虽总生育期延长，籽粒充实度仍受影响。",
+    白: "说白了：早插好比半夜把人叫起来干活 —— 地是凉的，根扎不下去，先黄好几天。天数你是赚到了，可那几天它基本没长。" },
+  "芒种-1": { 问: "晚五天，真有那么大差别？",
+    书: "粳稻安全齐穗要求日均温稳定在 20℃ 以上；北京麦茬稻需争取 8 月 28 日前齐穗。灌浆期每晚一天，遭遇秋季低温的概率就上升一分。",
+    白: "说白了：这是一条往下滑的线。插秧晚一天，抽穗晚一天，灌浆晚一天 —— 越往后越容易撞上第一场早霜。你是拿产量换了壮苗。" },
+
+  /* ── 夏至 ── */
+  "夏至-0": { 问: "深水能压草，怎么会是坏事？",
+    书: "长期深水淹浸叶鞘，稻株通气受阻，分蘖节向上伸长（节位上移），低位分蘖芽受抑不发，有效穗数下降。且深水层施氮氨挥发损失大，氮肥利用率仅约 20%（浅水层施约 60%）。",
+    白: "说白了：稻子以为自己在水里，就一个劲儿往上蹿。本来该从根底下发出来的分枝，全憋回去了 —— 穗数就少。你施的肥也跟着跑掉一大半。" },
+  "夏至-1": { 问: "把水放干，稻子不会旱死吗？",
+    书: "搁田使土壤含水量降至 60%±5% 时，基部节间缩短约 21%、茎壁增厚约 30%；株间湿度由 92%–96% 降至 80%–90%，低于纹枯病发病湿度下限。",
+    白: "说白了：就是让它受点罪。根一旱就往深处找水，扎深了；秆子也不往高里长，改往粗里长 —— 后面穗子沉了才站得住。火候是裂成鸡爪纹就够了，裂大了反把根拉断。" },
+
+  /* ── 小暑 ── */
+  "小暑-0": { 问: "薅三遍，真有这个必要？",
+    书: "移栽稻田稗草出苗有两个高峰（栽后 5–15 天、20–25 天），单次除草无法根除。稗草分蘖可达上百枝，养分竞争能力强于水稻。",
+    白: "说白了：稗草不是一起长出来的，是分批冒头的。你今天薅干净，过几天土里又出一批 —— 所以只能一遍一遍来。但薅到最后，你真能隔着老远一眼认出它。" },
+  "小暑-1": { 问: "一遍药就干净了，怎么反而亏？",
+    书: "广谱除草剂在灭草同时杀灭田间天敌（蜘蛛、青蛙、寄生蜂）。天敌繁殖速率远低于害虫，药后害虫种群恢复快于天敌，易致后期害虫再猖獗；稗草抗药性种群亦已在多地出现。",
+    白: "说白了：你请了个不认人的打手 —— 草死了，替你看着虫的也死了。虫繁殖快，天敌繁殖慢，等下一批虫上来就没人管了。而且有些稗草已经不怕这药，打了也白打。" },
+
+  /* ── 大暑 ── */
+  "大暑-0": { 问: "打药为什么非得卡在那个时间点？",
+    书: "二化螟幼虫孵化后即蛀入茎秆内部取食，蛀入后药剂无法接触虫体。防治适期为卵孵高峰至幼虫蛀入前；田间出现枯心苗时已过窗口。",
+    白: "说白了：这虫是钻进去吃的。你在外面喷多少药，它躲在秆子里都没事。只有它刚孵出来、还没钻进去的那两三天能打 —— 错过就没了。所以老周说「看见枯心苗再打，是给自己看的」。" },
+  "大暑-1": { 问: "鸭子真有那么神？",
+    书: "稻鸭共作推荐参数：分蘖初期放 15–20 日龄雏鸭，每亩约 10 只，齐穗前收回。对稻飞虱防效约 82.7%，对杂草 40 天后防效约 94.2%；但不取食稗草（P>0.05）。压纹枯病机理为踩踏去除基部枯叶、改善通风，非取食菌核。",
+    白: "说白了：鸭子是干活的，不是万能的。它吃虫、吃草、踩泥、拉粪，可它不碰稗子 —— 稗子还得你自己薅。它压住纹枯病，靠的也是把底下枯叶踩掉，不是把菌吃了。" },
+
+  /* ── 立秋 ── */
+  "立秋-0": { 问: "穗子大不是好事吗？为什么反而降等级？",
+    书: "籽粒蛋白质含量与氮肥用量正相关，且后期追氮影响大于基肥。蛋白质以蛋白体形式填充于胚乳淀粉粒之间，阻碍淀粉糊化吸水，致米饭质地变硬、黏弹性下降。粳稻蛋白质含量与食味值相关系数 r = −0.923。京西稻地理标志规范要求后期不施粒肥，蛋白质 6%–8%。",
+    白: "说白了：产量和好吃，在这件事上是打架的。氮催出来的粒，蛋白多、淀粉少 —— 蛋白把淀粉裹住了，饭煮出来就发硬、不黏。做普通商品粮，产量就是一切；可你种的是地理标志的稻子，等级看的是好不好吃。" },
+  "立秋-1": { 问: "少施一把肥，稻子不会饿着？",
+    书: "穗肥施用前提是叶色落黄。叶色未落黄即追氮，会造成群体过大、基部节间伸长、茎壁变薄，增加倒伏风险，同时抬升籽粒蛋白质含量。",
+    白: "说白了：这一步不是「施不施」，是「看叶色再定」。老周捏着剑叶对着光看，就是在看这个。稻子还黑绿着就说明它不缺 —— 你再喂，它只会往高里长、往倒伏上走。" },
+
+  /* ── 秋分 ── */
+  "秋分-0": { 问: "早收几天，能差多少？",
+    书: "以抽穗后 55 天收割为 100%，50 天为 94.2%，45 天为 89.1%，40 天为 85.7% —— 约每早割一天减产 1%。早收青粒多、整精米率低。",
+    白: "说白了：最后那几天，米粒一直在往里灌淀粉。早收一天，就是扔掉一天的量。但它也让你躲开了秋雨 —— 这是个拿产量换保险的赌。" },
+  "秋分-1": { 问: "等到什么时候算「等过头」？",
+    书: "京西稻规范口径为「完熟期，黄颖壳粒 95% 左右收割」。过熟则掉粒、断穗、穗发芽；且稻谷水分过低时整精米率反而下降、脆裂粒增加。",
+    白: "说白了：不是越晚越好。熟过了，稻子自己往下掉粒，赶上下雨还会在穗上发芽。两头都不行，只有中间一小段是好的 —— 老周掐一穗搓开扔嘴里，就是在卡这一段。" },
+
+  /* ── 小满 ── */
+  "小满-0": { 问: "清沟这活儿，真值两天工？",
+    书: "稻田围沟兼排灌两用。沟底淤积显著降低排水速率，雨季形成田面积水，根系缺氧并受硫化氢等还原性物质毒害，造成黄叶僵苗。",
+    白: "说白了：这活儿平时看不出任何好处 —— 只有下大雨的那天才知道值不值。沟面看着是通的，淤的那层在底下，谁也看不见。" },
+  "小满-1": { 问: "不清沟会怎么样？",
+    书: "除淤积外，黄鳝、田鼠在田埂打洞会形成漏水通道，既漏水又漏肥。",
+    白: "说白了：沟不是被草堵的，是被泥淤的。你看水面在流，就以为通着 —— 底下那层早把它堵死了。" },
+
+  /* ── 处暑 ── */
+  "处暑-0": { 问: "早点断水不是方便收吗？",
+    书: "断水过早致灌浆期水分供应不足，籽粒充实度下降、垩白增加、整精米率降低。一般推荐收获前 7–10 天断水。",
+    白: "说白了：灌浆就是米粒往肚子里填淀粉，这个过程要水。你提前把水撤了，米就上半截饱、下半截空 —— 碾出来全是碎米。好处是田干得快，机器下得去。" },
+  "处暑-1": { 问: "保水到底保的是什么？",
+    书: "灌浆期维持浅水层有利于籽粒充实。但收获前须适时断水以利机械作业；断水过晚会致土壤含水量过高、机收困难、损失率上升。",
+    白: "说白了：水在，米就好；水在，田就烂。这是个纯粹的取舍 —— 你要好米，就得准备好踩着泥割。" },
+
+  /* ── 白露 ── */
+  "白露-0": { 问: "叶面肥凭什么能促早熟？",
+    书: "磷酸二氢钾叶面喷施可促进光合产物向籽粒转运、加速灌浆，提早成熟 3–7 天，并提高粒重与抗逆性。但过早或过量喷施会导致叶片提前衰老、光合功能期缩短，粒重反降。",
+    白: "说白了：它让稻子「提前交卷」。赶在雨来霜来之前把浆灌完，这是它的价值。但叶子也提前黄了 —— 光合的日子少几天，粒重就得折一点。拿粒重换时间。" },
+  "白露-1": { 问: "不喷，万一下雨怎么办？",
+    书: "灌浆期功能叶（剑叶与倒二叶）的光合产物贡献率可达 80% 以上。延长功能叶功能期是提高粒重的直接途径。",
+    白: "说白了：灌浆的淀粉，八成以上是最后那几片叶子造出来的。让它们多绿一天，粒就多沉一点。代价是你没有任何「提前收」的余地 —— 雨来了只能认。" },
+
+  /* ── 年景 ── */
+  "年景-倒春寒": { 问: "为什么 12℃ 是条线？",
+    书: "粳稻出苗与根系生长的生物学下限温度为 12℃。日均温连续 3–5 天低于 12℃，出苗延迟、根系发育停滞；若伴降雨高湿，易发生烂秧。",
+    白: "说白了：稻子不是麦子，它是南方来的。12℃ 以下它就不长了 —— 不是长得慢，是停了。泡在水里停着，就烂了。" },
+  "年景-伏旱": { 问: "旱一旱，稻子不是更抗倒吗？",
+    书: "分蘖期缺水抑制分蘖发生，有效穗数下降；孕穗期（减数分裂期）缺水则直接导致花粉败育、结实率骤降。干旱胁迫程度与生育时期密切相关。",
+    白: "说白了：旱在不同时候，后果完全不一样。分蘖期旱，少长几枝；孕穗期旱，穗上直接是空的。而且水库就那么点水，省着用也未必够。" },
+  "年景-凉夏": { 问: "不热怎么也会减产？",
+    书: "水稻减数分裂期（抽穗前 10–15 天）对低温敏感，日均温低于 20℃ 影响花粉母细胞减数分裂，导致花粉不育、结实率下降。此类伤害在孕穗期不可见，至灌浆期才表现为空壳。",
+    白: "说白了：稻子开花那几天最娇气，怕冷。冷一下，花粉就废了 —— 当时你看不出任何问题，等到灌浆，穗上是一片空的。这就是为什么老周说「就怕这种，看着不热，可稻子它不长」。" },
+  "年景-秋淋": { 问: "下场雨而已，至于吗？",
+    书: "成熟期连阴雨使稻穗吸水增重、茎秆负荷加大，易致倒伏；田间高湿条件下穗上易发芽（穗发芽），直接丧失商品价值。",
+    白: "说白了：熟了的稻子，穗子是沉的。再吸一场水，秆子撑不住就倒了；倒了的穗贴着泥，几天就发芽。所以老周说秋天要「抢」 —— 抢的就是雨前那两天。" },
+  "年景-丰年": { 问: "年景好，是不是躺着也能收？",
+    书: "品种的产量潜力需在光温水肥协同条件下才能表达。丰年只是解除了气象限制因子，栽培管理仍是产量与品质的决定因素。",
+    白: "说白了：天帮你，不等于你不用干。年景好只意味着你之前那些选择不会被天气抹掉 —— 前面种砸了，丰年也就是少亏一点。" },
+  "年景-暖春": { 问: "回暖早不是好事吗？怎么会烧苗？",
+    书: "水稻秧苗生长的适宜温度为 25–30℃，超过 35℃ 时呼吸消耗大于光合积累，秧苗徒长、茎叶柔嫩、干物质积累不足（俗称「烧苗」）。覆膜可提早育苗、防御低温，但在气温已达标的年份会造成膜内高温高湿。",
+    白: "说白了：膜是给冷天用的。天不冷你还盖着，棚里中午能窜到三十五度 —— 苗为了够到光拼命往上蹿，长得又细又软。等一揭膜，风一吹就趴下。" },
+  "年景-早霜": { 问: "霜不是冬天的事吗？九月哪来的霜？",
+    书: "水稻安全成熟的临界温度为日平均气温 15℃（粳稻）。灌浆后期遭遇初霜冻（地面最低温 ≤0℃）或日均温低于 13℃，灌浆停止、青米率上升，出米率与整精米率显著下降。",
+    白: "说白了：霜不看日历，看天。往年十月才来的，今年九月底就到了 —— 那你凭什么按往年的日子收？谷子还青着就冻住，碾出来一半是青米。" },
+  "年景-雨水匀": { 问: "雨下得正好，还需要做什么吗？",
+    书: "稻田需具备独立的灌排系统。围沟（边沟）淤塞时，连阴雨条件下地下水位抬升、耕层还原性增强，根系缺氧发黄（渍害），且退水缓慢。",
+    白: "说白了：天上给的水是一回事，你田里能不能接住、能不能排掉，是另一回事。沟是通的，雨水就是白给的肥；沟是堵的，同样的雨就是涝。" },
+  "年景-暖秋": { 问: "暖秋为什么对米质特别好？",
+    书: "灌浆期昼夜温差大有利于光合产物向籽粒转运、减少呼吸消耗，直链淀粉含量与蛋白质含量趋于适宜区间，整精米率提高。粳稻灌浆最适日均温 21–23℃，且需较大温差。",
+    白: "说白了：白天晒出来的淀粉，夜里凉下来就存住了；夜里要是不凉，它自己又烧掉一半。所以「白天暖、夜里凉」这种天，米才好吃。这种天你要做的是 —— 别急着收。" },
+};
+
+
+/* ══════════════════════════ 6. 图鉴 ══════════════════════════
+   三条线：田里的（你在这块地上会碰到的）/ 手上的（农事）/ 这一带（设定）
+   ────────────────────────────────────────────────────────────── */
+const CODEX = {
+  /* ── 田里的 ── */
+  "稗草": ["田里的", "稻子有叶舌和叶耳，稗草两样都没有；稻子叶脉绿、叶面粗有毛，稗草叶脉白、叶面光滑。它分蘖能到上百枝，抢肥比稻子狠。移栽稻田一年有两个出草高峰 —— 栽后 5–15 天和 20–25 天，所以一次用药必然除不净。"],
+  "抗性稗草": ["田里的", "长期单一用药，稗草会进化出抗性。江苏已有种群对噁唑酰草胺抗性 13.71 倍，而且对好几种药交叉抗性。最要命的是：农户施药前无从预判，打了才知道白打。"],
+  "二化螟": ["田里的", "北方稻区第二位害虫，北京一年两代。第一代幼虫六月下旬造成枯心，第二代八月上旬造成白穗。它蛀进茎秆以后，药就打不到了 —— 所以窗口是卵孵高峰前后，不是等看见枯心苗。"],
+  "纹枯病": ["田里的", "菌核像老鼠屎，在土里过冬；灌水整田以后它比水轻，浮到水面随水漂，附到稻株基部就发芽侵入。晒田为什么能防？水一干，菌核漂不起来了，株间湿度从 92%–96% 掉到 80%–90% —— 而湿度低于 90% 就不发病。"],
+  "天敌": ["田里的", "蜘蛛、青蛙、寄生蜂 —— 田里自己长出来的防线。打一遍广谱农药，虫和天敌一起死；虫繁殖快，天敌繁殖慢，下一批虫上来就没人管了。实测稻鸭田的蜘蛛是常规田的 1.66–2.61 倍。"],
+  "稻瘟病": ["田里的", "北方稻区第一位病害，损失最重的是穗颈瘟。两条最反直觉：一，它不从气孔侵入，是靠附着胞产生侵入丝穿破角质层；二，出叶当天最易感，5 天后抗性渐强，13 天后几乎不感病。所以必须打「破口初期」—— 等看到白穗，已经不可逆了。"],
+  "灰飞虱": ["田里的", "北京在北纬 40°，褐飞虱、白背飞虱都不能在这儿越冬，也不在全国农技中心的北方稻区防控名单里。北方真正要盯的是灰飞虱 —— 它传条纹叶枯病。"],
+  "倒伏": ["灾", "两种。根倒：长期深水，根扎得浅，风一吹整株平躺。茎倒：氮肥多，基部节间拉长、茎壁变薄，穗一沉就折。倒伏虽然发生在后期，根子却在前期和中期的管理上。灌浆期倒伏一般减产 20% 以上。"],
+  "早霜": ["灾", "秋天第一场霜。来得早，还在灌浆的稻子直接停住，米长不足，青粒多。插秧晚一天，灌浆期就往后推一天，撞上的概率就大一分。"],
+  "青枯": ["灾", "不是病菌，是管理失误。苗在棚里又暖又湿，长得快但根弱；久雨暴晴之后你突然揭膜，棚里湿度骤降、温度还高，叶子拼命蒸腾，根供不上水 —— 苗就青着枯了，成团成片地死。保温育秧把「冻害」的风险，换成了「揭膜」的风险。"],
+
+  /* ── 手上的 ── */
+  "盐水选种": ["手上的", "盐水比重比水大，瘪谷浮、饱谷沉。粳稻比重 1.10–1.13，用鲜鸡蛋试 —— 蛋壳露出水面约一枚硬币大就对了。泡不超过 5 分钟，选完必须用清水冲两三遍。但它选的是饱满度：稻瘟病粒、恶苗病粒照样沉底，所以盐水选替代不了药剂消毒。"],
+  "恶苗病": ["手上的", "由种子带菌，病菌分泌赤霉素让苗徒长 —— 又细又高、颜色发黄，根却是烂的。可防不可治，「发病株率即损失率」，一般减产 10%–20%，重的过半。现在咪鲜胺、氰烯菌酯抗性都上来了，稳妥做法是先包衣、再浸种。"],
+  "露地育秧": ["手上的", "不起棚，让秧苗在真实气温里长。省膜省工，秧苗皮实。风险只有一个：倒春寒。北京五月上旬历史极端最低 2.5℃；日均温连续 3–5 天低于 12℃，就要烂秧。"],
+  "返青": ["手上的", "秧插下去根受伤，要重新长出新根才能恢复生长。这几天气色发黄是正常的。插得太早、水温低，返青就慢。"],
+  "安全齐穗": ["手上的", "粳稻抽穗开花要求日均温稳定在 20℃ 以上，连续两天低于 19℃ 就可能受害。北京麦茬稻必须争取 8 月 28 日前安全齐穗。所以「晚熟品种 + 适期早插」是光温资源最大化 —— 但晚熟与安全，在北京是同一个赌注的两面。"],
+  "深水": ["水", "深水能保温、能压草，但代价是两条：一是叶鞘被淹，通气断了，分蘖节往上抬，低位蘖发不出来，有效穗就少；二是深水施氮的利用率只有约 20%（浅水层施是 60%）—— 氨挥发跑掉了。"],
+  "晒田": ["水", "也叫搁田。口诀是「苗到不等时，时到不等苗」：苗数够了就晒，进了分蘖末期就算苗不够也得晒。效果：基部节间变短、秆壁增厚，实测基部节间距 −21%、壁厚 +30%；株间湿度降下来，纹枯病就压住了。火候是土壤含水量 60%±5% —— 裂成鸡爪纹就够了，裂大了断根，复水后光合要十多天才能恢复。"],
+  "稻鸭共作": ["虫", "国家推荐的参数是：分蘖初期放 15–20 日龄的雏鸭，每亩 10 只左右，齐穗前必须收鸭。鸭子吃虫、吃草、踩泥，粪便是肥。实测对稻飞虱防效 82.7%、对杂草 40 天后 94.2%。它压纹枯病不是因为吃菌核，是踩踏把基部枯叶蹬掉、通风透光了 —— 和晒田一个机理。但有一条：鸭不碰稗草。"],
+
+  /* ── 手上的（肥与收） ── */
+  "氮肥与食味": ["肥", "籽粒蛋白质含量和氮肥用量正相关，而且后期追的氮比基肥影响更大。蛋白质在胚乳里形成蛋白体，包在淀粉粒之间，阻碍淀粉糊化吸水 —— 米饭就发硬、黏弹性下降。粳稻蛋白质含量与食味值的相关系数 r = −0.923。京西稻地理标志规范直接写：后期不施粒肥，蛋白质 6%–8%。"],
+  "灌浆": ["收", "抽穗后米粒一点点填进淀粉。这时候最怕两件事：一是断水太早，灌不满；二是往后拖，赶上秋雨和早霜。实测：以抽穗后 55 天收割为 100%，50 天是 94.2%，45 天 89.1%，40 天 85.7% —— 大约每早割一天减产 1%。"],
+  "适期收获": ["收", "京西稻的规范口径是「完熟期，黄颖壳粒 95% 左右收割」。收早了青粒多、整精米率低；收晚了掉粒断穗、穗发芽，而且稻谷水分过低反而整精米率偏低、脆裂粒增加。两头都不行。"],
+  "除草剂": ["药", "一遍下去草就黄了，省工省力。但它分不清杂草和天敌，也分不清哪棵草长在田埂上。而且稗草抗性上得很快 —— 江苏、安徽、吉林、黑龙江都已有抗性种群。"],
+  "打药": ["药", "见效最快的一手。关键是窗口：二化螟要在卵孵高峰、蛀入之前；穗颈瘟要在破口初期。过了窗口，药不是没打，是打晚了。代价是田里所有的活物一起清空。"],
+};
+
+
+/* ══════════════════════════ 7. 成就 ══════════════════════════ */
+/* 三档：铜（走完一季就会撞上几个）／银（得走对几步）／金（得凑齐好几件事）。
+   等级本身也是反馈 —— 拿到金牌那一下，跟拿到铜牌不是一回事。 */
+const ACH = [
+  /* ── 铜 ── */
+  { id:"开镰",  级:"铜", 名:"种完一季",    说:"八个节气，一步没落",             when:S=>S.termIndex>=8 },
+  { id:"老种",  级:"铜", 名:"三百年的种",  说:"用自家留的种种完一季",           when:S=>S.flags["老品种"] },
+  { id:"一身泥",级:"铜", 名:"一身泥",      说:"体力见底，这一季是自己扛下来的", when:S=>S.stamina<=0 },
+  { id:"深水",  级:"铜", 名:"水放满了",    说:"夏至灌深水，把草闷在水底下",     when:S=>S.flags["深水"] },
+  { id:"打药",  级:"铜", 名:"一遍干净",    说:"打了除草剂 —— 田里当时确实干净", when:S=>S.flags["除草剂"] },
+  { id:"等外",  级:"铜", 名:"进不了等级",  说:"验成等外，这一季没种明白",       when:(S,r)=>r&&r.grade.名==="等外" },
+  { id:"赔本",  级:"铜", 名:"赔了",        说:"净收益是负的 —— 也算一种经验",   when:(S,r)=>r&&r.净收益<0 },
+  { id:"凭感觉",级:"铜", 名:"凭感觉",      说:"一季下来，一页资料没翻",         when:S=>S.termIndex>=8&&!Object.keys(S.查过).length },
+
+  /* ── 银 ── */
+  { id:"贡米",  级:"银", 名:"够得上贡米",  说:"验出特级",                       when:(S,r)=>r&&r.grade.名==="特级" },
+  { id:"薅草",  级:"银", 名:"一根一根认",  说:"草是蹲下去薅的，不是打下去的",   when:S=>S.flags["无除草剂"] },
+  { id:"少氮",  级:"银", 名:"捏着秆子",    说:"立秋忍住没多施那一把氮",         when:S=>S.flags["少氮"] },
+  { id:"清沟",  级:"银", 名:"看不见的活",  说:"下了两天功夫清围沟，谁也看不出", when:S=>S.flags["清沟"] },
+  { id:"不欠",  级:"银", 名:"一亩地一个人", 说:"一个人工没雇，全靠自己下田",    when:S=>S.termIndex>=8&&!S.雇过 },
+  { id:"蛙",    级:"银", 名:"一片蛙声",    说:"生态养到 85 以上",               when:S=>S.stats.ecology>=85 },
+  { id:"扛住",  级:"银", 名:"扛住了",      说:"撞上坏年景，净收益还过了一万八", when:(S,r)=>r&&S.年景.色==="d"&&r.净收益>=18000 },
+  { id:"抢",    级:"银", 名:"抢在雨前",    说:"秋淋那年，你没等 —— 提前开了镰", when:S=>S.年景.名==="秋淋"&&S.flags["早收"] },
+  { id:"老周",  级:"银", 名:"老周点了头",  说:"净收益过两万，且验出一级以上",   when:(S,r)=>r&&r.净收益>=20000&&r.grade.min>=62 },
+
+  /* ── 金 ── */
+  { id:"满贡",  级:"金", 名:"满贡",        说:"特级，且净收益过两万二",         when:(S,r)=>r&&r.grade.名==="特级"&&r.净收益>=22000 },
+  { id:"三头",  级:"金", 名:"三头并进",    说:"一产、二产、三产都挣到了钱",     when:(S,r)=>r&&r.一产>0&&r.二产>0&&r.三产>0 },
+  { id:"逆天",  级:"金", 名:"逆天",        说:"抽到下下签（秋淋），还种出了特级", when:(S,r)=>r&&S.年景.名==="秋淋"&&r.grade.名==="特级" },
+  { id:"全须",  级:"金", 名:"顺风顺水",    说:"八个节气走完，好回响比坏回响多三记", when:S=>S.termIndex>=8&&S.回响-S.负面>=3 },
+  { id:"不认命",级:"金", 名:"不认命",      说:"生态 90 以上，还挣过两万",       when:(S,r)=>r&&S.stats.ecology>=90&&r.净收益>=20000 },
+  { id:"空手",  级:"金", 名:"地不骗人",    说:"等外，而且三产一分钱没有",       when:(S,r)=>r&&r.grade.名==="等外"&&r.三产===0 },
+  { id:"全勤",  级:"金", 名:"一页没落",    说:"八步全翻过资料，还拿了特级",     when:(S,r)=>r&&r.grade.名==="特级"&&Object.keys(S.查过).length>=8 },
+];
+
+
+/* ══════════════════════════ 8. 逻辑层（不碰 DOM） ══════════════════════════ */
+
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const clampStat = (k, n) => { const [lo,hi] = LIMITS[k]||[0,100]; return clamp(n,lo,hi); };
+
+/* 一局的节气表 = 4 个必经 + 4 个随机抽，再按物候排序。
+   谷雨(序1) 一定在最前、秋分(序11) 一定在最后 —— 这是物理必然，不参与抽签。
+   抽中的 4 个从池子里出，所以每一局你要做的那 8 个决定，有 4 个是不一样的。 */
+const 一局节气 = () => {
+  const 锚 = DECISIONS.filter(d => d.锚);
+  const 池 = DECISIONS.filter(d => !d.锚).slice();
+  for (let i = 池.length - 1; i > 0; i--) {          // Fisher–Yates
+    const j = Math.floor(Math.random() * (i + 1));
+    [池[i], 池[j]] = [池[j], 池[i]];
+  }
+  return 锚.concat(池.slice(0, 8 - 锚.length)).sort((a, b) => a.序 - b.序);
+};
+
+/* 按权重抽年景 —— 平年最多，上上和下下都少见 */
+function 抽年景() {
+  const 总 = 年景池.reduce((a, y) => a + (y.重 || 1), 0);
+  let r = Math.random() * 总;
+  for (const y of 年景池) { r -= (y.重 || 1); if (r < 0) return y; }
+  return 年景池[0];
+}
+
+/* ══════════════════════ 行情 —— 后半段的年景 ══════════════════════
+   前半段看天，后半段看市。种得好不好，是一件事；卖得掉卖不掉，是另一件事。
+   老陈的卡车开到田埂上的那天，你才知道今年的市是个什么市。
+
+   原粮系数 作用在谷价上，礼盒系数 作用在礼盒能走多少量上。
+   两头一起动的意思：粮价好的年，礼盒往往也松快；送礼风一紧，
+   原粮价反而硬 —— 收粮的是做口粮的，不是做礼品的。
+   ────────────────────────────────────────────────────────────── */
+const 行情池 = [
+  { 名: "行情平", 色: "",   级: "R",   签: "中",   重: 4, 原粮: 1.00, 礼盒: 1.00,
+    说: "粮站门口的价牌跟去年一个数，没动。",
+    报: "老陈说：今年没啥说的，就这个价。" },
+
+  { 名: "粮价好", 色: "a",  级: "SR",  签: "上",   重: 2, 原粮: 1.18, 礼盒: 1.05,
+    说: "南边遭了灾，北边的稻谷一下成了紧俏货。",
+    报: "老陈的车还没停稳就喊：今年的价，你猜不着。",
+    line: "粮价上来了 —— 南边减产，收粮的都往北边跑。你的谷子比往年值钱。" },
+
+  { 名: "粮价跌", 色: "d",  级: "SR",  签: "下",   重: 2, 原粮: 0.80, 礼盒: 0.92,
+    说: "粮库的仓满了，收粮的挑挑拣拣，还压价。",
+    报: "老陈搓着手：今年不好干，我也不敢多收。",
+    line: "粮价跌了。老陈说不是他压价，是粮库那边满了，他收回去也压手里。" },
+
+  { 名: "礼盒走俏", 色: "a", 级: "SSR", 签: "上上", 重: 1, 原粮: 0.96, 礼盒: 1.60,
+    说: "今年不知道怎么了，问礼盒的人一个接一个。",
+    报: "老陈说：你要是有米，我帮你问问，今年这东西抢手。",
+    line: "礼盒今年特别走俏 —— 单位发、走亲戚、送人，问的人一个接一个。你有多少，人家要多少。" },
+
+  { 名: "送礼风紧", 色: "d", 级: "SSR", 签: "下下", 重: 1, 原粮: 1.04, 礼盒: 0.45,
+    说: "上头下了文，今年过节不让送礼盒了。",
+    报: "老陈指了指车里：看见没，去年订的盒子，全退回来了。",
+    line: "礼盒走不动了。文件一发，单位不敢订，走亲戚也不敢提 —— 做好的盒子堆在库里，人家宁可要散的。" },
+];
+
+function 抽行情() {
+  const 总 = 行情池.reduce((a, y) => a + (y.重 || 1), 0);
+  let r = Math.random() * 总;
+  for (const y of 行情池) { r -= (y.重 || 1); if (r < 0) return y; }
+  return 行情池[0];
+}
+
+/* 牌子系数 —— 生态换来的不是分，是别人买不买你的账 */
+const 牌子 = 生态 => clamp(生态 / NUM.牌子基数, NUM.牌子下限, NUM.牌子上限);
+
+function newSeason(固定) {
+  const f = 固定 || {};
+  const 节气 = f.节气 || 一局节气();
+  const 年景 = f.年景 || 抽年景();
+  /* 随机事件池：开局就把这一局会撞上哪几条定下来 */
+  const 抽中 = 随机池.map(e => Math.random() < e.p);
   return {
-    stats: { ...BASE },
-    budget: START_BUDGET,
-    flags: {},
-    fired: {},      // 已经触发过的延迟后果，避免重复
-    log: [],        // 这一季显形过的所有后果 —— 秋收时一次性摊给玩家看
-    termIndex: 0
+    stats: { harvest: NUM.亩产基准, quality: NUM.品质基准, ecology: NUM.生态基准 },
+    stamina: NUM.体力基准,
+    cost: 0, flags: {}, fired: {}, log: [],
+    codex: {}, ach: {}, 查过: {}, 本季成就: [],
+    雇过: false, 回响: 0, 负面: 0,
+    显数: {}, 待查: null,
+    termIndex: 0, chainIndex: 0,
+    节气, 年景, 抽中, 年景已发: false,
+    /* 今年的验米线整体挪多少点。开局就按年景定下来 —— 因为它印在年景卡上，
+       玩家一上来就得看见今年要冲到多少。年景真翻牌那一下会再改一次（对冲改动它）。 */
+    移线: 年景.移线 || 0,
+    grain: 0, soldGrain: 0, rate: 0, channel: "", third: "",
+    /* 现金 —— 学院拨的实习经费。一季的开销从这里出，出剩下的就是手头活钱。
+       收完粮以后买设备、做包装都看它。不卖原粮，手上就是没有活钱。 */
+    现金: NUM.本钱, 行情: null, 后段: [], 额外: 0, 大寒说明: "",
+    /* 田里点的时候，手指按住的那个热区。非 null = 这一下已经认了，别再收第二次 */
+    选了: null,
   };
 }
 
-/* 把一组数值变化作用到状态上。返回实际变化量，供界面显示 +8 / -12 */
 function applyEffect(state, effect) {
-  const delta = {};
-  for (const key in (effect || {})) {
-    const before = state.stats[key];
-    state.stats[key] = clamp(before + effect[key]);
-    delta[key] = state.stats[key] - before;
+  const d = {};
+  for (const k in (effect || {})) {
+    const before = state.stats[k];
+    state.stats[k] = clampStat(k, state.stats[k] + effect[k]);
+    d[k] = state.stats[k] - before;
   }
-  return delta;
+  return d;
+}
+const unlock = (state, k) => { if (k && !state.codex[k]) { state.codex[k] = true; return k; } return null; };
+
+/* 某个生长阶段的最后一步是哪一步 —— 年景要等这一步做完才翻牌。
+   为什么不是第一步？因为"对冲"这个动作就发生在同阶段的某一步上，
+   提前翻了，玩家就没有补救的机会，那不叫难，叫不讲理。 */
+function 阶段末位(state, 阶段) {
+  let last = -1;
+  state.节气.forEach((d, i) => { if (d.阶段 === 阶段) last = i; });
+  return last;
 }
 
-/* 在进入第 termIndex 个节气时，检查有哪些后果该显形了 */
 function dueEvents(state, termIndex) {
   const out = [];
-  DELAYED.forEach((ev, i) => {
-    if (ev.at !== termIndex) return;
-    if (state.fired[i]) return;
-    if (!ev.when(state)) return;
+  const push = (line, mood, effect, from, codex, 查) => {
+    if (codex) unlock(state, codex);
+    const 前 = { ...state.stats };
+    const delta = applyEffect(state, effect);
+    const item = { line, mood, delta, from: from || null, 查: 查 || null,
+                   前, 后: { ...state.stats } };
+    if (mood === "bad") state.负面++; else if (mood === "good") state.回响++;
+    out.push(item); state.log.push(item);
+  };
+  const here = state.节气[termIndex];
+  const 名 = here ? here.term : "收尾";
+  const 段 = here ? here.阶段 : "收尾";
+
+  /* 一个阶段可能摊到好几个节气（苗期最多能有三个）。
+     抽中的意外要摊开落，不能全砸在第一个节气上 —— 那是刷屏，不是节奏。 */
+  const 同位 = state.节气.map((d, i) => (d.阶段 === 段 ? i : -1)).filter(i => i >= 0);
+  const 槽 = 同位.indexOf(termIndex);
+  const 轮到 = ev => {
+    if (同位.length <= 1) return true;
+    const 同阶 = 随机池.filter(e => e.at === 段);
+    return 同阶.indexOf(ev) % 同位.length === 槽;
+  };
+
+  /* ① 年景 —— 这一局的底牌，到它那个阶段的事全办完了才翻。
+       ⚠ 原来写的是"阶段最后一步就翻"，可那一步往往**正是**做对冲的那一步 ——
+         而这一步是先出事件、再让你决定的。于是你读到"寒潮来了"的时候，
+         盖膜那个按钮还没弹出来。实测：倒春寒只有 29% 的局算数，
+         伏旱和秋淋干脆是 0% —— 那两条对冲等于死代码。
+       推后一步：阶段末位的下一次 dueEvents 再算。那会儿该做的都做完了。
+       （成熟是最后一阶段，末位＝秋分，下一次正好是收粮那趟收尾。narratively 也对得上。） */
+  const Y = state.年景;
+  const 年景末 = Y && Y.hit ? 阶段末位(state, Y.hit) : -1;
+  if (Y && Y.hit && !state.年景已发 && 年景末 >= 0 && 年景末 === termIndex - 1) {
+    state.年景已发 = true;
+    /* 三种下场，按这个顺序判：
+         撞上  —— 年景给了台阶，你走反了。好年景也会罚你（暖春盖膜 → 烧苗）。
+         挡住  —— 你做的事正好接住了这一年的脾气。这是"知识压过年景"的唯一时刻，
+                  所以它必须真的赚，而不只是"少亏一点"。
+         都不是 —— 年景按它自己的脾气来。
+       反 跟 对冲 永远是同一个决策的两个选项（清沟/未清沟、早插/晚插……），
+       不可能同时命中，所以顺序怎么排都一样。 */
+    const 撞上 = Y.反 && state.flags[Y.反];
+    const 挡住 = !撞上 && Y.对冲 && state.flags[Y.对冲];
+    const 用 = 撞上 ? { line: Y.反线 || Y.line, effect: Y.反后 || Y.effect, 移: Y.反移 }
+             : 挡住 ? { line: Y.对冲线 || Y.line, effect: Y.对冲后 || Y.effect, 移: Y.冲移 }
+             : { line: Y.line, effect: Y.effect, 移: Y.移线 };
+    const 有账 = Object.keys(用.effect || {}).length > 0;
+    push(用.line,
+         撞上 ? "bad" : 挡住 ? "good" : (Y.色 === "a" ? "good" : 有账 ? "bad" : ""),
+         用.effect,
+         ["年景", Y.名], null, 查资料["年景-" + Y.名]);
+    /* 线挪在这儿落地。开局那张年景卡上已经写过一遍了（state.移线 在 newSeason 就设好），
+       这里改的是"对冲真的起了作用"的那一下 —— 挡住 → 线回落，撞上 → 线再抬。
+       不挂到 event 上的话，玩家只会看见 HUD 上那个箭头方向变了，不知道是谁改的。 */
+    if (用.移 !== undefined && 用.移 !== state.移线) {
+      const 条 = out[out.length - 1];
+      条.移线前 = state.移线; 条.移线 = 用.移;
+      state.移线 = 用.移;
+    }
+  }
+
+  /* ② 你埋的因 —— 到点结果。at 可以是节气名，也可以是阶段名 */
+  EVENTS.forEach((ev, i) => {
+    if (state.fired[i] || (ev.at !== 名 && ev.at !== 段) || !ev.when(state)) return;
     state.fired[i] = true;
-    const delta = applyEffect(state, ev.effect);
-    const item = { line: ev.line, mood: ev.mood, delta };
-    out.push(item);
-    state.log.push(item);        // 记一辈子，秋收时一并翻出来
+    push(ev.line, ev.mood, ev.effect, ev.from, ev.codex, ev.查);
   });
+
+  /* ③ 这一局抽中的意外 —— 同一件事，种法不同挨的程度不同 */
+  随机池.forEach((ev, i) => {
+    if (!state.抽中[i] || state.fired["r" + i] || ev.at !== 段) return;
+    if (ev.需 && !ev.需(state)) return;
+    if (!轮到(ev)) return;
+    state.fired["r" + i] = true;
+    const 挡住 = ev.对冲 && state.flags[ev.对冲];
+    push(挡住 && ev.对冲线 ? ev.对冲线 : ev.line, ev.mood,
+         挡住 ? (ev.对冲后 || ev.effect) : ev.effect, null, null, ev.查);
+  });
+
   return out;
 }
 
-/* 这个节气里，玩家现在掏得起哪几个选项。
-   兜底：万一某一节气的两个选项都要花钱（内容表改出来的坑），
-   至少放最便宜的那个过去，否则玩家会卡在这里动不了。
-   返回 { list: [{i, o}], waived: bool } */
-function affordable(state, decision) {
-  const all = decision.options.map((o, i) => ({ o, i }));
-  if (!USE_BUDGET) return { list: all, waived: false };
-  const can = all.filter(x => x.o.cost <= state.budget);
-  if (can.length) return { list: can, waived: false };
-  const cheap = all.slice().sort((a, b) => a.o.cost - b.o.cost)[0];
-  return { list: [cheap], waived: true };
+function choose(state, decisionIndex, optionIndex) {
+  const d = state.节气[decisionIndex];
+  const o = d.options[optionIndex];
+  const 前 = { ...state.stats }, 体力前 = state.stamina;
+  const 缺口 = Math.max(0, o.stam - state.stamina);
+  state.stamina = Math.max(0, state.stamina - o.stam);
+  const 雇工费 = 缺口 * NUM.雇工价;
+  if (雇工费 > 0) state.雇过 = true;
+  state.cost += o.cost + 雇工费;
+  /* 现金跟着走 —— 季末剩多少，决定后段能干什么。
+     见底就停在 0：超支的部分账上已经记进 cost 了，没必要再让玩家看一个负数。 */
+  state.现金 = Math.max(0, state.现金 - o.cost - 雇工费);
+  const delta = applyEffect(state, o.effect);
+  (o.flags || []).forEach(f => { state.flags[f] = true; });
+  const 新图鉴 = unlock(state, o.codex);
+  /* 晚上回宿舍 —— 这个决定到底对不对，你翻了资料才知道。
+     翻不翻由你定：看了才记进 查过，"一季没翻过书"那块牌子才算数。 */
+  const 查 = 查资料[`${d.term}-${optionIndex}`] || null;
+  return { text: o.result, note: o.note || null, delta, 查, 节气名: d.term,
+           前, 后: { ...state.stats }, 体力前, 体力: state.stamina, 花销: o.cost,
+           雇工费, 缺口, 新图鉴 };
 }
 
-/* 玩家选了第 optionIndex 个选项 —— 改状态，并返回这一屏要给玩家看的东西 */
-function choose(state, decisionsIndex, optionIndex) {
-  const decision = DECISIONS[decisionsIndex];
-  const opt = decision.options[optionIndex];
-  const { list, waived } = affordable(state, decision);
-  if (!list.some(x => x.i === optionIndex)) return null;   // 掏不起，界面本来就该禁用
-
-  if (USE_BUDGET && !waived) state.budget -= opt.cost;
-
-  const delta = applyEffect(state, opt.effect);
-  (opt.flags || []).forEach(f => { state.flags[f] = true; });
-
-  return {
-    text: opt.result,
-    delta,
-    note: waived ? "本钱见底了。这一手是赊着账做的。" : (opt.note || null)
-  };
+/* 分级线不是钉死的 —— 三条线会跟着年景整体挪。
+   ⚠ 挪的是"米厂门口那条线"，不是田里的分。灌浆期低温、收获期淋雨、早霜，
+   伤的都是**整精米率**（碾出来碎米多不多），而整精米率正是国标划级的那一项。
+   所以"你田里种得怎么样"和"这一年算你几级"是两件事 —— 年景改的是后一件。
+   为什么非得这么改：原来年景直接扣品质，玩家看到的是自己的数往下掉，
+   只能认；改成挪线之后，是一样的账，但玩家能看见"今年要 90 不是 78"，
+   于是那八格决策每一年要买到的品质点数都不一样了 —— 同一个决定，不同的一年，
+   答案不同。这才是"选项对错看年景"真正落地的地方。 */
+function gradeOf(quality, 移线) {
+  移线 = 移线 || 0;
+  let g = 等级表[0];
+  等级表.forEach(x => { if (x.min > 0 && quality >= x.min + 移线) g = x; });
+  return g;
 }
 
-/* 秋收结算 —— 纯函数：只读状态，返回该说给玩家听的话和最终数字。
-   这里要给的是**整季的账**：之前每个节气显形过的后果，全部摊在一起。
-   玩家在这一屏才看得到"我这一年到底做成了什么样、哪一步变成了这样"。 */
-function settle(state) {
-  const s = JSON.parse(JSON.stringify(state));
-  dueEvents(s, 8);                         // 最后一波：收割之后的后果，只有结算时才显形
-  const lines = s.log.map(e => e.line);    // 连同这一波，整季的账一次摊开
+/* ══════════════════════════ 田 —— 看得见的那一亩 ══════════════════════════
+   这块图的唯一职责，是把"延迟后果"从一行字变成一眼就能看见的事：
+   夏至灌了深水，当时田里什么反应都没有；立秋那天你回到田边，稻子倒了一片。
+   读不读文字都无所谓 —— 你看见了。
 
-  // 什么坏事都没发生，也要给一句收尾，不能空着
-  if (lines.length === 0) {
-    lines.push("这一季顺顺当当。稻子该长的时候长，该黄的时候黄，没出什么岔子。");
+   三个数字各管一层，不重复：
+     生态 → 水色（清到能看见螺蛳，还是浑得发白膜）、有没有鸭子
+     品质 → 叶色（正当绿，还是贪青黑绿）
+     产量 → 稀不稀（缺苗的田，风一吹能看见地皮）
+   年景管天。                                        */
+const 阶段高 = { 苗期: 0.30, 分蘖: 0.52, 孕穗: 0.74, 灌浆: 0.90, 成熟: 1.00 };
+let 已倒过 = false;    // 倒伏只演一次
+
+/* ══════════════════════════ 家什 ══════════════════════════
+   田埂上、稻丛里摆着的那些东西：簸箕、种袋、秧把、水口、稗草、药桶、
+   化肥袋、镰刀、铁锹。它们不是装饰 —— **每一件都是那一屏里能点的一处**。
+
+   为什么非得画出来，而不是把选项写成按钮上的字：
+     「打除草剂」四个字，谁都点得下去；可田埂上立着个药桶、稻丛里插着一棵
+     稗子，你得先认出哪个是稗子 —— 而"稗子没有叶舌和叶耳"正是小暑那一屏
+     要教的东西。**画出来，知识就从一段话挪到了手上。**
+   这是这一版全部的道理：选项长在田里，玩家才是蹲在田边上的人。
+
+   画风跟田里已有的东西（蛙、螺、膜卷）一路：几个形状、平涂、不描阴影、
+   锚点画在物体中心（热区的圆点要落在正中间，所以原点就是中心）。 */
+const 家什 = {
+  /* 簸箕 —— 谷雨·自家留的种，摊在里头晒 */
+  簸箕: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="6" rx="15" ry="2.4" fill="#5f6b58" opacity=".2"/>
+    <path d="M-15 -2 q15 10 30 0 q-2 7.6 -15 7.6 q-13 0 -15 -7.6Z" fill="#c4a877"/>
+    <path d="M-15 -2 q15 10 30 0" stroke="#9c8253" stroke-width="1" fill="none"/>
+    <ellipse cx="0" cy="-1.6" rx="10.5" ry="3.2" fill="#dcc98e"/>
+    <path d="M-6.5 -1.8 l1.5 -1.1 M-1.5 -2.4 l1.3 -1.1 M3.5 -2.2 l1.5 -1.1"
+      stroke="#b8a468" stroke-width="1" stroke-linecap="round"/>
+    </g>`,
+
+  /* 种袋 —— 谷雨·原种站买来的新种。袋上那点红是"包过衣"（种衣剂） */
+  种袋: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="7" rx="11" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    <path d="M-9 6.4 V-4 q0 -6 9 -6 q9 0 9 6 V6.4Z" fill="#d9ceb5" stroke="#a89a7c" stroke-width="1"/>
+    <path d="M-9 -4 q9 3.2 18 0" stroke="#a89a7c" stroke-width="1" fill="none"/>
+    <path d="M-3.6 -9.6 q3.6 -2.6 7.2 0" stroke="#8a7f66" stroke-width="1.4" fill="none"/>
+    <circle cx="0" cy="1.4" r="2.8" fill="#a84a35"/>
+    </g>`,
+
+  /* 膜卷 —— 立夏·盖膜。一卷没拆开的塑料膜 */
+  膜卷: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="6.5" rx="16" ry="2.6" fill="#5f6b58" opacity=".22"/>
+    <rect x="-15" y="-5.5" width="30" height="11" rx="5.5" fill="#f4f8f5" stroke="#93a69a" stroke-width="1"/>
+    <ellipse cx="15" cy="0" rx="3" ry="5.5" fill="#e3ebe5" stroke="#93a69a" stroke-width=".9"/>
+    <ellipse cx="15" cy="0" rx="1.1" ry="2.2" fill="#b6c6bb"/>
+    <path d="M-9 -5.5 v11 M-3 -5.5 v11" stroke="#d3ddd7" stroke-width=".8"/>
+    </g>`,
+
+  /* 秧把 —— 芒种·今天插。扎好的一把秧，等着往田里插 */
+  秧把: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="6" rx="12" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    ${[-9, -4.5, 0, 4.5, 9].map(d =>
+      `<path d="M0 5 Q${(d * .55).toFixed(1)} -2 ${d} -11" stroke="${Math.abs(d) > 6 ? "#5f9c42" : "#4b8434"}"
+        stroke-width="2" fill="none" stroke-linecap="round"/>`).join("")}
+    <path d="M-4.4 3.4 q4.4 -2.4 8.8 0" stroke="#b4915c" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    </g>`,
+
+  /* 水口 —— 夏至·灌深水，处暑·早断水。三块闸板的水口，抽一块水就流 */
+  水口: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="7" rx="12" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    <rect x="-11" y="-9" width="22" height="16" rx="1.5" fill="#7f8a68"/>
+    <rect x="-9.4" y="-7.6" width="18.8" height="3.6" rx="1.2" fill="#bd9a63"/>
+    <rect x="-9.4" y="-2.2" width="18.8" height="3.6" rx="1.2" fill="#a5834f"/>
+    <rect x="-9.4" y="3.2" width="18.8" height="3.6" rx="1.2" fill="#bd9a63"/>
+    <rect x="-1" y="-9" width="2" height="16" fill="#6a7355"/>
+    <circle cx="0" cy="-5.8" r="1.5" fill="#6a7355"/>
+    </g>`,
+
+  /* 稗草 —— 小暑·人工薅。跟稻子几乎一样，差别是**没有叶舌叶耳**，
+     叶脉发白、叶面光滑。所以这儿画得比稻子淡一档、叶子更披散。 */
+  稗草: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    ${[-13, -4.5, 4, 12.5].map((d, i) =>
+      `<path d="M0 0 Q${(d * .5).toFixed(1)} -10 ${d} -21"
+        stroke="${i % 2 ? "#93b062" : "#a6c073"}" stroke-width="2.3" fill="none" stroke-linecap="round"/>`).join("")}
+    <path d="M-1.6 0 q1.6 -1.6 3.2 0" stroke="#7d9450" stroke-width="1.6" fill="none"/>
+    </g>`,
+
+  /* 药桶 —— 小暑·除草剂，大暑·打药，白露·叶面肥。背的桶加一根喷杆 */
+  药桶: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="7" rx="10.5" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    <rect x="-8" y="-7" width="16" height="14" rx="3" fill="#dfe6da" stroke="#6e7f68" stroke-width="1.1"/>
+    <rect x="-8" y="-0.6" width="16" height="4.2" fill="#9db096"/>
+    <rect x="-4" y="-10" width="8" height="3.4" rx="1.4" fill="#8fa08a"/>
+    <path d="M8 -4 q8 0.6 9 7.4" stroke="#6e7a68" stroke-width="1.3" fill="none"/>
+    <path d="M16.6 3 l4 4" stroke="#9aa88f" stroke-width="2.4" stroke-linecap="round"/>
+    </g>`,
+
+  /* 化肥袋 —— 立秋·多施氮。白袋子，蓝标上一个 N */
+  化肥袋: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="7" rx="10" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    <path d="M-8 6.4 V-5 q0 -5 8 -5 q8 0 8 5 V6.4Z" fill="#e8e4d5" stroke="#a9a48d" stroke-width="1"/>
+    <path d="M-8 -5 q8 3.2 16 0" stroke="#a9a48d" stroke-width="1" fill="none"/>
+    <rect x="-5.4" y="-3.2" width="10.8" height="6.4" rx="1.2" fill="#5b7fa8"/>
+    <text x="0" y="1.6" font-size="4.8" fill="#ffffff" text-anchor="middle"
+      font-family="sans-serif">N</text>
+    </g>`,
+
+  /* 镰刀 —— 秋分·开镰 */
+  镰刀: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="7" rx="13" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    <path d="M-13 4 Q-14.4 -8.6 -0.6 -9.6" stroke="#c6cac3" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    <path d="M-12.6 3.4 Q-13.8 -7.8 -1.2 -8.8" stroke="#f0f2ee" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <rect x="-17.4" y="1.2" width="11" height="4.6" rx="2.3" transform="rotate(26 -12 3.5)" fill="#8a6b4a"/>
+    </g>`,
+
+  /* 铁锹 —— 小满·清沟。插在埂上的一把锹 */
+  铁锹: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="7.6" rx="12" ry="2.2" fill="#5f6b58" opacity=".2"/>
+    <rect x="-1.7" y="-13" width="3.4" height="14" rx="1.7" fill="#b4915c"/>
+    <rect x="-1.7" y="-13" width="3.4" height="3.4" rx="1.7" fill="#9c7a49"/>
+    <path d="M-5.2 -1.6 h10.4 v4.6 q0 4.4 -5.2 6.6 q-5.2 -2.2 -5.2 -6.6Z"
+      fill="#bcc0b7" stroke="#8c9187" stroke-width=".9"/>
+    </g>`,
+
+  /* 鸭 —— 大暑·赶鸭子下田。一只浮在水面的麻鸭，点它就是把鸭群赶下去 */
+  鸭: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="-3" cy="1" rx="13" ry="6.4" fill="#fdfcf6"/>
+    <path d="M-14 1.6 q-3.6 -2.8 -1 -5.6" stroke="#e6e2d2" stroke-width="2" fill="none"/>
+    <circle cx="10" cy="-5.4" r="4.4" fill="#fdfcf6"/>
+    <path d="M14.2 -5.4 l5.6 -1.8" stroke="#d09a2c" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="11.4" cy="-6.4" r="0.9" fill="#2b3026"/>
+    <path d="M-6 -2.6 q5 -2.4 10 -0.4" stroke="#e8e4d6" stroke-width="1.1" fill="none"/>
+    </g>`,
+
+  /* 沟 —— 小满·清沟。田埂边那道围沟，淤在底下的一层泥 */
+  沟: (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+    <path d="M-26 0 q26 7 52 0 q-26 8 -52 0Z" fill="#6f6a52"/>
+    <path d="M-26 0 q26 7 52 0" stroke="#5c5943" stroke-width="1" fill="none"/>
+    <rect x="-19" y="-1.4" width="38" height="2.6" rx="1.3" fill="#4f4c3a" opacity=".75"/>
+    <path d="M-14 2.4 q6 1.6 12 0.6 M4 3 q6 1 11 -0.4" stroke="#7c7660" stroke-width="1.1"
+      fill="none" stroke-linecap="round"/>
+    </g>`,
+};
+
+function 田的画(S) {
+  const e = S.stats.ecology, q = S.stats.quality, h = S.stats.harvest;
+  const 割了 = S.termIndex >= S.节气.length;
+  const 段 = 割了 ? "成熟" : ((S.节气[S.termIndex] || {}).阶段 || "成熟");
+  const 倒 = !!S.codex["倒伏"];
+  const 新倒 = 倒 && !已倒过;
+  if (倒) 已倒过 = true;
+  const k = (阶段高[段] || 1) * (割了 ? 0.20 : 1);      // 收完只剩稻桩
+
+  /* 天看年景 —— 灾年压得低、发灰；好年亮得发白 */
+  const 年色 = S.年景 ? S.年景.色 : "";
+  const 天 = 年色 === "d" ? ["#a7aeae", "#d2d6d0"]
+          : 年色 === "a" ? ["#cadfc4", "#f6f9ee"]
+          : ["#bccfc8", "#e9efe4"];
+  /* 水看生态 */
+  const 水 = e >= 85 ? "#a9c9bb" : e >= 70 ? "#9cb8a6" : e >= 50 ? "#93a08c"
+           : e >= 32 ? "#8b917f" : "#858878";
+  /* 叶看品质 —— 熟了不看品质，一片金 */
+  const 熟 = 割了 || 段 === "成熟";
+  const 叶 = 熟 ? "#c8a03c" : q >= 78 ? "#63a04b" : q >= 62 ? "#579041"
+           : q >= 45 ? "#3d7030" : "#274d1f";
+  const 穗色 = 熟 ? "#dcbb52" : 段 === "灌浆" ? "#a8b95c" : 叶;
+  const 稀 = h < 700;
+
+  const 丛 = [];
+  /* 三排 —— 远排小、淡、密；近排大、实、疏。站田埂上往前看就是这个样子。 */
+  const 排 = [
+    { y: 58, s: 0.50, n: 13, 淡: 0.34, w: 1.5 },
+    { y: 84, s: 0.76, n: 11, 淡: 0.14, w: 1.9 },
+    { y: 116, s: 1.08, n: 9, 淡: 0, w: 2.4 },
+  ];
+  排.forEach((R, ri) => {
+    const 步 = 320 / R.n;
+    for (let i = 0; i < R.n; i++) {
+      /* 缺苗要成片地缺，不能均匀地少几株 —— 那样看不出来。
+         按段跳，前排缺得最明显：风一吹能看见地皮。 */
+      const 段位 = Math.floor(i / 3);
+      if (稀 && (ri === 2 ? 段位 % 2 === 0 : ri === 1 ? 段位 % 3 === 1 : false)) continue;
+      const x = 步 * (i + 0.5) + (ri % 2 ? 步 * 0.5 : 0);
+      if (x > 318) continue;
+      const 高 = 84 * R.s * k;
+      /* 叶片从基部往两边撇开，越靠外的越短 —— 一丛就该是这个形状 */
+      const 叶片 = [-17, -8, 0, 8, 17].map(偏 => {
+        const hh = 高 * (1 - Math.abs(偏) / 34), dx = 偏 * 0.62;
+        return `<path d="M${x.toFixed(1)} ${R.y} Q${(x + dx * 1.8).toFixed(1)} ${(R.y - hh * 0.58).toFixed(1)} `
+             + `${(x + dx).toFixed(1)} ${(R.y - hh).toFixed(1)}" stroke="${叶}" stroke-width="${R.w.toFixed(1)}" `
+             + `fill="none" stroke-linecap="round"/>`;
+      }).join("");
+      /* 灌浆之后穗才压出来：一截粗的、往外垂的，熟了是金的 */
+      const 有穗 = !割了 && (段 === "灌浆" || 段 === "成熟");
+      const 穗 = 有穗 ? [-17, 0, 17].map(偏 => {
+        const hh = 高 * (1 - Math.abs(偏) / 34), dx = 偏 * 0.62, d = 偏 >= 0 ? 1 : -1;
+        const 垂 = 段 === "成熟" ? 1.6 : 0.7;                    // 越熟垂得越狠
+        return `<path d="M${(x + dx).toFixed(1)} ${(R.y - hh).toFixed(1)} `
+             + `q${(d * 3).toFixed(1)} ${(垂 * 3).toFixed(1)} ${(d * 7).toFixed(1)} ${(垂 * 5).toFixed(1)}" `
+             + `stroke="${穗色}" stroke-width="${(R.w * 1.7).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+      }).join("") : "";
+      /* 倒伏：前排基本全躺下，中排倒七成，后排还立着 —— 像风从前面扫过去 */
+      const 这株倒 = 倒 && (ri === 2 || (ri === 1 && i % 4 !== 0) || (ri === 0 && i % 5 === 2));
+      const cls = 这株倒 ? (新倒 ? "clump fall" : "clump lie") : "clump";
+      const st = 这株倒 ? ` style="--lie:${(58 + (i % 5) * 6).toFixed(0)}deg"` : "";
+      丛.push(`<g class="${cls}"${st} opacity="${(1 - R.淡).toFixed(2)}">${叶片}${穗}</g>`);
+    }
+  });
+
+  /* ── 田里的活物 ──
+     画什么必须跟田的样子()那几句话对得上，而且只能画玩家自己弄出来的东西：
+       · 鸭子 ← 是「大暑 赶鸭子下田」那一步的结果，不是生态的赠品。
+                没走那步，生态再高也不该冒出一只鸭 —— 那是游戏在撒谎。
+       · 青蛙 / 螺蛳 / 小虫 ← 生态养出来的，水越干净越多。
+                生态掉到 50 以下，文案写的是"没什么活物"，那就一只都不画。 */
+  const 有鸭 = !!(S.flags && S.flags["稻鸭"]);
+  const 蛙数 = e >= 85 ? 3 : e >= 70 ? 2 : 0;
+
+  /* ── 膜 ──
+     立夏那一步选了什么，田里就得看出来。这是"点了有反应"最要紧的一处：
+     你点了那摞膜，膜就真的盖在秧上；你点了空地，那就是空着。
+     只在苗期画 —— 芒种插秧一翻，膜就该撤了，留着是穿帮。 */
+  const 苗期 = !割了 && 段 === "苗期";
+  const 盖了膜 = !!(S.flags && S.flags["盖膜"]) && 苗期;
+  const 今 = (S.节气[S.termIndex] || {});
+
+  /* ── 家什层 ──
+     这一屏能点的那几件东西，按热区的坐标摆出来。
+     ⚠ 只在"还没动手"的那一屏摆。翻到结果屏就该没了 —— 家什已经动过了，
+       还杵在埂上就是穿帮。判据用 screen，因为 termIndex 到结果屏还没往前走。
+     ⚠ 一件家什只有一个出处：热区数据。画在哪儿、点在哪儿，是同一个 x/y。
+       以前膜卷是单独写死的（画在 266,122，热区写 266,118），差那 4 点，
+       圆点就没落在膜卷上 —— 这种"两处各写一遍"的东西迟早会错开。 */
+  const 待动手 = 今.热区 && (screen === "decision" || screen === "event");
+  const 家什层 = 待动手
+    ? 今.热区.map((h, i) => h.画 && 家什[h.画]
+        ? `<g class="shi s${i}">${家什[h.画](h.x, h.y, h.尺 || 1.5)}</g>` : "").join("")
+    : "";
+
+  /* 田埂 —— 你站的地方。青蛙蹲在上头，螺蛳爬在边上，白膜也积在这儿。 */
+  const 埂色 = e >= 70 ? "#93a06d" : e >= 50 ? "#8b916a" : "#88885f";
+  const 埂 = `<path d="M0 126.5 q56 -3.6 112 -1.4 q78 3 208 -1.4 V140 H0Z" fill="${埂色}"/>`
+    + `<path d="M0 126.5 q56 -3.6 112 -1.4 q78 3 208 -1.4" stroke="#ffffff" stroke-width="1"`
+    + ` fill="none" opacity=".25"/>`;
+
+  /* 青蛙：宽身子 + 两只鼓在头顶的眼睛，这个剪影一眼就认得出 */
+  const 蛙 = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})">`
+    + `<ellipse cx="0" cy="0" rx="7.2" ry="4.2" fill="#6f9a38"/>`
+    + `<path d="M-6.4 2 l-3.6 1.8" stroke="#6f9a38" stroke-width="2.6" stroke-linecap="round"/>`
+    + `<path d="M6 1.8 l3.2 1.6" stroke="#6f9a38" stroke-width="2" stroke-linecap="round"/>`
+    + `<circle cx="-2.4" cy="-4" r="2.3" fill="#7cab41"/><circle cx="2.6" cy="-4.2" r="2.1" fill="#7cab41"/>`
+    + `<circle cx="-2.4" cy="-4" r="1.05" fill="#2b3026"/><circle cx="2.6" cy="-4.2" r="0.95" fill="#2b3026"/>`
+    + `<path d="M-4.6 -0.6 q4.6 -2 9.2 0" stroke="#5b8030" stroke-width="0.8" fill="none" opacity=".75"/>`
+    + `</g>`;
+  const 蛙位 = [[64, 131.5, 1.15], [172, 134, 0.9], [258, 131, 1.05]].slice(0, 蛙数);
+
+  /* 螺蛳：贴着泥走。这个尺寸上画不成螺壳，就一小坨带点反光的深色 */
+  const 螺 = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">`
+    + `<ellipse cx="0" cy="0" rx="3.4" ry="2.4" fill="#6b6250"/>`
+    + `<path d="M-1.6 0.3 q1.8 -1.9 3.4 -0.5" stroke="#a99e86" stroke-width="0.9" fill="none"/>`
+    + `</g>`;
+  const 螺位 = [[27, 131], [124, 133], [213, 130.6], [296, 132.4]];
+
+  /* 小虫：水黾。水面上一排小黑点，带几道划水的腿 */
+  const 虫 = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">`
+    + `<ellipse cx="0" cy="0" rx="2.4" ry="1" fill="#3c4432" opacity=".85"/>`
+    + `<path d="M-1.4 0.6 l-2.4 1.8 M1.4 0.6 l2.4 1.8 M0 0.6 l0 2.2" stroke="#3c4432"`
+    + ` stroke-width="0.55" fill="none" opacity=".7"/></g>`;
+  const 虫位 = [[46, 104], [150, 96], [232, 110], [292, 100]];
+
+  /* 水里那一层，画在稻子后头 */
+  let 水里 = "";
+  if (有鸭) {
+    水里 += `<g opacity=".95"><ellipse cx="58" cy="78" rx="13" ry="6.6" fill="#fdfcf6"/>`
+      + `<circle cx="71" cy="71.6" r="4.4" fill="#fdfcf6"/><path d="M75 71.6 l5.4 -1.7" stroke="#d09a2c" stroke-width="2.4"/>`
+      + `<path d="M46 78 q-4 -3 -1 -6" stroke="#e6e2d2" stroke-width="2" fill="none"/></g>`
+      + `<g opacity=".92"><ellipse cx="252" cy="90" rx="11" ry="5.6" fill="#f9f7ee"/>`
+      + `<circle cx="263" cy="84.4" r="3.8" fill="#f9f7ee"/><path d="M266.6 84.4 l4.6 -1.5" stroke="#d09a2c" stroke-width="2"/>`
+      + `<path d="M242 90 q-3.6 -2.6 -1 -5.2" stroke="#e6e2d2" stroke-width="1.8" fill="none"/></g>`;
   }
-  return { stats: s.stats, lines };
+  if (e >= 70) 水里 += 虫位.map(([x, y]) => 虫(x, y)).join("");
+  if (e < 32) {
+    /* 白膜积在埂边 —— 文案说的就是"田埂边积着一层白膜"，那它就得贴着埂 */
+    水里 += `<rect x="48" y="112" width="126" height="2.2" fill="#eceae0" opacity=".55"/>`
+      + `<rect x="192" y="104" width="98" height="2.4" fill="#eceae0" opacity=".4"/>`
+      + `<rect x="0" y="122" width="320" height="3.8" fill="#eceae0" opacity=".85"/>`;
+  }
+  /* 田埂和它上头的东西压在最前面 —— 那是离你最近的一层 */
+  const 近前 = 埂
+    + (e >= 85 ? 螺位.map(([x, y]) => 螺(x, y)).join("") : "")
+    + 蛙位.map(([x, y, s]) => 蛙(x, y, s)).join("")
+    + 家什层;   // 家什压在最上头 —— 它得能一眼看见，不然不知道点哪儿
+
+  /* 膜盖在稻子上头 —— 画在最后，把稻子罩住。半透的，因为本来就是"看得见里头"。
+     拱条是竹片，京西稻育秧真用的是竹片弯的拱。 */
+  const 膜层 = 盖了膜
+    ? `<path d="M2 140 V68 q0 -11 11 -11 H307 q11 0 11 11 V140Z" fill="#eff6f1" opacity=".34"/>`
+      + [26, 74, 122, 170, 218, 266, 300].map(x =>
+          `<path d="M${x} 140 V68" stroke="#7e9488" stroke-width="1" opacity=".34"/>`).join("")
+      + `<path d="M2 140 V68 q0 -11 11 -11 H307 q11 0 11 11 V140" fill="none"
+           stroke="#b9cbc0" stroke-width="1.3" opacity=".85"/>`
+      + `<path d="M8 74 q152 -16 304 0" stroke="#ffffff" stroke-width="2.4" fill="none" opacity=".5"/>`
+      + `<text x="12" y="64" font-size="9" fill="#5d7268" opacity=".9">膜 底 下</text>`
+    : "";
+
+  return `<svg class="tian" viewBox="0 0 320 140" role="img"
+      aria-label="你的田：${esc(段)}，生态 ${e}，品质 ${q}，产量 ${h} 斤${倒 ? "，已倒伏" : ""}">
+    <defs><linearGradient id="tianSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${天[0]}"/><stop offset="1" stop-color="${天[1]}"/>
+    </linearGradient></defs>
+    <rect width="320" height="46" fill="url(#tianSky)"/>
+    <path d="M0 44 q42 -13 88 -4 q44 9 82 -2 q58 -13 150 5 v9 H0Z" fill="#7d8f72" opacity="${年色 === "d" ? ".42" : ".58"}"/>
+    <rect y="46" width="320" height="94" fill="${水}"/>
+    <rect y="46" width="320" height="1.8" fill="#ffffff" opacity=".3"/>
+    ${水里}
+    ${丛.join("")}
+    ${近前}
+    ${膜层}
+  </svg>`;
 }
 
+/* 田的样子 —— 把干瘪的数字翻译成"你现在看到什么" */
+function 田的样子(S) {
+  const { ecology: e, quality: q, harvest: h } = S.stats, out = [];
+  if (e >= 85) out.push("田水清，看得见螺蛳贴着泥走。天一黑，蛙声一大片。");
+  else if (e >= 70) out.push("田埂上能碰见青蛙，水里也有小虫在游。");
+  else if (e >= 50) out.push("田里不算脏，可也没什么活物。土踩上去是实的。");
+  else if (e >= 32) out.push("土有点板。蹲下去翻，蚯蚓少见。");
+  else out.push("水发浑，田埂边积着一层白膜。田里静得吓人，一声虫叫都没有。");
 
-/* ============================ 3. 渲染层 ============================ */
+  /* 画里有鸭子，字里就得有 —— 两边对不上，比不画还糟 */
+  if (S.flags && S.flags["稻鸭"]) out.push("鸭子还在秧行间一趟一趟地趟。");
+
+  if (q >= 78) out.push("叶片挺，颜色正，秆子捏着硬。");
+  else if (q >= 62) out.push("长势中规中矩，看不出什么毛病。");
+  else if (q >= 45) out.push("叶色偏深，有点贪青 —— 剑叶还黑绿着不褪。");
+  else out.push("叶子黑绿得发亮，秆子捏着发软，基部节间拉得老长 —— 长得太猛了。");
+
+  if (h >= 1100) out.push("稻子密，人走进去要拨开。");
+  else if (h <= 600) out.push("田里稀，风一吹能看见地皮。");
+  return out.join("");
+}
+
+function 验米(state) {
+  const g = gradeOf(state.stats.quality, state.移线);
+  let 眼力;
+  if (g.名 === "特级") 眼力 = "抓一把摊在手心，米粒匀、透亮，没白肚。他捏了几粒放进嘴里嚼，点了点头，没说话。";
+  else if (g.名 === "一级") 眼力 = "摊开看了看，米是好米，就是有几粒不太匀。他说：够得上一级。";
+  else if (g.名 === "二级") 眼力 = "捏起来搓了搓，穗上带下来的青粒不少。他皱了皱眉：按二级走吧。";
+  else 眼力 = "他抓了一把，看了看就放下了：这米，按商品粮收吧，进不了等级。";
+  /* 线挪过就必须说清楚 —— 不说，玩家只会觉得"我明明跟去年种得一样"。
+     这一句是"年景改的是验米的那条线，不是你田里的米"真正落地的地方。 */
+  const 移 = state.移线 || 0, 二线 = 等级表[1].min;
+  if (移 > 0)
+    眼力 += `\n他没急着报价，先把米倒进量器又碾了一道：「不是你的米不好 —— 今年这天，籽粒不实，整精米率上不去。往日里 ${二线} 分就够二级，今年得 ${二线 + 移}。」`;
+  else if (移 < 0)
+    眼力 += `\n他碾了一道，抬头说：「今年这米实。整精米率高 —— 往常二级要 ${二线} 分，今年 ${二线 + 移} 就够。」`;
+  return { grade: g, 眼力 };
+}
+
+function 年终(state) {
+  const g = gradeOf(state.stats.quality, state.移线), 米价 = g.价;
+  const 行情 = state.行情 || { 原粮: 1, 礼盒: 1 };
+  const 谷价v = Math.round(米价 * NUM.原粮折扣 * NUM.出米率_代碾 * 行情.原粮 * 10) / 10;
+  const 已卖谷 = state.soldGrain, 留谷 = state.grain - 已卖谷;
+  const 米 = Math.round(留谷 * state.rate);
+
+  /* 牌子 —— 生态养得好不好，直接决定人家买不买你的账。
+     礼盒能吃下多少、认养能签出多少份，都乘这个系数。 */
+  const 牌 = 牌子(state.stats.ecology);
+
+  /* 认养的人要兑米 —— 那部分米不能再卖一遍 */
+  let 兑米 = 0, 份 = 0, 人 = 0, 三产 = 0, 三产说明 = "田闲着，一分钱没挣";
+  if (state.third !== "无") {
+    /* 生态不挡人，只压量：30 分以下没人愿意来，往上越养越多 */
+    const 系数 = clamp((state.stats.ecology - 30) / 50, 0, 1.25);
+    if (state.third === "认养") {
+      份 = Math.max(1, Math.round(NUM.认养份数 * 系数 * 牌));
+      份 = Math.min(份, Math.floor(米 / NUM.认养兑米));   // 你手里得真有这些米才兑得出
+      兑米 = 份 * NUM.认养兑米;
+      三产 = Math.round(份 * NUM.认养单价);
+      三产说明 = `${份} 份被认养，兑出去 ${兑米} 斤米`;
+    } else {
+      人 = Math.round(NUM.研学人数 * 系数 * 牌);
+      三产 = Math.round(人 * NUM.研学单价);
+       if (人 < 1) { 人 = 0; 三产说明 = "田里没什么可看的，没人来"; }
+      else 三产说明 = `${人} 人次来研学`;
+    }
+  } else if (state.third !== "无") 三产说明 = "生态没养起来，没人愿意来";
+
+  /* ── 三产之后，米还剩多少 ── */
+  const 可售米 = Math.max(0, 米 - 兑米);
+
+  /* ── 二产：两条路抢同一笔现金 ──
+     礼盒要现钱买包装（12 元/斤），加工要现钱付加工费（8 元/斤）——
+     手头的钱就这么多，铺了这边就铺不了那边。这是"本钱"真正咬人的地方。
+     铺不下去的米不烂在仓里，最后按原粮价卖给粮库 —— 认赔，但认得明明白白。
+     闸门顺序：① 等级给的市场容量　② 牌子（生态）　③ 行情　④ 兜里的现金 */
+  const 现碾 = state.rate >= NUM.出米率_自碾 ? NUM.自碾礼盒加成 : 1;   // 自己碾的才叫"现碾鲜米"
+  const 礼盒上限 = Math.min(可售米, Math.round(g.礼盒 * 牌 * 行情.礼盒 * 现碾));
+  let 现金 = Math.max(0, state.现金);
+  let 礼盒量 = 0, 加工量 = 0;
+  if (state.channel === "礼盒" || state.channel === "混合") {
+    礼盒量 = Math.min(礼盒上限, Math.floor(现金 / NUM.礼盒包装));
+    现金 -= 礼盒量 * NUM.礼盒包装;
+  }
+  const 余米 = 可售米 - 礼盒量;
+  if (state.channel === "混合" || state.channel === "深加工") {
+    加工量 = Math.min(余米, Math.floor(现金 / NUM.深加工费));
+  }
+  const 原粮量 = 余米 - 加工量;                    // 装不起也加工不起的，走原粮
+  const 包装费 = Math.round(礼盒量 * NUM.礼盒包装);
+  const 加工费 = Math.round(加工量 * NUM.深加工费);
+  const 二产 = Math.round(礼盒量 * 米价 * NUM.礼盒溢价 + 加工量 * NUM.深加工价);
+  /* 一产 = 立冬提前卖掉的谷（按斤谷算）+ 年末没装盒的米（按斤米算）。
+     ⚠ 两者单位不同：谷价是「元/斤谷」，原粮量是「斤米」——
+       一斤米要 1/出米率 斤谷才碾得出来，所以米的原粮价 = 米价 × 0.7。 */
+  const 原粮价 = 米价 * NUM.原粮折扣 * 行情.原粮;
+  const 一产 = Math.round(已卖谷 * 谷价v + 原粮量 * 原粮价);
+
+  /* 大寒那一步 —— 都是小钱，但让这一年收得有个人味儿 */
+  const 额外 = state.额外 || 0;
+  const 毛收入 = 一产 + 二产 + 三产 + NUM.粮补 + 额外;
+  const 成本 = state.cost + 包装费 + 加工费;
+  return { grade: g, 米价, 谷价: 谷价v, 牌, 行情, 米, 已卖谷, 留谷, 兑米, 可售米,
+           一产, 二产, 三产, 三产说明, 礼盒量, 加工量, 原粮量, 礼盒上限,
+           包装费, 加工费, 额外, 兜里剩: Math.round(现金),
+           毛收入, 补贴: NUM.粮补, 成本, 净收益: 毛收入 - 成本 };
+}
+
+/* ── 成就 ──
+   两件事跟以前不一样：
+   ① 中途就发牌，不是憋到年终一起倒给你。种到一半蹦出一块金牌，
+      这一局才有"再往下走一步看看"的劲儿。
+   ② 发牌本身是个动作 —— 有牌子、有响、有档位。拿金牌那一下，
+      跟拿铜牌不是同一种感觉。
+   收尾时 r 传进来，那些要看账本的成就才判得出来。 */
+function 结成就(S, r) {
+  const got = [];
+  ACH.forEach(a => { if (!S.ach[a.id] && a.when(S, r)) { S.ach[a.id] = true; S.本季成就.push(a); got.push(a); } });
+  return got;
+}
+
+/* 发牌队列 —— 一次结算可能同时中好几块，排队一块一块弹 */
+let 成就队 = [], 牌计时 = null;
+function 发牌(ach) { ach.forEach(a => 成就队.push(a)); 弹牌(); }
+function 弹牌() {
+  const el = document.getElementById("pop");
+  if (!el) return;
+  const a = 成就队[0];
+  clearTimeout(牌计时);
+  if (!a) { el.className = "pop"; el.innerHTML = ""; return; }
+  el.className = "pop on " + (a.级 || "铜");
+  el.innerHTML = `<span class="lv">${a.级 || "铜"}</span>
+    <div><b>${esc(a.名)}</b><p>${esc(a.说)}</p></div>`;
+  响(a.级 === "金" ? "金" : a.级 === "银" ? "好" : "tap");
+  牌计时 = setTimeout(收牌, a.级 === "金" ? 4000 : 3000);
+}
+function 收牌() { 成就队.shift(); 弹牌(); }
+window.onPop = function () { if (成就队.length) 收牌(); else { 成就队 = []; 弹牌(); } };
+
+/* 中途也会发牌：每次选完、每次回响落地，都重新扫一遍 */
+function 扫成就(r) { const got = 结成就(S, r); if (got.length) 发牌(got); return got; }
+
+
+/* ══════════════════════════ 9. 渲染层 ══════════════════════════ */
 
 const app = document.getElementById('app');
-
 const LABEL = { harvest: "产量", quality: "品质", ecology: "生态" };
+const UNIT  = { harvest: "斤", quality: "分", ecology: "分" };
 
-let state = newSeason();
-let screen = "intro";
-let pendingEvents = [];   // 当前这一屏要展示的延迟后果
-let lastResult = null;    // 选完之后要给玩家看的反馈
-let settlement = null;    // 结算结果
-let flash = {};           // 数值条上的 +8 / -12 高亮
+let S = newSeason();
+let screen = "cover", pendingEvents = [], lastResult = null, flash = {},
+    miban = null, result = null, newAch = [], toastTimer = null, tab = "田";
 
 function reset() {
-  state = newSeason();
-  screen = "intro";
-  pendingEvents = [];
-  lastResult = null;
-  settlement = null;
-  flash = {};
+  S = newSeason(); screen = "cover"; pendingEvents = []; lastResult = null;
+  已倒过 = false;
+  flash = {}; miban = null; result = null; newAch = [];
+}
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+/* 白天动手，晚上翻书 —— 这一块是"农大实习生"这个身份真正落地的地方 */
+const 查块 = c => !c ? "" : `<div class="note">
+  <span class="k">晚 上 回 宿 舍 · 翻 资 料</span>
+  <p class="q">${esc(c.问)}</p>
+  <p class="s"><b>书 上 说</b>${esc(c.书)}</p>
+  <p class="p"><b>说 白 了</b>${esc(c.白)}</p></div>`;
+const yuan = n => Number(n).toLocaleString("zh-CN");
+const para = s => String(s).split("\n").map(l => `<p>${esc(l)}</p>`).join("");
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2300);
 }
 
-/* 进入下一个节气：先看有没有后果要显形，有就先给一屏"事件"，再出决策 */
-function nextTerm() {
-  pendingEvents = dueEvents(state, state.termIndex);
-  flash = {};
-  pendingEvents.forEach(e => {
-    for (const k in e.delta) if (e.delta[k]) flash[k] = e.delta[k];
-  });
-  screen = pendingEvents.length ? "event" : "decision";
-  render();
+/* ── 声音（WebAudio 现场合成，不引任何文件） ──
+   一个单文件原型不该为几声动静多背几百 KB。 */
+let 声 = null, 开声 = true;
+function 音(频, 起, 长, 型, 量) {
+  const o = 声.createOscillator(), g = 声.createGain();
+  const t = 声.currentTime + 起;
+  o.type = 型; o.frequency.value = 频;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(量, t + .012);
+  g.gain.exponentialRampToValueAtTime(.0001, t + 长);
+  o.connect(g); g.connect(声.destination);
+  o.start(t); o.stop(t + 长 + .03);
 }
-
-function onChoose(i) {
-  const r = choose(state, state.termIndex, i);
-  if (!r) return;
-  lastResult = r;
-  flash = {};
-  for (const k in r.delta) if (r.delta[k]) flash[k] = r.delta[k];
-  screen = "result";
-  render();
+function 响(k) {
+  if (!开声) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!声) 声 = new AC();
+    if (声.state === "suspended") 声.resume();
+    (音效[k] || 音效.tap)();
+  } catch (e) { /* 静音就静音，不能把游戏搞崩 */ }
 }
+const 音效 = {
+  tap:  () => 音(620, 0, .07, "triangle", .08),
+  好:   () => { 音(587, 0, .13, "sine", .11); 音(880, .085, .20, "sine", .10); },
+  坏:   () => { 音(392, 0, .15, "sine", .11); 音(262, .10, .26, "sine", .11); },
+  钱:   () => { 音(1046, 0, .09, "square", .06); 音(1318, .07, .18, "square", .05); },
+  翻:   () => 音(440, 0, .06, "triangle", .05),
+  抽:   () => { for (let i = 0; i < 7; i++) 音(240 + i * 46, i * .035, .18, "triangle", .045); },
+  /* 上上 / 下下 独有的三个音 —— 稀有的东西该有稀有的动静 */
+  金:   () => [523, 659, 784, 1047].forEach((f, i) => 音(f, i * .085, .55, "triangle", .10)),
+  凶:   () => [330, 262, 196, 165].forEach((f, i) => 音(f, i * .10, .55, "sawtooth", .06)),
+};
 
-/* 结果屏的「继续」 */
-function onContinue() {
-  state.termIndex++;
-  flash = {};
-  if (state.termIndex >= DECISIONS.length) {
-    settlement = settle(state);
-    screen = "end";
-    render();
-  } else {
-    nextTerm();
-  }
-}
-
-/* ---------- 小工具 ---------- */
-
-function hud() {
-  const cells = ["harvest", "quality", "ecology"].map(k => {
-    const v = state.stats[k];
-    const f = flash[k];
-    let cls = f > 0 ? "up" : f < 0 ? "down" : (v <= 25 ? "low" : "");
-    return `<div class="cell ${cls}"><b>${v}</b>${LABEL[k]}</div>`;
+/* ── 进度表：八个格子，走过的沉下去，眼下的点着 ── */
+function 节气条() {
+  if (screen === "cover") return "";
+  const 全收 = screen === "miban" || screen === "chain" || screen === "yearend"
+            || S.termIndex >= S.节气.length;
+  const cells = S.节气.map((d, i) => {
+    const cls = 全收 || i < S.termIndex ? "过" : i === S.termIndex ? "今" : "";
+    return `<div class="td ${cls}"><i></i><span>${d.term}</span></div>`;
   }).join("");
-  const b = USE_BUDGET
-    ? `<div class="cell ${state.budget <= 0 ? "low" : ""}"><b>${state.budget}</b>本钱</div>`
+  return `<div class="tstrip">${cells}</div>`;
+}
+
+/* 品质底下那一行。为什么要显示这个 ——
+   米价是跳档的（等外 3 / 二级 8 / 一级 15 / 特级 25），不是按点数涨的。
+   所以"品质 +9"这个按钮的价值，全看它有没有把你顶过下一条线：
+   从 76 加到 78，一亩多卖好几百；从 84 加到 93，一分钱不多，还白搭了 40 斤产量。
+   玩家看不见线，就只能一路堆品质 —— 那不是他不会玩，是这局没给他能玩的信息。
+   这里只给事实（你在哪一档、离下一档差几点）。
+   为什么是 78 这条线、为什么要整精米率，那属于"回宿舍翻资料"那头。
+
+   ⚠ 线会跟着年景挪，所以这里必须传 S.移线。箭头不是装饰：
+   它说的是"今年的线和往年不一样" —— 那个数在年景卡上。 */
+function 品阶行(q, 移线 = 0) {
+  const g = gradeOf(q, 移线);
+  const 下 = 等级表.find(x => x.min > 0 && x.min + 移线 > q);
+  const 标 = 移线 ? `<b class="${移线 > 0 ? "up" : "dn"}">${移线 > 0 ? "↑" : "↓"}</b>` : "";
+  if (!下) return `<i class="top">${g.名} · 到顶了${标}</i>`;
+  const 差 = 下.min + 移线 - q;
+  return `<i class="${差 <= 4 ? "near" : ""}">${g.名} · 差 ${差} 点到${下.名}${标}</i>`;
+}
+
+function hud(withField) {
+  const cells = ["harvest","quality","ecology"].map(k => {
+    const v = S.stats[k], f = flash[k];
+    const cls = f > 0 ? "up" : f < 0 ? "dn" : (v <= 25 ? "low" : "");
+    /* 把上一次显示的数写进 DOM —— 渲染完再滚过去，数字才是"变"出来的 */
+    const 从 = S.显数[k], 滚 = (f && 从 !== undefined && 从 !== v) ? ` data-from="${从}"` : "";
+    S.显数[k] = v;
+    return `<div class="c ${cls}"><b${滚}>${v}</b>${LABEL[k]}${k === "quality" ? 品阶行(v, S.移线) : ""}</div>`;
+  }).join("");
+  /* 种地那一段看"已投入"，收完之后看"手里还剩多少" —— 后半段的每一步都是拿这笔钱换的 */
+  const 后段中 = screen === "hangqing" || screen === "chain";
+  const 钱 = 后段中
+    ? `<div class="c m"><b>${S.现金 < 0 ? "-" + yuan(-S.现金) : yuan(Math.round(S.现金))}</b>手头现金</div>`
+    : `<div class="c m"><b>${S.cost ? "-" + yuan(S.cost) : "0"}</b>已投入</div>`;
+  return `<div class="head"><div class="hud">${cells}
+    <div class="c s ${S.stamina <= 15 ? "low" : ""}"><b>${S.stamina}</b>体力</div>
+    ${钱}
+    <div class="c snd ${开声 ? "" : "off"}" onclick="onSound()">${开声 ? "♪" : "×"}</div>
+  </div>${节气条()}</div>${withField
+    ? `<div class="field">${田的画(S)}<span class="wh">田 里 的 样 子</span>${esc(田的样子(S))}</div>`
+    : ""}`;
+}
+
+/* 渲染之后的动作：数字滚过去、条形长出来 —— 都是"变"给人看的 */
+function 起动画() {
+  if (!app.querySelectorAll) return;
+  /* 数字滚动：从上一个值爬到新值，爬的过程本身就是一个反馈 */
+  app.querySelectorAll("[data-from]").forEach(el => {
+    const 从 = +el.dataset.from, 到 = +el.textContent;
+    delete el.dataset.from;
+    if (从 === 到 || !isFinite(从) || !isFinite(到)) return;
+    const t0 = performance.now(), 时长 = 430;
+    const 走 = t => {
+      const p = Math.min(1, (t - t0) / 时长);
+      el.textContent = Math.round(从 + (到 - 从) * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(走); else el.textContent = 到;
+    };
+    requestAnimationFrame(走);
+  });
+  /* 验米那三条：一条一条长出来，比一起蹦出来有看头 */
+  app.querySelectorAll("[data-w]").forEach((el, i) => {
+    const 宽 = el.dataset.w;
+    setTimeout(() => {
+      el.style.transition = "width .85s cubic-bezier(.2,.8,.3,1)";
+      el.style.width = 宽;
+    }, 150 + i * 130);
+  });
+  /* 净收益：从 0 爬到那个数。爬的过程就是"这一季攒出来了"的过程 */
+  app.querySelectorAll("[data-count]").forEach(el => {
+    const 到 = +el.dataset.count;
+    delete el.dataset.count;
+    if (!isFinite(到)) return;
+    const 负 = 到 < 0, t0 = performance.now(), 时长 = 1150;
+    const 走 = t => {
+      const p = Math.min(1, (t - t0) / 时长);
+      const v = Math.round(到 * (1 - Math.pow(1 - p, 3)));
+      el.textContent = (负 && v !== 0 ? "−" : "") + Math.abs(v).toLocaleString("zh-CN");
+      if (p < 1) requestAnimationFrame(走);
+      else el.textContent = (负 ? "−" : "") + Math.abs(到).toLocaleString("zh-CN");
+    };
+    setTimeout(() => requestAnimationFrame(走), 320);
+  });
+  /* 收入构成那条横条：整体从左往右擦出来，不逐段长 —— 逐段会长得参差不齐 */
+  app.querySelectorAll("[data-wipe]").forEach(el => {
+    setTimeout(() => el.classList.add("go"), 260);
+  });
+}
+
+function deltaText(d) {
+  return Object.keys(d).filter(k => d[k])
+    .map(k => `${LABEL[k]} ${d[k] > 0 ? "+" : ""}${d[k]}${UNIT[k]}`).join("　");
+}
+
+/* 年景卡 —— 开局那一屏和每局的决策屏都用它，保证抽到什么都长一个样。
+   ⚠ 线挪过的年份，这里必须把今年的线印出来。这是整张卡最要紧的一行：
+   "今年特级要 93" 是一个能拿去做决定的事实，"今年年景差"不是。 */
+function 年景卡(y) {
+  const 移 = y.移线 || 0;
+  const 名 = ["二级", "一级", "特级"];
+  const 线 = 移
+    ? `<p class="ln">今年验米的线　${等级表.slice(1).map((x, i) => `${名[i]} <b>${x.min + 移}</b>`).join("　")}
+       <span>往常是 ${等级表.slice(1).map(x => x.min).join(" / ")}。${移 > 0
+         ? "今年籽粒不实，碾出来碎米多 —— 线往上抬。" : "今年籽粒灌得饱，整米多 —— 线往下走。"}</span></p>`
     : "";
-  return `<div class="hud">${cells}${b}</div>`;
+  return `<div class="yc ${y.级 || "R"} ${y.色 === "d" ? "xiong" : ""}">
+    <span class="tier">${y.签 || ""}</span>
+    <span class="k">今 年 的 年 景</span>
+    <b class="${y.色}">${y.名}</b>
+    <p>${esc(y.说)}</p>
+    <p style="color:#a8b8a2">${esc(y.报)}</p>${线}</div>`;
 }
 
-function deltaText(delta) {
-  const parts = [];
-  for (const k in delta) {
-    if (!delta[k]) continue;
-    parts.push(`${LABEL[k]} ${delta[k] > 0 ? "+" : ""}${delta[k]}`);
-  }
-  return parts.join("　");
+/* ── 开场 ── */
+function viewCover() {
+  return `<div class="cover">
+    <h1 class="name">一亩稻</h1>
+    <p class="sub">京 西 稻 · 一 季</p>
+    <div class="lead">
+      <p>玉泉山的水从西边流过来。清代，这一带的水田种出来的稻子，是要送进宫的。鼎盛的时候，海淀有近十万亩稻田。</p>
+      <p>2000 年，京密引水渠不再给农田供水。稻田一年少一两万亩。到今天，全区剩下约两千亩 —— 是当年的百分之二。</p>
+      <p>这剩下的两千亩，靠一个农业文化遗产的名头，靠一亩地九百块的粮补，靠一家三十个人的镇属公司年年往里贴，才留下来。</p>
+      <p>你是农大农学院的学生。这个夏天，学院安排你到上庄生产实习一季。</p>
+      <p>带你的人是老周 —— 上庄镇农业公司的技术员，五十七岁，这一带的稻子他种了四十年。头一天见面，他上下看了你一眼，没问你学过什么，只说了一句：</p>
+      <p><em>「来了就先看。别急着动手。」</em></p>
+      <p>公司划出一亩试验田，让你从头跟一季。<em>种成什么样，你自己负责。</em></p>
+    </div>
+    <button class="go" onclick="startGame()">下 田</button>
+    <p class="foot">八 个 节 气 　·　验 米 　·　卖 米</p>
+  </div>`;
 }
 
-const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-
-/* ---------- 各屏 ---------- */
-
-function viewIntro() {
-  return `
-    <div class="cover">
-      <h1 class="name">一亩稻</h1>
-      <p class="sub">京西稻 · 一季八节</p>
-      <div class="lead">
-        <p>上庄镇这亩水田，种了三百年的稻。</p>
-        <p>清朝时候，这米是要送进宫的。</p>
-        <p>如今归你种。</p>
-      </div>
-      <button class="go" onclick="startGame()">开 始</button>
-      <p class="foot">一局 = 一季稻 = 八个节气</p>
-    </div>`;
+/* ── 抽年景 ──
+   开局这一屏单独给年景。它是这一局的底牌 —— 值得停一下再翻。 */
+function viewPull() {
+  return `<div class="pull">
+    <p class="lead2">今 年 的 天</p>
+    ${年景卡(S.年景)}
+    <p class="grade-note" style="color:#7d8a6e;font-size:14.5px;margin:2px 0 0">
+      这一季就这个天。先看清楚，再决定怎么种 —— 天改不了，怎么应对是你的事。</p>
+  </div>
+  <div class="spacer"></div>
+  <button class="go" onclick="toField()">看 看 田 里</button>`;
 }
 
+/* ── 事件屏 ── */
 function viewEvent() {
-  const blocks = pendingEvents.map(e => `
-    <div class="event ${e.mood}">
-      <span class="tag">${e.mood === "good" ? "有 回 响" : "出 事 了"}</span>
+  const blocks = pendingEvents.map((e, n) => {
+    const dt = deltaText(e.delta);
+    const 负 = Object.keys(e.delta).some(k => e.delta[k] < 0);
+    const 标 = e.from && e.from[0] === "年景" ? `今 年 的 天 · ${S.年景.签 || ""}`
+      : e.mood === "good" ? "有 回 响" : "出 事 了";
+    return `<div class="event ${e.mood}" style="animation-delay:${n*.1}s">
+      <span class="tag">${标}</span>
       <p>${esc(e.line)}</p>
-    </div>`).join("");
-  return `
-    ${hud()}
-    <div class="step">第 ${state.termIndex + 1} / ${TERMS.length} 个节气</div>
-    <h2 class="term">${TERMS[state.termIndex]}<small>${DECISIONS[state.termIndex].date}</small></h2>
-    <div class="spacer"></div>
-    ${blocks}
-    <div class="spacer"></div>
+      ${dt ? `<span class="dl ${负?"neg":"pos"}">${dt}</span>` : ""}
+      ${e.from ? `<span class="from">这笔账来自 <b>${e.from.join(" ")}</b></span>` : ""}
+    </div>${查块(e.查)}`;
+  }).join("");
+  const d = S.节气[Math.min(S.termIndex, S.节气.length - 1)];
+  /* 田就画在这儿 —— "出事了"这四个字底下的稻子已经倒了。
+     倒下去的那一下只演一次，正好是你读到这条消息的时候。 */
+  return `${hud(true)} <div class="step">第 ${S.termIndex + 1} / ${S.节气.length} 个节气</div>
+    <h2 class="term">${d.term}<small>${d.date}</small></h2>
+    <div class="spacer"></div>${blocks}<div class="spacer"></div>
     <button class="go" onclick="toDecision()">继 续</button>`;
 }
 
+/* ── 决策屏 ── */
 function viewDecision() {
-  const d = DECISIONS[state.termIndex];
-  const { list } = affordable(state, d);
-  const canPick = new Set(list.map(x => x.i));
+  const d = S.节气[S.termIndex];
+  if (d.热区 && d.热区.length === d.options.length) return 田里点(d);
   const buttons = d.options.map((o, i) => {
-    const poor = !canPick.has(i);
-    const costLine = o.cost > 0 ? `花 ${o.cost} 个本钱` : `不花本钱`;
-    return `<button class="btn ${poor ? "poor" : ""}" ${poor ? "disabled" : ""} onclick="onChoose(${i})">
-      ${esc(o.text)}
-      ${USE_BUDGET ? `<span class="cost">${poor ? "本钱不够" : costLine}</span>` : ""}
-    </button>`;
+    const 缺口 = Math.max(0, o.stam - S.stamina);
+    const 钱 = o.cost + 缺口 * NUM.雇工价;
+    const bits = [`${o.stam} 点体力`];
+    if (缺口 > 0) bits.push(`自己干不完，雇 ${缺口} 个人工 <i class="hard">+${yuan(缺口*NUM.雇工价)} 元</i>`);
+    if (o.cost > 0) bits.push(`花 <i>${yuan(o.cost)} 元</i>`);
+    return `<button class="btn" onclick="onChoose(${i})">
+      ${esc(o.text)}<span class="cost">${bits.join("　·　")}</span></button>`;
   }).join("");
-  return `
-    ${hud()}
-    <div class="step">第 ${state.termIndex + 1} / ${TERMS.length} 个节气</div>
-    <h2 class="term">${TERMS[state.termIndex]}<small>${d.date}</small></h2>
-    <h3 class="title">${esc(d.title)}</h3>
-    <p class="brief">${esc(d.brief)}</p>
-    <div class="spacer"></div>
-    ${buttons}
+
+  return `${hud(true)}
+    <div class="step">第 ${S.termIndex + 1} / ${S.节气.length} 个节气</div>
+    <h2 class="term cmp">${d.term}<small>${d.date}</small></h2>
+    <h3 class="title cmp">${esc(d.title)}</h3>
+    ${d.story ? `<div class="say"><span class="who">${esc(d.story.who)}</span>${para(d.story.text)}</div>` : ""}
+    <p class="brief cmp">${esc(d.brief)}</p>
+    <div class="spacer"></div>${buttons}<div class="spacer"></div>`;
+}
+
+/* ── 田里点 ──
+   跟上面那屏的差别只有一处：**选项不写在按钮上，写在田里**。
+   你点的不是"露地育秧"这四个字，是那片敞着的秧田；不是"盖膜育秧"，
+   是田埂上那摞膜。点哪儿，就是把哪儿的事做了。
+
+   为什么非要做成这样 —— 现在这一屏是「一段故事 + 两个按钮」，
+   玩家三分钟里读了两千字，手上一下没动过。人的手不动，就不觉得在玩。
+   而这里的手是有分量的：你点下去的是田里那个东西，不是一条选项。
+
+   ⚠ 热区的坐标是 SVG viewBox(320×140) 里的坐标，靠百分比铺到画面上，
+     所以田放大缩小时气泡跟着走。田本身现在也大了 —— 原来它只是 HUD
+     底下一条小图，跟正文抢不到注意力，"你有一块地"这件事立不住。
+
+   ⚠ 这里必须 hud(false)。hud(true) 会把那一小块田连同"田里的样子"一起画在顶上，
+     于是同一屏里出现两块田 —— 一块小的摆在那儿不能点，一块大的能点，
+     玩家第一反应是去点小的那块。田这一屏只该有一块，就是能点的这块，
+     田的样子那句话降级成图注（.tsay）跟在它下面。 */
+function 田里点(d) {
+  const 点 = d.热区.map((h, i) => {
+    const o = d.options[i];
+    const 缺口 = Math.max(0, o.stam - S.stamina);
+    const bits = [`${o.stam} 体力`];
+    if (缺口 > 0) bits.push(`雇工 +${yuan(缺口 * NUM.雇工价)}`);
+    if (o.cost > 0) bits.push(`${yuan(o.cost)} 元`);
+    const 左 = h.x / 320 * 100, 上 = h.y / 140 * 100;
+    /* 气泡往哪边飘：靠右的点就把气泡摆到左边去，别顶出屏幕。
+       ⚠ 摆过去之后**小尖嘴也得跟着挪** —— 尖嘴默认在气泡正中（居中那套是对的），
+         可气泡一旦改成贴边，正中就飘到别处去了，指着空气。所以顺带带个类名，
+         让 CSS 把尖嘴挪到挨着圆点的那一头。 */
+    const 靠右 = h.x > 210, 靠左 = h.x < 90;
+    /* ⚠ 偏移是相对**按钮盒的中心**算的，不是相对一个零大的点。按钮盒 58×58，
+       所以 50% 就是那个中心；贴边的两套写 calc(50% + 6px)，气泡边离中心 6px，
+       小尖嘴正好跨在中心上（见 .bub.l/.bub.r 的 ::after）。 */
+    const 位 = 靠右 ? "right:calc(50% + 6px);transform:translateY(-100%)"
+             : 靠左 ? "left:calc(50% + 6px);transform:translateY(-100%)"
+             : "left:50%;transform:translate(-50%,-100%)";
+    /* 有家什的那一处，**家什自己就是记号** —— 不再画圆点。
+       圆点 30px 压在一件 45px 宽的家什上，等于把它糊住了：玩家看见的是个白圈，
+       不是"田埂上那摞膜"。记号只有一个，要么是家什（它在呼吸），
+       要么是圆点（指田本身的那种，没东西可指，就得给个点）。 */
+    return `<button class="hot" style="left:${左.toFixed(2)}%;top:${上.toFixed(2)}%"
+        onclick="onHot(${i})" aria-label="${esc(o.text)}">
+      <span class="bub ${靠右 ? "r" : 靠左 ? "l" : "c"}" style="${位}"><b>${esc(h.标)}</b><i>${bits.join(" · ")}</i></span>
+      ${h.画 ? "" : `<span class="dot"></span>`}</button>`;
+  }).join("");
+
+  return `${hud(false)}
+    <div class="bigfield">${田的画(S)}${点}</div>
+    <p class="tsay"><span class="wh">田 里 的 样 子</span>${esc(田的样子(S))}</p>
+    <div class="step">第 ${S.termIndex + 1} / ${S.节气.length} 个节气</div>
+    <h2 class="term cmp">${d.term}<small>${d.date}</small> · ${esc(d.title)}</h2>
+    ${d.story ? `<div class="say"><span class="who">${esc(d.story.who)}</span>${para(d.story.text)}</div>` : ""}
+    <p class="brief cmp">${esc(d.brief)}</p>
+    <p class="tianhint">点田里的东西 —— 点哪儿，就是把哪儿的事做了。</p>
     <div class="spacer"></div>`;
 }
 
+/* ── 反馈屏 ──
+   一屏只说一件事：这一手把三个数变成了什么样。
+   老表格式的三行"前→后"删了 —— 顶上那条随时在显示当前值，重复一遍就是噪音。
+   查资料挪去它自己那屏（见 viewNote）—— 白天动手、晚上翻书，本来就是两件事。 */
 function viewResult() {
-  const dt = deltaText(lastResult.delta);
-  const d = DECISIONS[state.termIndex];
-  return `
-    ${hud()}
-    <div class="step">${TERMS[state.termIndex]} · ${esc(d.title)}</div>
+  const d = S.节气[S.termIndex], R = lastResult;
+  const 大 = ["harvest","quality","ecology"].filter(k => R.delta[k]).map((k, n) => {
+    const v = R.delta[k];
+    return `<div class="dl-big ${v > 0 ? "u" : "d"}" style="animation-delay:${n*.08}s">
+      <b>${v > 0 ? "+" : ""}${v}</b><span>${LABEL[k]}${UNIT[k]}</span></div>`;
+  }).join("");
+  const 体 = R.体力前 - R.体力;
+  const 花 = [];
+  if (R.花销) 花.push(`花 ${yuan(R.花销)} 元`);
+  if (R.雇工费) 花.push(`自己干不动，请了 ${R.缺口} 个人工，${yuan(R.雇工费)} 元`);
+  if (体) 花.push(`出力 ${体} 点`);
+  /* 在田里点过的那一屏，做完把田**再摆一遍** —— 位置跟刚才一模一样，
+     只有一样东西变了。这就是"我这一手干了什么"最直接的答复：
+     盖膜那一下，田里真的蒙上了一层；不盖，田还是敞着的。
+     ⚠ 只有点过田的那一屏这么干。其余屏照旧不带田（hud() 不传参 = 不要那块小的），
+       别顺手全给加上 —— 那是八个屏一起变样，得先说一声。 */
+  const 大田 = d.热区 && d.热区.length === d.options.length;
+  return `${hud(大田 ? false : undefined)}
+    ${大田 ? `<div class="bigfield">${田的画(S)}</div>` : ""}
+    <div class="step">${d.term} · ${esc(d.title)}</div>
+    ${大 ? `<div class="deltas">${大}</div>` : ""}
+    <p style="font-size:18px">${esc(R.text)}</p>
+    ${R.note ? `<p style="color:var(--dim);font-size:15px">${esc(R.note)}</p>` : ""}
+    ${花.length ? `<p style="color:var(--clay);font-size:14.5px;margin:14px 0 0">
+      ${花.join("　·　")}　·　本季已投入 ${yuan(S.cost)} 元</p>` : ""}
     <div class="spacer"></div>
-    <p style="font-size:18px">${esc(lastResult.text)}</p>
-    ${dt ? `<p style="color:${lastResult.delta[Object.keys(lastResult.delta)[0]] > 0 ? "var(--good)" : "var(--bad)"};font-size:15px;letter-spacing:.06em">${dt}</p>` : ""}
-    ${lastResult.note ? `<p style="color:var(--dim);font-size:15px">${esc(lastResult.note)}</p>` : ""}
-    <div class="spacer"></div>
-    <button class="go" onclick="onContinue()">${state.termIndex + 1 >= DECISIONS.length ? "开 镰" : "继 续"}</button>`;
+    ${R.查 ? `<button class="go" onclick="onContinue()">天 黑 了 · 翻 翻 书</button>
+      <button class="go sm ghost" style="margin-top:10px" onclick="onContinue(true)">不 看 了 · 睡</button>`
+    : `<button class="go" onclick="onContinue()">${
+        S.termIndex + 1 >= S.节气.length ? "收 割" : "继 续"}</button>`}`;
 }
 
-function viewEnd() {
-  const s = settlement.stats;
-  const finals = ["harvest", "quality", "ecology"].map(k => `
-    <div class="${s[k] <= 30 ? "lo" : ""}"><b>${s[k]}</b><span>${LABEL[k]}</span></div>`).join("");
-  const notes = settlement.lines.map(l => `<p class="note">${esc(l)}</p>`).join("");
-  return `
-    <div class="harvest">
-      <div class="big">开 镰</div>
+/* ── 回宿舍翻资料 ──
+   单独一屏。白天那个没想明白的事儿，晚上翻书翻出来了 —— 它值一屏的注意力。 */
+function viewNote() {
+  const d = S.节气[S.termIndex];
+  return `${hud()}
+    <div class="step">${d.term} · 宿舍 · 熄灯前</div>
+    ${查块(S.待查)}
+    <div class="spacer"></div>
+    <button class="go" onclick="onContinue()">${
+      S.termIndex + 1 >= S.节气.length ? "收 割" : "睡 了 · 明 天 再 说"}</button>`;
+}
+
+/* ── 验米 ── */
+/* ── 验米揭晓 ──
+   这是全季攒了八个节气之后第一次听见响。
+   每一档都得有排面 —— 特级是特级那一种，等外是等外那一种，
+   但都得是"你种出来的"这件事被正正经经地摆上台面。
+   档位（气）不同，舞台不同：金光、银绿、青绿、土黄。
+   不变的只有一件事 —— 先夸人，再讲米。 */
+function viewMiban() {
+  const g = miban.grade, 气 = g.气 || "c";
+  /* 星芒数量跟档位走：特级五颗，一级三颗，二级一颗，等外没有 */
+  const 星数 = { a: 5, b: 3, c: 1, d: 0 }[气];
+  const 位置 = [[22,26],[74,20],[48,14],[30,64],[68,58]];
+  const 星 = 位置.slice(0, 星数)
+    .map(([x,y],i) => `<span class="spark" style="left:${x}%;top:${y}%;animation-delay:${.45+i*.14}s"></span>`).join("");
+  const 牌 = { a: "够 得 上 贡 米", b: "地 头 现 碾 鲜 米", c: "收 粮 等 级", d: "这 一 季 的 米" }[气];
+  /* 条形不用 transition，交给渲染后的 起动画() 一条一条长出来 */
+  const bar = (k, v) => {
+    const pct = k === "harvest" ? clamp((v-400)/8, 0, 100) : clamp(v, 0, 100);
+    return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim);margin-bottom:7px">
+      <span style="width:34px;flex:none">${LABEL[k]}</span>
+      <span style="flex:1;height:6px;background:#e6e0cf;border-radius:3px;overflow:hidden">
+        <span data-w="${pct}%" style="display:block;height:100%;border-radius:3px;width:0;
+          background:${气 === "a" ? "var(--gold)" : 气 === "d" ? "#c2a878" : "var(--green)"}"></span></span>
+      <span style="width:38px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)">${v}${UNIT[k]}</span></div>`;
+  };
+  return `<div style="margin:0 0 16px">${节气条()}</div>
+    <div class="step">秋分之后 · 验米</div>
+    <div class="grade-wrap ${气}">${星}
+      <div class="grade-name ${气}">${g.名}</div>
+      <div class="grade-tag">${牌}</div>
+      <p class="praise">${esc(g.夸)}</p></div>
+    <p class="grade-note" style="margin-top:0">${esc(miban.眼力)}</p>
+    <div style="margin:14px 0 0">${bar("harvest",S.stats.harvest)}${bar("quality",S.stats.quality)}${bar("ecology",S.stats.ecology)}</div>
+    <p class="grade-note" style="color:var(--dim)">这个等级决定了你的米按什么价走 —— ${yuan(g.价)} 元一斤。${esc(g.口感)}。</p>
+    <div class="field" style="margin-top:18px">${田的画(S)}<span class="wh">这 一 季 的 田</span>${esc(田的样子(S))}</div>
+    ${S.log.length ? `<h3 class="title" style="font-size:17px">地里的账</h3>
+      ${S.log.map(e => `<p class="note-line">${esc(e.line)}</p>`).join("")}` : ""}
+    <div class="spacer"></div>
+    <button class="go" onclick="toChain()">把 粮 拉 回 去</button>`;
+}
+
+/* ── 二三产 ── */
+/* ── 行情揭晓 —— 后半段的抽卡，跟年景同一套排面 ── */
+function viewHangqing() {
+  return `<div class="pull">
+    <p class="lead2">今 年 的 市</p>
+    ${行情卡(S.行情)}
+    <p class="grade-note" style="color:#7d8a6e;font-size:14.5px;margin:2px 0 0">
+      稻子已经收上来了，市什么样，现在才知道。种是一回事，卖是另一回事。</p>
+  </div>
+  <div class="spacer"></div>
+  <button class="go" onclick="toChainGo()">开 磅 秤</button>`;
+}
+
+function viewChain() {
+  const step = S.chainIndex || 0, c = S.后段[step];
+  if (!c) return viewYearEnd();
+  const 取值 = v => typeof v === "function" ? v(S) : v;
+  const buttons = c.options.map((o, i) => {
+    const 锁 = o.锁 === true;
+    return `<button class="btn${锁 ? " lockbtn" : ""}" ${锁 ? "disabled" : `onclick="onChain(${i})"`}>
+      ${esc(o.text)}<span class="cost">${esc(取值(o.sub))}</span></button>`;
+  }).join("");
+  return `${hud()}
+    <div class="step">${esc(c.term)} · 收完之后 第 ${step + 1} / ${S.后段.length} 步</div>
+    <h2 class="term cmp">${esc(c.term)}<small>收 完 之 后</small></h2>
+    <h3 class="title cmp">${esc(c.title)}</h3>
+    <p class="brief cmp">${esc(c.brief)}</p>
+    ${c.say ? `<div class="say"><span class="who">${esc(c.who)}</span><p style="white-space:pre-line">${esc(c.say)}</p></div>` : ""}
+    <div class="spacer"></div>${buttons}<div class="spacer"></div>`;
+}
+
+/* ── 年终账本 ── */
+/* ── 年终 ──
+   全季的收口。八个节气的因，到这里合成一个数。
+   一个数是不够的 —— 得让人看清楚这个数是怎么来的（收入构成），
+   得有人对着一季说一句话（季评），也得把这一季攒下的牌子摆出来（成就）。
+   排场是给"你真种了一季"这件事的，不是给分数的 —— 所以每一档都有话说。 */
+const 季评 = [
+  { 名:"下下", min:-1e9, 气:"d",
+    说:"往里贴了钱。镇属那家三十来号人的公司，年年也都在往里贴 —— 京西稻就是这么留下来的，你这一亩今年也算了一份。" },
+  { 名:"下",   min:3000, 气:"d",
+    说:"贴进去一些，不多。一亩稻头一年种，这本账本来就难平 —— 不是你的问题，是这行当的问题。" },
+  { 名:"中",   min:12000, 气:"c",
+    说:"收支打平，还余了一点。一亩地头一年能不往里掏钱，这就算站住了。" },
+  { 名:"上",   min:17500, 气:"b",
+    说:"账是正的，还宽裕。这一亩地今年自己养活了自己，还余出钱来 —— 在海淀，这件事已经不常听见了。" },
+  { 名:"上上", min:22000, 气:"a",
+    说:"一亩地挣出了镇上一个人小半年的工钱。京西稻到今天还能留在地里，靠的就是这个数。" },
+];
+const 评等级 = v => { let g = 季评[0]; 季评.forEach(x => { if (v >= x.min) g = x; }); return g; };
+
+/* ── 今年最赚的一手、最坑的一手 ──
+   "哪一步出了问题"这种话，游戏自己算得出来 —— 日志里每一步的因果都在，
+   那就直接点名，别让玩家去悟。这一块也是全季唯一一次把因果链摊开讲。 */
+function 关键两手(S) {
+  const 分 = e => Object.keys(e.delta)
+    .reduce((a, k) => a + (k === "harvest" ? e.delta[k] * 0.12 : e.delta[k] * 1.6), 0);
+  const 有 = S.log.filter(e => e.from && e.from.length);
+  if (有.length < 2) return null;
+  const 排 = 有.slice().sort((a, b) => 分(a) - 分(b));
+  const 坑 = 排[0], 赚 = 排[排.length - 1];
+  const 因 = e => e.from.filter(x => x !== "＋").join("　→　");
+  return { 坑: 分(坑) < -1.2 ? { 因: 因(坑), e: 坑 } : null,
+           赚: 分(赚) > 1.2 ? { 因: 因(赚), e: 赚 } : null };
+}
+
+function viewYearEnd() {
+  const r = result, 评 = 评等级(r.净收益), 两手 = 关键两手(S);
+
+  /* 收入构成 —— 一二三产不是三个词，是一条能看出来的比例。
+     这条横条是整个结算里最该被看见的东西：钱是从哪条路上来的。 */
+  const 源 = [
+    { 名:"一产 · 卖原粮", v:r.一产, 色:"var(--green)" },
+    { 名:"二产 · 礼盒",   v:r.二产, 色:"var(--gold)" },
+    { 名:"三产 · " + r.三产说明.split("，")[0], v:r.三产, 色:"var(--clay)" },
+    { 名:"政策 · 粮补",   v:r.补贴, 色:"#a8a294" },
+  ].filter(x => x.v > 0);
+  const 总 = 源.reduce((a, x) => a + x.v, 0) || 1;
+  const 条 = 源.map(x => `<span style="width:${(x.v/总*100).toFixed(1)}%;background:${x.色}"></span>`).join("");
+  const 图例 = 源.map(x => `<div class="mix-li">
+      <span class="dot" style="background:${x.色}"></span>
+      <span class="nm">${esc(x.名)}</span>
+      <span class="pc">${(x.v/总*100).toFixed(0)}%</span>
+      <span class="amt">${yuan(x.v)}</span></div>`).join("");
+
+  const li = (k, v) => `<div class="li"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+
+  /* 成就 —— 按档位从高到低排，金牌先上场 */
+  const 序 = { 金:0, 银:1, 铜:2 };
+  const 牌 = newAch.slice().sort((a,b) => 序[a.级] - 序[b.级]);
+  const ach = 牌.length ? `<h3 class="title" style="font-size:17px">这一季，你得了 ${牌.length} 块牌子</h3>
+    ${牌.map((a,i) => `<div class="ach ${a.级}" style="animation-delay:${i*.07}s">
+      <span class="d">${a.级}</span><div><b>${esc(a.名)}</b><span>${esc(a.说)}</span></div></div>`).join("")}`
+    : `<h3 class="title" style="font-size:17px">这一季，没有牌子</h3>
+       <p class="grade-note" style="margin-top:0">走了一条没人走过的路 —— 下一季换个走法试试。</p>`;
+
+  return `<div style="margin:0 0 16px">${节气条()}</div>
+    <div class="step">年终 · 账本</div>
+    <h2 class="term" style="font-size:30px">一季的账<small>一 亩 地</small></h2>
+
+    <div class="yearend-wrap ${评.气}">
+      <div class="yr-name ${评.气}">${评.名}</div>
+      <div class="yr-tag">这 一 季 的 收 成</div>
+      <p class="praise">${esc(评.说)}</p>
     </div>
-    <div class="final">${finals}</div>
-    <div class="notes">${notes}</div>
+
+    <div class="netbig ${r.净收益 >= 0 ? "u" : "d"}">
+      <span class="k">净 收 益</span>
+      <b data-count="${r.净收益}">0</b><i>元</i>
+      <span class="sub">毛收入 ${yuan(r.毛收入)} 元　－　本季投入 ${yuan(r.成本)} 元</span>
+    </div>
+
+    <h3 class="title" style="font-size:17px">钱是从哪条路上来的</h3>
+    <div class="mixbar" data-wipe>${条}</div>
+    <div class="mix">${图例}</div>
+
+    ${两手 ? `<h3 class="title" style="font-size:17px">这一季的两个转折</h3>
+      <div class="keymoves">
+        ${两手.赚 ? `<div class="km u"><span class="tag">最赚的一手</span>
+          <b>${esc(两手.赚.因)}</b><p>${esc(两手.赚.e.line)}</p></div>` : ""}
+        ${两手.坑 ? `<div class="km d"><span class="tag">最亏的一手</span>
+          <b>${esc(两手.坑.因)}</b><p>${esc(两手.坑.e.line)}</p></div>` : ""}
+      </div>` : ""}
+
+    <h3 class="title" style="font-size:17px">底账</h3>
+    <div class="ledger">
+      ${li("打下来的稻谷", yuan(S.grain) + " 斤")}
+      ${li("验米等级", r.grade.名 + "（" + yuan(r.米价) + " 元/斤）")}
+      ${li("今年的行情", r.行情.名 + (r.行情.原粮 !== 1
+          ? "（原粮 " + (r.行情.原粮 > 1 ? "+" : "") + Math.round((r.行情.原粮 - 1) * 100) + "%）" : ""))}
+      ${li("牌子 · 生态 " + S.stats.ecology + " 撑起来的量", Math.round(r.牌 * 100) + "%")}
+      ${li("折成米", yuan(r.米) + " 斤" + (r.兑米 ? "（认养兑走 " + r.兑米 + " 斤）" : ""))}
+      ${li("一产 · 卖原粮 " + yuan(r.已卖谷 + r.原粮量) + " 斤 @ " + r.谷价 + " 元"
+          + (r.已卖谷 && r.原粮量 ? "（立冬卖掉 " + yuan(r.已卖谷) + " 斤）" : ""), yuan(r.一产) + " 元")}
+      ${li("二产 · 礼盒 " + yuan(r.礼盒量) + " 斤"
+          + (r.礼盒量 < r.礼盒上限 ? "（装得起这么多，上限本来有 " + yuan(r.礼盒上限) + " 斤）" : ""),
+          yuan(Math.round(r.礼盒量 * r.米价 * NUM.礼盒溢价)) + " 元")}
+      ${li("二产 · 深加工 " + yuan(r.加工量) + " 斤", yuan(Math.round(r.加工量 * NUM.深加工价)) + " 元")}
+      ${r.原粮量 ? li("没装盒也没加工的米", yuan(r.原粮量) + " 斤 —— 走了原粮") : ""}
+      ${r.包装费 ? li("礼盒包装", "-" + yuan(r.包装费) + " 元") : ""}
+      ${r.加工费 ? li("深加工费", "-" + yuan(r.加工费) + " 元") : ""}
+      ${li("收完粮之后，手里还剩", yuan(r.兜里剩) + " 元" + (r.兜里剩 < NUM.礼盒包装 * 20 ? "（不够再铺一摊了）" : ""))}
+      ${li("三产 · " + r.三产说明, yuan(r.三产) + " 元")}
+      ${r.额外 ? li("大寒 · " + S.大寒说明, (r.额外 > 0 ? "+" : "") + yuan(r.额外) + " 元") : ""}
+    </div>
+    ${ach}
+    ${回学校(S, r)}
     <div class="spacer"></div>
     <button class="go ghost" onclick="restart()">再 种 一 季</button>
-    <p class="foot">这一季，你花了 ${START_BUDGET - state.budget} 个本钱</p>`;
+    <p class="foot">换个走法，账就不是这个数</p>`;
+}
+
+/* ── 回学校 ──
+   你是农大派来实习的学生，一季种完得有个交代。
+   带队老师看的是表，老周看的是别的 —— 这一局收在这里。 */
+function 回学校(S, r) {
+  const 级 = r.grade.名;
+  /* 老师这一条按"你留下了什么"分岔，不按分数高低训人 ——
+     第一季就下地八个节气，本来就没什么可训的。 */
+  const 王 = 级 === "特级"
+    ? { t: "「这块地能这么种。」带队老师把表推回来，\n「你把过程写下来，下次组会讲一次。」" }
+    : 级 === "一级"
+    ? { t: "「一级，可以了。」带队老师说，\n「我以为你们下去就是拍拍照 —— 看来不是。」" }
+    : r.净收益 >= 15000
+    ? { t: "「账算得不错。」带队老师翻了两页，\n「可我更想知道，你那一亩地明年还能不能这么种。」" }
+    : r.三产 > 0
+    ? { t: "「你把米卖出去这一手，比米本身有意思。」带队老师说，\n「镇上的公司愁的就是这个。你接着说。」" }
+    : { t: "「第一季，正常。」带队老师把表合上，\n「明年下去，把每天干了什么都记上 —— 这个比最后那个数有用。」" };
+
+  const 留 = S.stats.ecology >= 65 || r.三产 > 0;
+  const 周 = 留
+    ? { t: "老周蹲在田埂上，把最后一捆稻把子码齐。\n「这一亩地，明年还归你。」他说，\n「你要是还来。」" }
+    : { t: "老周把锹往肩上一扛，走了两步，回头说：\n「头一年能收回一仓，不赖了。\n我头一年种的，还没你这个数。」" };
+
+  return `<h3 class="title" style="font-size:17px">收完了，回学校</h3>
+    <div class="say"><span class="who">带队老师 · 组会前</span><p style="white-space:pre-line">${esc(王.t)}</p></div>
+    <div class="say"><span class="who">老周 · 田埂上</span><p style="white-space:pre-line">${esc(周.t)}</p></div>`;
+}
+
+/* ── 图鉴 / 成就 ── */
+const 分类 = ["田里的", "手上的", "肥", "水", "虫", "收", "药", "灾"];
+function viewBook() {
+  const keys = Object.keys(CODEX);
+  const got = keys.filter(k => S.codex[k]).length;
+  const groups = 分类.filter(c => keys.some(k => CODEX[k][0] === c));
+  let body;
+  if (tab === "成就") {
+    /* 按档位分组，每组标出 x/y —— 差一块金牌没拿到，比"成就 7/24"勾人 */
+    body = ["金","银","铜"].map(级 => {
+      const 组 = ACH.filter(a => (a.级 || "铜") === 级);
+      if (!组.length) return "";
+      const 得 = 组.filter(a => S.ach[a.id]).length;
+      return `<h3 class="title" style="font-size:15px;letter-spacing:.14em;margin:20px 0 6px">
+          <span class="lvdot ${级}"></span>${级}牌 · ${得}/${组.length}</h3>`
+        + 组.map(a => {
+          const has = S.ach[a.id];
+          return `<div class="cx ${has?"":"lock"}"><div class="h">
+            <b>${has ? esc(a.名) : "？ ？ ？"}</b></div>
+            <p>${has ? esc(a.说) : "还没拿到"}</p></div>`;
+        }).join("");
+    }).join("");
+  } else if (tab === "全部") {
+    body = keys.map(k => {
+      const has = S.codex[k], [cat, txt] = CODEX[k];
+      return has
+        ? `<div class="cx"><div class="h"><b>${k}</b><span class="cat">${cat}</span></div><p>${txt}</p></div>`
+        : `<div class="cx lock"><div class="h"><b>？ ？ ？</b><span class="cat">${cat}</span></div><p>还没见过</p></div>`;
+    }).join("");
+  } else {
+    body = 分类.filter(c => c !== "肥" || tab === "肥").map(c => {
+      const inC = keys.filter(k => CODEX[k][0] === c);
+      if (!inC.length) return "";
+      return `<h3 class="title" style="font-size:15px;color:var(--dim);letter-spacing:.14em;margin:20px 0 4px">${c}</h3>`
+        + inC.map(k => {
+          const has = S.codex[k];
+          return `<div class="cx ${has?"":"lock"}"><div class="h"><b>${has ? k : "？ ？ ？"}</b></div><p>${has ? CODEX[k][1] : "还没见过"}</p></div>`;
+        }).join("");
+    }).join("");
+  }
+  const 成就数 = ACH.filter(a => S.ach[a.id]).length;
+  return `<div class="step">这一季记住的东西</div>
+    <div class="tabs">
+      <button class="${tab==="田"?"on":""}" onclick="setTab('田')">田里的</button>
+      <button class="${tab==="手上的"?"on":""}" onclick="setTab('手上的')">手上的</button>
+      <button class="${tab==="全部"?"on":""}" onclick="setTab('全部')">全部 ${got}/${keys.length}</button>
+      <button class="${tab==="成就"?"on":""}" onclick="setTab('成就')">成就 ${成就数}/${ACH.length}</button>
+    </div>${body}<div class="spacer"></div>
+    <button class="go sm ghost" onclick="backToGame()">回 到 田 里</button>`;
 }
 
 function render() {
   app.innerHTML =
-    screen === "intro"    ? viewIntro()    :
+    screen === "cover"    ? viewCover()    :
+    screen === "pull"     ? viewPull()     :
     screen === "event"    ? viewEvent()    :
     screen === "decision" ? viewDecision() :
     screen === "result"   ? viewResult()   :
-                            viewEnd();
+    screen === "note"     ? viewNote()     :
+    screen === "miban"    ? viewMiban()    :
+    screen === "hangqing"? viewHangqing()  :
+    screen === "chain"    ? viewChain()    :
+    screen === "book"     ? viewBook()     :
+                            viewYearEnd();
+  const p = screen === "cover" || screen === "pull" ? 0
+    : screen === "hangqing" ? 8/13
+    : screen === "chain" ? (8 + (S.chainIndex||0)) / (8 + (S.后段.length||5))
+    : screen === "miban" ? 8/12
+    : Math.min(S.termIndex, 8) / 12;
+  document.getElementById("bar").style.transform = `scaleX(${p})`;
+  起动画();
   window.scrollTo(0, 0);
 }
 
-/* ---------- 给按钮用的（内联 onclick 需要挂到全局）---------- */
-window.startGame = function () { screen = "decision"; nextTerm(); };
+/* ── 流程 ── */
+function nextTerm() {
+  pendingEvents = dueEvents(S, S.termIndex);
+  flash = {};
+  pendingEvents.forEach(e => { for (const k in e.delta) if (e.delta[k]) flash[k] = e.delta[k]; });
+  screen = pendingEvents.length ? "event" : "decision";
+  render();
+  扫成就(null);   // 回响落地，顺手看看这一下有没有撞出个什么
+}
+
+window.startGame = function () {
+  S.termIndex = 0; screen = "pull"; render();
+  /* 抽卡的动静按档位给 —— 上上/下下的琶音，其余只翻个页 */
+  const y = S.年景, 级 = y.级 || "R";
+  响(级 === "SSR" ? (y.色 === "d" ? "凶" : "金") : "抽");
+};
+window.toField   = function () { nextTerm(); };
 window.toDecision = function () { screen = "decision"; render(); };
-window.onChoose = onChoose;
-window.onContinue = onContinue;
-window.restart = function () { reset(); render(); };
+
+/* 点了田里那处地方。
+   ⚠ 这儿必须**先给一下手感再换屏**：直接 onChoose 的话，手指抬起来屏幕就变了，
+     人根本没看清自己点的是哪儿。所以先把那个点按住（.on），响一声，
+     等 280ms 再走 —— 这一下延迟就是"手碰到了东西"的感觉。 */
+window.onHot = function (i) {
+  if (S.选了 !== null) return;        // 手指抖两下点了同一个点，只算一次
+  S.选了 = i;
+  响("tap");
+  const 全部 = app.querySelectorAll ? app.querySelectorAll(".hot") : [];
+  if (全部[i] && 全部[i].classList) 全部[i].classList.add("on");
+  /* 有家什的那一处，记号是 svg 里的家什本人，不在按钮里 —— 得单独点亮它。
+     不然点下去只有气泡变色，那件东西一动不动，手感是断的。
+     ⚠ 不能按 "第几个 .shi" 去找：不是每处都有家什（立夏那屏第 0 处指的是田，
+       没有东西可点），一有缺口，序号就跟热区下标错开了。按带下标的名字找。 */
+  const 件 = app.querySelectorAll ? app.querySelectorAll(".shi.s" + i)[0] : null;
+  if (件 && 件.classList) 件.classList.add("on");
+  /* 没 DOM（测试脚本）就直接走，别卡在这儿 */
+  if (!app.querySelectorAll || !setTimeout) { S.选了 = null; onChoose(i); return; }
+  setTimeout(() => { S.选了 = null; onChoose(i); }, 280);
+};
+
+window.onSound = function () {
+  开声 = !开声;
+  if (开声) 响("tap");
+  render();
+};
+
+window.onChoose = function (i) {
+  /* 先用一下按下的手感，再翻屏 —— 不然"我选了"这个动作没有落点 */
+  const btn = document.querySelectorAll ? document.querySelectorAll(".btn")[i] : null;
+  if (btn) btn.classList.add("pick");
+  响("tap");
+  setTimeout(() => {
+    lastResult = choose(S, S.termIndex, i);
+    flash = {};
+    for (const k in lastResult.delta) if (lastResult.delta[k]) flash[k] = lastResult.delta[k];
+    if (lastResult.新图鉴) toast(`记下了 · ${lastResult.新图鉴}`);
+    screen = "result"; render();
+    响(Object.keys(lastResult.delta).some(k => lastResult.delta[k] < 0) ? "坏" : "好");
+    扫成就(null);
+  }, 160);
+};
+
+window.onContinue = function (skip) {
+  /* 白天那一手的结果先看，晚上再翻书 —— 两件事分两屏，各看各的。
+     不想翻也行：跳过就不记这笔，图鉴里"凭感觉"那块牌子是留给跳的人的。 */
+  if (screen === "result" && lastResult && lastResult.查 && skip !== true) {
+    S.待查 = lastResult.查; lastResult.查 = null;
+    S.查过[S.节气[S.termIndex].term] = true;
+    screen = "note"; render(); return;
+  }
+  if (screen === "result" && lastResult) lastResult.查 = null;
+  S.待查 = null;
+  S.termIndex++; flash = {};
+  if (S.termIndex >= S.节气.length) {
+    dueEvents(S, S.节气.length);   // 收尾那一趟：粮进场了才回过味来的账
+    flash = {};
+    S.log.forEach(e => { for (const k in e.delta) if (e.delta[k]) flash[k] = e.delta[k]; });
+    S.grain = S.stats.harvest;
+    miban = 验米(S);
+    screen = "miban"; render();
+    响(miban.grade.名 === "特级" ? "金" : miban.grade.名 === "等外" ? "坏" : "好");
+    扫成就(null);
+  } else nextTerm();
+};
+
+window.toChain = function () {
+  /* 稻子进仓了，市才揭晓 —— 后半段的抽卡 */
+  if (!S.行情) S.行情 = 抽行情();
+  S.后段 = 建后段(S);
+  S.chainIndex = 0; screen = "hangqing"; render();
+  响(S.行情.级 === "SSR" ? (S.行情.色 === "d" ? "凶" : "金") : "抽");
+};
+window.toChainGo = function () { screen = "chain"; render(); };
+
+window.onChain = function (i) {
+  const c = S.后段[S.chainIndex];
+  if (!c || !c.options[i] || c.options[i].锁 === true) return;  // 连点、越界、锁住的，直接吞掉
+  c.options[i].pick(S);
+  S.chainIndex++;
+  if (S.chainIndex >= S.后段.length) {
+    /* 这里不再弹牌 —— 年终这一屏本身就是发奖的地方，
+       弹一遍再列一遍，是打自己的脸 */
+    result = 年终(S); 结成就(S, result); newAch = S.本季成就; screen = "yearend";
+  }
+  响(S.chainIndex >= S.后段.length ? "钱" : "tap");
+  render();
+};
+
+window.setTab = function (t) { tab = t; render(); };
+window.backToGame = function () { screen = S.termIndex >= S.节气.length ? "yearend" : "decision"; render(); };
+window.openBook = function () { screen = "book"; render(); };
+window.restart = function () { reset(); 成就队 = []; 弹牌(); render(); };
 
 render();
 </script>
