@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v5.6</title>
+<title>一亩稻 v5.6.1</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -445,6 +445,10 @@
     box-shadow:0 0 10px 3px rgba(240,214,138,.95);opacity:0;
     animation:spark 1.5s ease-out forwards}
   .grade-wrap.b .spark{background:#cfe6c4;box-shadow:0 0 9px 3px rgba(190,222,176,.9)}
+  /* 年终那屏的星芒颜色跟着季评档位走。基础色（金）给 a，这两条管 b、c。
+     d 档不发星芒（见 viewYearEnd 的 星数 表）—— 所以这儿不用写 d。 */
+  .yearend-wrap.b .spark{background:#cfe6c4;box-shadow:0 0 9px 3px rgba(190,222,176,.9)}
+  .yearend-wrap.c .spark{background:#d6e6d2;box-shadow:0 0 8px 3px rgba(198,220,192,.85)}
   @keyframes spark{0%{opacity:0;transform:scale(.2)}
     30%{opacity:1}100%{opacity:0;transform:translateY(-30px) scale(1)}}
 
@@ -499,9 +503,19 @@
     box-shadow:inset 0 0 0 1px #cfd9c4}
   .yearend-wrap.d{background:linear-gradient(180deg,#faf6ec,#f2ead8);
     box-shadow:inset 0 0 0 1px #ddcfae}
-  .yearend-wrap.a::after{content:"";position:absolute;inset:0;
-    background:linear-gradient(105deg,transparent 34%,rgba(255,251,235,.8) 50%,transparent 66%);
-    animation:sweep 1.05s .4s ease-out both}
+  /* 扫光每一档都擦一道 —— 不是只有"上上"配。
+     用户原话：「不仅是特辑该给特效，玩家打出来的结局多少都应该有点正向激励的
+     视觉冲击」。验米那一屏早就给了 a、b 两档，年终这儿反倒只有 a，是漏了。
+     颜色和快慢跟着档位走：金 → 绿 → 青 → 冷灰。
+     最下面那档（下 / 下下）也擦，但最淡最慢 —— 那一档的话是安慰，不是庆祝，
+     光太重就假了。 */
+  .yearend-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(105deg,transparent 34%,var(--扫,transparent) 50%,transparent 66%);
+    animation:sweep var(--扫速,1.05s) .4s ease-out both}
+  .yearend-wrap.a{--扫:rgba(255,251,235,.82)}
+  .yearend-wrap.b{--扫:rgba(232,246,224,.66);--扫速:1.15s}
+  .yearend-wrap.c{--扫:rgba(224,236,226,.46);--扫速:1.28s}
+  .yearend-wrap.d{--扫:rgba(224,230,232,.30);--扫速:1.45s}
   .yr-name{font-size:52px;font-weight:600;letter-spacing:.2em;text-indent:.2em;
     color:var(--green-d);animation:slam .62s cubic-bezier(.12,.9,.24,1) both}
   .yr-name.a{color:var(--gold);text-shadow:0 2px 20px rgba(232,200,106,.7)}
@@ -523,7 +537,12 @@
   .mixbar{display:flex;height:20px;border-radius:6px;overflow:hidden;margin:2px 0 14px;
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.07);
     transform:scaleX(0);transform-origin:0 50%}
-  .mixbar.go{transform:scaleX(1);transition:transform .85s cubic-bezier(.2,.8,.3,1)}
+  /* ⚠ 标记类叫 wiped，**不能叫 go** —— go 是主按钮的类
+     （.go{background:var(--green);padding:15px}），撞上之后这条横条会被刷成
+     一整块绿按钮、高度被 padding 撑到 30px、四个 span 被挤成 0×0。
+     v5.6 之前一直是这样，谁都看不出来，因为"它本来就该是条彩色的"这件事
+     只在脑子里，不在屏幕上。 */
+  .mixbar.wiped{transform:scaleX(1);transition:transform .85s cubic-bezier(.2,.8,.3,1)}
   .mixbar span{display:block;height:100%}
   .mix-li{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:14.5px}
   .mix-li .dot{width:9px;height:9px;border-radius:50%;flex:none}
@@ -583,7 +602,12 @@
   .cx b{font-weight:600;font-size:16.5px}
   .cx .cat{font-size:11.5px;letter-spacing:.14em;color:var(--dim);flex:none}
   .cx p{margin:5px 0 0;font-size:14.5px;color:#525a48;line-height:1.75}
+  .cx.lock{padding:9px 0}
   .cx.lock b{color:#b9b4a3} .cx.lock p{color:#c3bead;font-size:13.5px}
+  /* 锁着的条目压成一行。图鉴大半是"还没见过"，一条两行的话整屏就是一堵灰墙，
+     而玩家从灰墙上读到的不是"还有很多可收集"，是"我什么也没有"。
+     压成一行之后，认出来的那几条才浮得出来。 */
+  .cx.lock .cat{color:#c3bead;letter-spacing:.06em}
 
   .tabs{display:flex;gap:8px;margin-bottom:18px}
   .tabs button{flex:1;padding:9px;border:1.5px solid var(--inkline);background:var(--card);
@@ -609,7 +633,7 @@
 
 <script>
 /* ==========================================================================
-   《一亩稻》 v5.6
+   《一亩稻》 v5.6.1
 
    数字全部来自本轮调研，出处标在注释里。凡调研明确"未查到"的，不编。
 
@@ -863,6 +887,56 @@
          顺带修：
            · 文件里混进了一批 LF 行（v5.2 两次插入时多行字符串直接写进去的），
              现在整份统一成 CRLF。
+   v5.6.1 四件：一条真 bug、三处美工。
+          （体量上是修 bug，所以走 +0.01。里面第二件是美工新东西，
+            按"功能 +0.1"本该算 5.7 —— 记在这儿，觉得该改号就说一声。）
+
+         一、**收入构成条整条渲染成一块绿色按钮。**
+             就是年终那屏"钱是从哪条路上来的"底下那条。
+             代码注释管它叫"整个结算里最该被看见的东西"，
+             而它从上线起一直是一块纯绿的圆角块，四段比例一点都看不见。
+
+             根因是**类名撞车**：擦光动画做完之后给这条加的类叫 `go`，
+             而 `go` 正是主按钮的类
+             （`.go{background:var(--green);padding:15px;...}`）。
+             于是同一条元素命中两条规则，三条实测证据全对得上：
+               · `padding:15px` 上下 → 盒模型被撑到 30px（CSS 写的是 20px）
+               · `background:var(--green)` → 整条刷成深绿，盖掉四个 span
+               · padding 挤掉内容盒 → 四个 span 量出来是 0×0
+             改法：标记类 `go` → `wiped`。
+
+             ⚠ 这个 bug 长得像"美工没做完"，其实是撞名，
+               而且**看 DOM 看不出来** —— DOM 里四个 span 的 width 和
+               background 全对。是让浏览器把 getComputedStyle 和
+               getBoundingClientRect 吐出来才现的原形。
+
+         二、**年终的扫光只有"上上"一档有。**
+             用户原话：「不仅是特辑该给特效，玩家打出来的结局多少都应该
+             有点正向激励的视觉冲击」。验米那一屏早就给了 a、b 两档扫光
+             和按档位计数的星芒；年终这一屏反倒只有 a 有扫光、一颗星芒
+             都没有 —— 是漏了，不是设计。
+             现在扫光提到基类，颜色和快慢按档给（金 → 绿 → 青 → 冷灰），
+             星芒也补上（五 / 三 / 一 / 零，跟验米同一张表、同一组坐标）。
+             最下面那档也擦一道，但最淡最慢：那一档的话是安慰，不是庆祝，
+             光太重就假了。
+
+         三、**图鉴锁着的条目是一堵灰墙。**
+             锁着的原来也是"名字一行 + 还没见过一行"，一条一百多像素。
+             图鉴大半没认出来，于是整屏就是重复的灰 —— 玩家从这堵墙上读到
+             的不是"还有很多可收集"，是"我什么也没有"，正好反着
+             "感觉也没怎么累计"那句反馈。现在压成一行（并排），
+             认出来的那几条才浮得出来。
+
+         四、截图工具自己也修了两处（都不进仓库，记在这儿备查）：
+             · `_看.py` 加 `静=1`：把动画按**终态**落地再截图。
+               headless 里 CSS transition 不跟虚拟时钟走 —— 实测拍年终屏，
+               构成条只擦出一小截、9 张成就牌只出来 1 张、季评大字忽有忽无，
+               全被当成渲染 bug 查了半天。不是。
+             · `_看.py` 加 `查=选择器`：把 getComputedStyle +
+               getBoundingClientRect 写进 title，用 --dump-dom 取。
+               第一件 bug 就是靠它现的原形。
+             · `_拍.sh` 自动补 `静=1`，并把"窗口宽度别低于 520"记进注释。
+
    v5.6  三件：剧情不铺开、攒下来的看不见、卖一半是条死路。
          （用户玩完 v5.5.2 回来三句：「狗血剧情也太少了，玩到中间几乎没有
            剧情；还有，感觉也没怎么累计。另外，游戏开始是不是该加一个
@@ -4184,7 +4258,8 @@ function 起动画() {
   });
   /* 收入构成那条横条：整体从左往右擦出来，不逐段长 —— 逐段会长得参差不齐 */
   app.querySelectorAll("[data-wipe]").forEach(el => {
-    setTimeout(() => el.classList.add("go"), 260);
+    /* 加的是 wiped 不是 go —— 见 .mixbar.wiped 那条注释 */
+    setTimeout(() => el.classList.add("wiped"), 260);
   });
 }
 
@@ -4695,6 +4770,14 @@ function 关键两手(S) {
 function viewYearEnd() {
   const r = result, 评 = 评等级(r.净收益), 两手 = 关键两手(S);
 
+  /* 星芒 —— 颗数跟档位走，跟验米那一屏同一张表、同一组坐标。
+     那一屏是"这一季种出了什么米"，这一屏是"这一季的账"，两件事同一个收成，
+     该长成一个样。 */
+  const 星数 = { a: 5, b: 3, c: 1, d: 0 }[评.气] || 0;
+  const 星位 = [[22,26],[74,20],[48,14],[30,64],[68,58]];
+  const 星 = 星位.slice(0, 星数)
+    .map(([x,y],i) => `<span class="spark" style="left:${x}%;top:${y}%;animation-delay:${.45+i*.14}s"></span>`).join("");
+
   /* 收入构成 —— 一二三产不是三个词，是一条能看出来的比例。
      这条横条是整个结算里最该被看见的东西：钱是从哪条路上来的。 */
   const 源 = [
@@ -4726,7 +4809,7 @@ function viewYearEnd() {
     <div class="step">年终 · 账本</div>
     <h2 class="term" style="font-size:30px">一季的账<small>一 亩 地</small></h2>
 
-    <div class="yearend-wrap ${评.气}">
+    <div class="yearend-wrap ${评.气}">${星}
       <div class="yr-name ${评.气}">${评.名}</div>
       <div class="yr-tag">这 一 季 的 收 成</div>
       <p class="praise">${esc(评.说)}</p>
@@ -4870,9 +4953,10 @@ function viewBook() {
           <span class="lvdot ${级}"></span>${级}牌 · ${得}/${组.length}</h3>`
         + 组.map(a => {
           const has = S.ach[a.id];
-          return `<div class="cx ${has?"":"lock"}"><div class="h">
-            <b>${has ? esc(a.名) : "？ ？ ？"}</b></div>
-            <p>${has ? esc(a.说) : "还没拿到"}</p></div>`;
+          if (!has) return `<div class="cx lock"><div class="h">
+            <b>？ ？ ？</b><span class="cat">还没拿到</span></div></div>`;
+          return `<div class="cx"><div class="h"><b>${esc(a.名)}</b></div>
+            <p>${esc(a.说)}</p></div>`;
         }).join("");
     }).join("");
   } else if (tab === "全部") {
@@ -4880,7 +4964,7 @@ function viewBook() {
       const has = S.codex[k], [cat, txt] = CODEX[k];
       return has
         ? `<div class="cx"><div class="h"><b>${k}</b><span class="cat">${cat}</span></div><p>${txt}</p></div>`
-        : `<div class="cx lock"><div class="h"><b>？ ？ ？</b><span class="cat">${cat}</span></div><p>还没见过</p></div>`;
+        : `<div class="cx lock"><div class="h"><b>？ ？ ？</b><span class="cat">${cat}　还没见过</span></div></div>`;
     }).join("");
   } else {
     body = 分类.filter(c => c !== "肥" || tab === "肥").map(c => {
@@ -4889,7 +4973,9 @@ function viewBook() {
       return `<h3 class="title" style="font-size:15px;color:var(--dim);letter-spacing:.14em;margin:20px 0 4px">${c}</h3>`
         + inC.map(k => {
           const has = S.codex[k];
-          return `<div class="cx ${has?"":"lock"}"><div class="h"><b>${has ? k : "？ ？ ？"}</b></div><p>${has ? CODEX[k][1] : "还没见过"}</p></div>`;
+          return has
+            ? `<div class="cx"><div class="h"><b>${k}</b></div><p>${CODEX[k][1]}</p></div>`
+            : `<div class="cx lock"><div class="h"><b>？ ？ ？</b><span class="cat">还没见过</span></div></div>`;
         }).join("");
     }).join("");
   }
