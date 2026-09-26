@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.0.2</title>
+<title>一亩稻 v6.0.3</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -2757,7 +2757,7 @@ const DECISIONS = [
         关: "药：省下的工，后头从哪儿找回来", 说: "四十五块换六天工，当场就划算。可广谱药不分敌我：蜘蛛没了，后面那几批虫就没人替你看着。这笔账要到八月才还。",
         result: "药兑上水，背着桶走了一圈。三天后，田里的草和稗子一起黄了。",
         note: "四十多块钱。可要是你这块地里已经有抗性稗草，打下去才知道白打。",
-        codex: "抗性稗草" },
+        codex: ["抗性稗草", "除草剂"] },
 
       { text: "灌深水，把稗子闷下去",
         cost: 0, stam: 8, effect: { harvest: 18, quality: 2, ecology: 3 }, flags: ["淹稗"],
@@ -2791,7 +2791,7 @@ const DECISIONS = [
         关: "虫，也关药：打完这一遍，田里还剩谁", 说: "产量当场拿满，账分两处还：一处是天敌跟着清空了，八月的虫来得更凶；一处是这几天花粉母细胞正在减数分裂，你最不该同时在田里把力气耗掉。",
         result: "甲氧虫酰肼加噻呋酰胺，一遍打下去。第二天田埂上落了一层虫。",
         note: "可必须打在卵孵高峰、幼虫蛀进去之前。等看见枯心苗，药已经打不到虫了。",
-        codex: "二化螟" },
+        codex: ["二化螟", "打药"] },
       { text: "赶一群鸭子下田",
         注: S => (S.印象.周 || 0) >= 4 ? "老周说过，鸭子得赶在分蘖初期下田，齐穗前收回。" : "鸭子吃虫吃草，可它不碰稗子。",
         cost: 1480, stam: 16, effect: { ecology: 17, quality: 4, harvest: -25 }, flags: ["稻鸭"],
@@ -2914,7 +2914,11 @@ const DECISIONS = [
         关: "雨：下透了排不排得出", 说: "押的是今年会下几场透雨。雨匀，这两天工就是白赚；一滴不下，你反倒把田里那点水排走了，围沟是往外排水的，旱年越清它越漏。可真下大了又不匀的时候，救你一季的就是这两天。",
         result: "铁锹把围沟里的淤泥一锹一锹起出来，田埂上被黄鳝钻的洞也堵了。干了两天。",
         note: "看不出收成的一摊活。可水从哪儿走、往哪儿退，全看这几锹。",
-        codex: "田埂" },
+        /* ⚠ 灰飞虱那条 CODEX 讲的是"北方要盯灰飞虱、不是褐飞虱白背飞虱"，
+           而游戏里没有一处在讲这件事，是**借挂**在田埂越冬虫源上的
+           （田埂那条自己就写着"二化螟、灰飞虱在埂上的杂草里越冬"）。
+           哪天真写了一条讲北方虫种的线，这条该挪过去。 */
+        codex: ["田埂", "灰飞虱"] },
       { text: "沟面看着是通的，先不管",
         cost: 0, stam: 2, effect: { harvest: -8 }, flags: ["未清沟"],
         /* 不清沟 -8 是田埂没修（黄鳝钻的洞在漏水），跟下不下雨无关，
@@ -3340,7 +3344,9 @@ const 随机池 = [
           说: "你没打。后头抽出来的那几批，又黑了一片。" },
       ],
     },
-    codex: "穗颈瘟" },
+    /* ⚠ 稻瘟病 和 穗颈瘟 是**两条**：前者讲它怎么进去的（附着胞穿破角质层、
+       出叶当天最易感），后者讲怎么认、怎么处置。上面「白」那一段讲的正是前者。 */
+    codex: ["穗颈瘟", "稻瘟病"] },
   { at: "灌浆", p: 0.30, mood: "good", effect: { ecology: 7, harvest: 12 },
     需: s => s.flags["无除草剂"],
     line: "田里的蜘蛛多起来了，结的网挂在稻丛之间，早上全是露水。没打过除草剂的地，才有这个。" },
@@ -9443,13 +9449,21 @@ const unlock = (state, k) => {
      条目，也照样把 state.codex[k] 记上 —— 于是图鉴里一个字看不见（那一屏是按
      Object.keys(CODEX) 渲染的），"认得"的计数却虚高，而 全认得 / 土专 这两个
      按 codex.length >= 12 判的成就，光靠幽灵就能凭空点亮。 */
-  if (k && CODEX[k] && !state.codex[k]) {
-    state.codex[k] = true;
-    (state.本季认得 || (state.本季认得 = {}))[k] = true;
-    存档({ 认得: { ...state.codex } });
-    return k;
+  /* ⚠ v6.0.3：k 也可以是数组。
+     原来只收单个字符串，于是"这一手认得的不止一样东西"就挂不上第二条 ——
+     稻瘟病 / 灰飞虱 / 除草剂 / 打药那四条就是这么黑着的：内容写了，
+     挂靠的那一处却只挂得下一条。现在返回**新认得的那些**（数组）。 */
+  const 名 = Array.isArray(k) ? k : [k];
+  const 得 = [];
+  for (const x of 名) {
+    if (x && CODEX[x] && !state.codex[x]) {
+      state.codex[x] = true;
+      (state.本季认得 || (state.本季认得 = {}))[x] = true;
+      得.push(x);
+    }
   }
-  return null;
+  if (得.length) 存档({ 认得: { ...state.codex } });
+  return 得;
 };
 
 /* 某个生长阶段的最后一步是哪一步 —— 年景要等这一步做完才翻牌。
@@ -13885,7 +13899,26 @@ function render() {
   document.getElementById("bar").style.transform = `scaleX(${p})`;
   showFieldEventResult();
   起动画();
-  if (不滚) 不滚 = false; else window.scrollTo(0, 0);
+  if (不滚) 不滚 = false; else {
+    window.scrollTo(0, 0);
+    /* ⚠ v6.0.3：手机上"正文 + 两三个选项"比一屏高（选项落在文档 940px 上下，
+       iPhone Safari 可视区约 710px）。原来切屏一律滚回顶上，于是够得着选项
+       还得多划一下。现在：先滚到顶（正文从头读），再看这一屏最后一个可点的
+       东西在不在屏幕里 —— 不在就往下滚一段把它顶上来。
+       ⚠ 滚动量封在 35% 视口高。正文长的屏（结果页那种）宁可让玩家自己划，
+         也不要把正文整段推出视口 —— 那会让人以为这屏没内容。
+       ⚠ 包在 try 里：几个测试文件的 DOM 桩没有 querySelectorAll / innerHeight，
+         缺了就静静不动，不能让一个体验优化把测试打挂。 */
+    try {
+      const 排 = app.querySelectorAll(".btn, .go");
+      const 末 = 排[排.length - 1];
+      const 视 = window.innerHeight;
+      if (末 && 视 > 0) {
+        const 底 = 末.getBoundingClientRect().bottom;
+        if (底 > 视 - 10) window.scrollTo(0, Math.min(底 - 视 + 10, 视 * 0.35));
+      }
+    } catch (e) {}
+  }
   triggerFieldEvent();
 }
 
@@ -14132,7 +14165,7 @@ window.onChoose = function (i) {
     lastResult = choose(S, S.termIndex, i);
     flash = {};
     for (const k in lastResult.delta) if (lastResult.delta[k]) flash[k] = lastResult.delta[k];
-    if (lastResult.新图鉴) toast(`记下了 · ${lastResult.新图鉴}`);
+    if (lastResult.新图鉴 && lastResult.新图鉴.length) toast(`记下了 · ${lastResult.新图鉴.join("、")}`);
     screen = "result"; render();
     响(Object.keys(lastResult.delta).some(k => lastResult.delta[k] < 0) ? "坏" : "好");
     扫成就(null);
