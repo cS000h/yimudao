@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.2.7</title>
+<title>一亩稻 v6.2.8</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -951,11 +951,11 @@
   .practice-card{width:100%;display:flex;gap:18px;align-items:center;text-align:left;padding:22px;margin:14px 0;
     border:1.5px solid var(--inkline);border-radius:16px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
   @media(hover:hover){.practice-card:hover{border-color:var(--green);background:#edf1e3}}
-  .practice-icon{font-size:36px}.practice-card b{display:block;font-size:20px;color:var(--green-d)}
+  .practice-icon{font-size:36px}.practice-icon svg{width:36px;height:36px;display:block}.practice-card b{display:block;font-size:20px;color:var(--green-d)}
   .practice-card small{display:block;font-size:14px;line-height:1.7;margin:8px 0;color:var(--dim)}
   .practice-card em{font-size:13px;color:var(--green);font-style:normal}
   .pest-bug.drought{animation:none;background:#d4b187}.pest-bug.weeds{background:#e3ebca}
-  .pest-bug>span{font-size:30px;pointer-events:none}
+  .pest-bug>span{font-size:30px;pointer-events:none}/* 已无 span，留一行防旧缓存 */
   .field-event-result{margin:12px 0 18px;padding:14px 18px;background:#eef2df;border:1px solid #cad5b7;border-radius:12px;font-size:14px;color:var(--green-d)}
   .field-event-result p{margin:6px 0 0;line-height:1.7}
   .field-event-animation{pointer-events:none}
@@ -2272,6 +2272,18 @@
          下一季开局带几点熟练体力。玩家在这一屏做的是"要不要再来一季"的
          决定，得让他看见"再来一季我不是从零开始"。
 
+   v6.2.8 练习场收掉最后三处 emoji。
+
+         盘点下来，田里的虫子和杂草**本来就有真图形**（田的画 里那两段），
+         只剩练习场那套对话框还在用 emoji：卡片图标、靶子、浇完第一遍的反馈。
+         同一个「虫子」，田里是画出来的、练习场是个表情 —— 这种不一致不报错，
+         只是显得糙。
+
+         做法：一份 练图，**卡片和靶子共用同一张**。卡片上画的那张图，
+         就是待会儿要点的那张图，不是两套画法。
+
+         干土有两个状态：点第一下从「旱」换成「湿」—— 同一块土，压深、加一颗水滴。
+         原来是点完冒一个孤零零的水滴表情，看着像天上掉水，不像这块土湿了。
    v6.2.7 铺图标第二批：数值条三个 + 节气条六个。
 
          数值条：产量=粮袋、品质=米粒带星、生态=叶子带露。
@@ -3143,7 +3155,7 @@ const 种档 = st => 种档表[(st && st.种)] || 种档表["二级"];
    ⚠ 判的是"整季少雨"，不是"这个节气没下雨"。见 年景池 里 旱 那一段。 */
 const 旱年 = st => !!(st && st.年景 && st.年景.旱);
 
-/* ── 图标（v6.2.7）──
+/* ── 图标（v6.2.7–v6.2.8）──
    全文件一个壳：24×24、currentColor 描边、圆头。尺寸交给 CSS ——
    壳里**不带 width/height**，带了的话同一张图在别处缩不了，只能再抄一份。
 
@@ -17573,12 +17585,28 @@ function showFieldEventResult() {
   svg.insertAdjacentHTML("beforeend", `<g class="field-event-animation" aria-hidden="true">${event.caught ? marks : ""}<rect x="65" y="12" width="190" height="23" rx="11" fill="#fffcf1" opacity=".94"/><text x="160" y="28" text-anchor="middle" font-size="11" fill="#41603a">${practiceEvents[event.kind].action} · ${event.won ? "处理完成" : "已处理，仍有遗漏"}</text></g>`);
 }
 
+/* 练习场的图形。**填色**风格，跟田里的虫草一致 —— 卡片上那张图，
+   就是待会儿要点的那张图，不换画法。
+   ⚠ 这是**对象**。用 练图.虫 取，别写成 练图.虫() —— 米图那次就是这么栽的。 */
+const 练图 = (() => {
+  const 壳 = 芯 => `<svg viewBox="0 0 48 48" aria-hidden="true">${芯}</svg>`;
+  return {
+    虫: 壳(`<path d="M13 17 5 12M13 25 4 26M15 33 7 39M35 17 43 12M35 25 44 26M33 33 41 39" stroke="#614a2b" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="27" rx="12" ry="15" fill="#8f663a"/><path d="M24 14v28M15 25h18M16 33h16" stroke="#503b24" stroke-width="2"/><circle cx="24" cy="12" r="8" fill="#526438"/><circle cx="21" cy="10" r="2" fill="#fff"/><circle cx="27" cy="10" r="2" fill="#fff"/>`),
+    /* 干土：浅土色 + 裂纹。底色 .pest-bug.drought 是 #d4b187，所以土块要浅、
+       边要深，不然跟按钮底糊在一起。 */
+    旱: 壳(`<path d="M6 33c0-8 8-14 18-14s18 6 18 14v4a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#e6d3ae" stroke="#7a5c37" stroke-width="2.5"/><path d="M15 40l5-7 6 4 7-6M24 20v9M33 25l-5 3" fill="none" stroke="#8d6b42" stroke-width="2.2" stroke-linecap="round"/>`),
+    /* 湿土：同一块土，压深 + 一颗水滴。第一次点击之后换这张 ——
+       比原来那个孤零零的水滴表情明白：是**这块土**湿了，不是天上掉水。 */
+    湿: 壳(`<path d="M6 33c0-8 8-14 18-14s18 6 18 14v4a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#7d5b38" stroke="#4d3720" stroke-width="2.5"/><path d="M15 40l5-7 6 4 7-6" fill="none" stroke="#5d452a" stroke-width="2.2" stroke-linecap="round"/><path d="M24 4c3.2 4.6 5 7.8 5 10.2a5 5 0 0 1-10 0C19 11.8 20.8 8.6 24 4z" fill="#5aa6c8" stroke="#3d7f9e" stroke-width="2"/>`),
+    草: 壳(`<path d="M24 41C24 30 18 24 11 21c2 8 5 16 13 20z" fill="#5d8a34" stroke="#3f6425" stroke-width="2"/><path d="M24 41C24 30 30 24 37 21c-2 8-5 16-13 20z" fill="#6d9c3f" stroke="#3f6425" stroke-width="2"/><path d="M24 41V15" stroke="#4f7a2e" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="12" rx="3.2" ry="5.6" fill="#8aab52" stroke="#4f7a2e" stroke-width="1.8"/>`),
+  };
+})();
 /* 首页练习独立于正式季节进度，不写入收成、成就或存档。 */
 const practiceEvents = {
-  pest: { name: "虫害来袭 · 移动靶", action: "除虫", target: "虫子", verb: "清除", title: "点掉叶片上的虫子", win: "虫子清光了！", hint: "追着移动的虫子点，每只点三下才能清除，数字表示剩余次数。", icon: "🐛", hits: 3, seconds: 15, insect: true, moving: true },
-  pestFixed: { name: "虫害来袭 · 固定靶", action: "除虫", target: "虫子", verb: "清除", title: "清除停在叶片上的虫子", win: "虫子清光了！", hint: "虫子停在原地，每只点三下才能清除，数字表示剩余次数。", icon: "🐛", hits: 3, seconds: 15, insect: true, moving: false },
-  drought: { name: "旱情告急", action: "浇水", target: "干土", verb: "浇透", title: "给干裂的田地浇水", win: "田地喝饱水了！", hint: "每块干土点击两次：第一次润湿，第二次浇透。", icon: "💧", hits: 2, seconds: 8 },
-  weeds: { name: "杂草冒头", action: "拔草", target: "杂草", verb: "拔除", title: "拔掉稻苗间的杂草", win: "杂草拔干净了！", hint: "点击带标记的杂草，把养分留给稻苗。", icon: "🌿", hits: 1, seconds: 8 }
+  pest: { name: "虫害来袭 · 移动靶", action: "除虫", target: "虫子", verb: "清除", title: "点掉叶片上的虫子", win: "虫子清光了！", hint: "追着移动的虫子点，每只点三下才能清除，数字表示剩余次数。", icon: 练图.虫, hits: 3, seconds: 15, insect: true, moving: true },
+  pestFixed: { name: "虫害来袭 · 固定靶", action: "除虫", target: "虫子", verb: "清除", title: "清除停在叶片上的虫子", win: "虫子清光了！", hint: "虫子停在原地，每只点三下才能清除，数字表示剩余次数。", icon: 练图.虫, hits: 3, seconds: 15, insect: true, moving: false },
+  drought: { name: "旱情告急", action: "浇水", target: "干土", verb: "浇透", title: "给干裂的田地浇水", win: "田地喝饱水了！", hint: "每块干土点击两次：第一次润湿，第二次浇透。", icon: 练图.旱, hits: 2, seconds: 8 },
+  weeds: { name: "杂草冒头", action: "拔草", target: "杂草", verb: "拔除", title: "拔掉稻苗间的杂草", win: "杂草拔干净了！", hint: "点击带标记的杂草，把养分留给稻苗。", icon: 练图.草, hits: 1, seconds: 8 }
 };
 function openPractice() { screen = "practice"; render(); }
 function leavePractice() { screen = "cover"; render(); }
@@ -17639,7 +17667,7 @@ function beginPests() {
     <div class="pest-meter"><span id="pest-bar"></span></div>
     <div class="pest-field">${田的画(S)}${positions.slice(0,e.count).map(([x,y],i) =>
       `<button class="pest-bug ${e.kind}" data-pest-id="${i}" data-left="${config.hits}" style="left:${x}%;top:${y}%;animation-delay:-${i*.2}s" aria-label="${config.action}：第 ${i+1} 处${config.target}" onclick="catchPest(${i},this)">
-        ${config.insect ? `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 17 5 12M13 25 4 26M15 33 7 39M35 17 43 12M35 25 44 26M33 33 41 39" stroke="#614a2b" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="27" rx="12" ry="15" fill="#8f663a"/><path d="M24 14v28M15 25h18M16 33h16" stroke="#503b24" stroke-width="2"/><circle cx="24" cy="12" r="8" fill="#526438"/><circle cx="21" cy="10" r="2" fill="#fff"/><circle cx="27" cy="10" r="2" fill="#fff"/></svg>` : `<span aria-hidden="true">${config === practiceEvents.drought ? "🏜️" : "🌿"}</span>`}
+        ${config.icon}
       </button>`).join("")}</div>
     <p class="pest-copy">${config.hint} 离开页面自动暂停</p>
     <button class="pest-practice" onclick="finishPests(true)">${e.practice ? "结束练习" : "结束处理，按剩余数量结算"}</button>`;
@@ -17655,7 +17683,7 @@ function catchPest(id, button) {
     button.setAttribute("data-left", left);
     button.setAttribute("aria-label", `${e.config.action}：第 ${id+1} 处${e.config.target}，还需 ${left} 次`);
     if (e.kind === "drought") {
-      button.innerHTML = '<span aria-hidden="true">💧</span>';
+      button.innerHTML = 练图.湿;
       button.style.background = "#cce3dd";
     } else button.style.background = left === 2 ? "#ffe5b0" : "#ffd0a6";
     响("tap"); return;
