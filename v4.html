@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.2.8</title>
+<title>一亩稻 v6.3.0</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -889,6 +889,14 @@
 
   .cx{border-bottom:1px solid var(--line);padding:13px 0}
   .cx .h{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  /* 每行左边那枚印章。双层内描边 = 印章的边栏，跟 .ach .d 一脉。
+     ⚠ <u> 天生带下划线，得去掉。 */
+  .cx .h .ci{flex:none;align-self:center;width:26px;height:26px;border-radius:6px;
+    display:grid;place-items:center;text-decoration:none;color:#7a6a48;background:#f4edda;
+    box-shadow:inset 0 0 0 1px #ddd2b4,inset 0 0 0 3px #f8f3e4}
+  .cx .h .ci svg{width:16px;height:16px}
+  .cx .h .ci.lock{color:#d2cbb6;background:#f8f5ec;box-shadow:inset 0 0 0 1px #e9e3d1,inset 0 0 0 3px #fcfaf4}
+  .cx .h b{flex:1;min-width:0}
   .cx b{font-weight:600;font-size:16.5px}
   .cx .cat{font-size:11.5px;letter-spacing:.14em;color:var(--dim);flex:none}
   .cx p{margin:5px 0 0;font-size:14.5px;color:#525a48;line-height:1.75}
@@ -2272,6 +2280,25 @@
          下一季开局带几点熟练体力。玩家在这一屏做的是"要不要再来一季"的
          决定，得让他看见"再来一季我不是从零开始"。
 
+   v6.3.0 图鉴和成就列表上图标。用户原话：「成就图鉴没有显示任何图标，比较单调」。
+
+         **不按名字画。** 89 条成就 + 40 条图鉴各画一张，在 26px 的印章里
+         就是一片噪声 —— 跟节气条那次一个道理（17 个节气名 → 6 个形状）。
+         这里按**类**：14 类 14 张。每行左边一枚小米色印章（双层内描边的
+         边栏，跟成就弹牌那枚 .ach .d 一脉），里面一张线图。
+
+         ⚠ 图鉴那边好办，分类字段本来就在 CODEX 的数据里（田里的/手上的/
+         肥/水/虫/收/药/灾），照抄就行。**成就没有这个字段**，89 条得一条条认。
+
+         认的过程记一笔：我先写了个按关键词自动认的（_鉴图.mjs），
+         拿 id+名字+**说明整句**去匹配 —— 结果一塌糊涂，「老周点了头」
+         被归进了"钱"，因为它的说明里有个"钱"字。整句匹配等于没匹配。
+         最后 89 条是手工认的，表单独放在 鉴类 里（没塞进 ACH 那 89 行，
+         塞进去就看不清楚了），认错的改一行就行。
+
+         没拿到的那条给一枚**空壳印章**，不给类的图 —— 不然等于告诉你
+         那条是讲什么的。图鉴那边例外：它本来就写着"肥　还没见过"，
+         类都摆在那儿了，就没有藏的必要。
    v6.2.8 练习场收掉最后三处 emoji。
 
          盘点下来，田里的虫子和杂草**本来就有真图形**（田的画 里那两段），
@@ -3155,7 +3182,7 @@ const 种档 = st => 种档表[(st && st.种)] || 种档表["二级"];
    ⚠ 判的是"整季少雨"，不是"这个节气没下雨"。见 年景池 里 旱 那一段。 */
 const 旱年 = st => !!(st && st.年景 && st.年景.旱);
 
-/* ── 图标（v6.2.7–v6.2.8）──
+/* ── 图标（v6.2.7–v6.3.0）──
    全文件一个壳：24×24、currentColor 描边、圆头。尺寸交给 CSS ——
    壳里**不带 width/height**，带了的话同一张图在别处缩不了，只能再抄一份。
 
@@ -9414,6 +9441,124 @@ const CODEX = {
 /* ══════════════════════════ 7. 成就 ══════════════════════════ */
 /* 三档：铜（走完一季就会撞上几个）／银（得走对几步）／金（得凑齐好几件事）。
    等级本身也是反馈 —— 拿到金牌那一下，跟拿到铜牌不是一回事。 */
+/* 图鉴/成就 每行左边那枚小印章里的图形（v6.3.0）。
+   14 类 14 张 —— 不按名字一张张画，那样在一行 26px 里就是噪声。
+   ⚠ 描边、吃 currentColor，颜色由 .cx .h .ci 定，别在 path 里写死颜色。 */
+const 鉴图 = (() => {
+  const 壳 = 芯 => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${芯}</svg>`;
+  return {
+    水: 壳(`<path d="M12 3.6c3.5 4.3 5.4 7.1 5.4 9.3a5.4 5.4 0 0 1-10.8 0c0-2.2 1.9-5 5.4-9.3z"/><path d="M9.5 14.4a2.7 2.7 0 0 0 2.5 2.5"/>`),
+    种: 壳(`<ellipse cx="12" cy="12.6" rx="4.2" ry="7.2" transform="rotate(-16 12 12.6)"/><path d="M10.7 7.6c1 1.2 1.6 2.5 1.6 3.9"/>`),
+    虫: 壳(`<ellipse cx="12" cy="14" rx="4.4" ry="6"/><path d="M7.6 10.2 4.8 7.6M16.4 10.2l2.8-2.6M7.6 14.6h-3.2M16.4 14.6h3.2M8.4 18.4l-2.4 2.2M15.6 18.4l2.4 2.2"/><path d="M9.6 6.8a2.6 2.6 0 0 1 4.8 0"/>`),
+    草: 壳(`<path d="M12 20.6V8.4"/><path d="M12 20.6c0-5.4-2.9-8.8-7.8-10.2 1 5.5 3.5 8.8 7.8 10.2z"/><path d="M12 20.6c0-5.4 2.9-8.8 7.8-10.2-1 5.5-3.5 8.8-7.8 10.2z"/>`),
+    肥: 壳(`<path d="M12 3.4v5.4M8.4 6.4l-1 2.6M15.6 6.4l1 2.6"/><circle cx="7.4" cy="15" r="2.1"/><circle cx="12" cy="17.8" r="2.1"/><circle cx="16.6" cy="15" r="2.1"/><path d="M4 21h16"/>`),
+    收: 壳(`<path d="M9.1 9h5.8l1.7 9.9a2 2 0 0 1-2 2.3H9.4a2 2 0 0 1-2-2.3z"/><path d="M10.3 9V6.7a1.7 1.7 0 0 1 3.4 0V9"/><path d="M8.3 7.9h7.4"/>`),
+    钱: 壳(`<circle cx="12" cy="12" r="8.2"/><rect x="9.1" y="9.1" width="5.8" height="5.8" rx="1"/>`),
+    人: 壳(`<circle cx="12" cy="8" r="3.6"/><path d="M5.2 20.4c0-3.7 3-6.5 6.8-6.5s6.8 2.8 6.8 6.5"/>`),
+    书: 壳(`<path d="M12 6.6C10.4 5.2 8.4 4.4 5.6 4.4H4v13.4h1.6c2.8 0 4.8.8 6.4 2.2"/><path d="M12 6.6c1.6-1.4 3.6-2.2 6.4-2.2H20v13.4h-1.6c-2.8 0-4.8.8-6.4 2.2z"/><path d="M12 6.6V20"/>`),
+    名: 壳(`<rect x="4" y="6" width="16" height="9.6" rx="1.4"/><path d="M12 6V3.4M9 15.6l-1.6 4.4M15 15.6l1.6 4.4"/><path d="M9.4 10.8h5.2"/>`),
+    地: 壳(`<rect x="3.4" y="5.8" width="17.2" height="12.4" rx="1.6"/><path d="M3.4 11h17.2M3.4 15.4h17.2M9 5.8v12.4M15 5.8v12.4"/>`),
+    工: 壳(`<path d="M5.2 20.6 16.4 5.2"/><path d="M13.6 3.4h6l-1.8 5.4h-4.2z"/>`),
+    灾: 壳(`<path d="M7 13.2a3.4 3.4 0 0 1 .4-6.8 4.7 4.7 0 0 1 8.8-.7 3.2 3.2 0 0 1 1.4 6.2"/><path d="M8.6 16.4 7 20.6M12.6 16.4 11 20.6M16.6 16.4 15 20.6"/>`),
+    药: 壳(`<path d="M9.4 3.6h5.2v3.2l2.2 2.6v9.4a1.6 1.6 0 0 1-1.6 1.6H8.8a1.6 1.6 0 0 1-1.6-1.6V9.4l2.2-2.6z"/><path d="M7.2 12.6h9.6"/>`),
+  };
+})();
+
+/* ⚠ 鉴图是**对象**，用 鉴图.水 取，别加括号。 */
+const 鉴类 = {
+  开镰: "收", 
+  老种: "种", 
+  一身泥: "工", 
+  深水: "水", 
+  打药: "虫", 
+  等外: "收", 
+  赔本: "钱", 
+  凭感觉: "书", 
+  贡米: "收", 
+  薅草: "草", 
+  少氮: "肥", 
+  清沟: "水", 
+  不欠: "地", 
+  蛙: "水", 
+  扛住: "灾", 
+  抢: "水", 
+  老周: "人", 
+  满贡: "收", 
+  三头: "钱", 
+  逆天: "灾", 
+  全须: "灾", 
+  不认命: "灾", 
+  空手: "收", 
+  全勤: "书", 
+  懒惰: "工", 
+  你种不种: "种", 
+  败家: "钱", 
+  孤家: "人", 
+  白忙: "收", 
+  实习生: "人", 
+  拍照: "名", 
+  拖字诀: "钱", 
+  一粒不卖: "收", 
+  八百斤: "收", 
+  硬气: "钱", 
+  没探过: "书", 
+  不过夜: "钱", 
+  替人出气: "人", 
+  乱丢: "地", 
+  棚收好: "草", 
+  棚乱丢: "草", 
+  棚没拆: "草", 
+  四百块: "草", 
+  环保: "地", 
+  老周朋友: "人", 
+  你倒是种: "种", 
+  不得罪: "人", 
+  书呆子: "书", 
+  收粮人: "收", 
+  同学情: "人", 
+  抄本子: "书", 
+  劝签: "人", 
+  不吭声: "人", 
+  都往外跑: "人", 
+  认死理: "钱", 
+  全认得: "书", 
+  一千零几十: "收", 
+  看完: "书", 
+  小气: "钱", 
+  大方: "钱", 
+  到顶: "收", 
+  名声: "名", 
+  起早贪黑: "工", 
+  三产大户: "地", 
+  两不欠: "人", 
+  坏人做到底: "人", 
+  头一个: "名", 
+  收鸭: "虫", 
+  留鸭: "虫", 
+  托鸭: "钱", 
+  一千五: "钱", 
+  不动药: "虫", 
+  上炕: "人", 
+  署名: "名", 
+  带人看田: "人", 
+  立牌: "名", 
+  改种法: "种", 
+  一顿饭: "人", 
+  叫住了: "人", 
+  立规矩: "钱", 
+  上门说: "人", 
+  接岗: "人", 
+  接本子: "书", 
+  实践点: "名", 
+  投稿: "书", 
+  开过会: "人", 
+  过稿: "书", 
+  传了种: "种", 
+  入志: "书",
+};
+
+/* 图鉴的分类字段 → 图标。分类本来就在 CODEX 的数据里，不用另认。 */
+const 图鉴类 = { 田里的: "地", 手上的: "工", 肥: "肥", 水: "水", 虫: "虫", 收: "收", 药: "药", 灾: "灾" };
 const ACH = [
   /* ── 铜 ── */
   { id:"开镰",  级:"铜", 名:"种完一季",    说:"八个节气，一步没落",             when:S=>S.termIndex>=8 },
@@ -16945,8 +17090,9 @@ function viewBook() {
         + 组.map(a => {
           const has = S.ach[a.id];
           if (!has) return `<div class="cx lock"><div class="h">
-            <b>？ ？ ？</b><span class="cat">还没拿到</span></div></div>`;
-          return `<div class="cx"><div class="h"><b>${esc(a.名)}</b></div>
+            <u class="ci lock"></u><b>？ ？ ？</b><span class="cat">还没拿到</span></div></div>`;
+          return `<div class="cx"><div class="h">
+            <u class="ci">${鉴图[鉴类[a.id]] || ""}</u><b>${esc(a.名)}</b></div>
             <p>${esc(a.说)}</p></div>`;
         }).join("");
     }).join("");
@@ -16954,8 +17100,12 @@ function viewBook() {
     body = keys.map(k => {
       const has = S.codex[k], [cat, txt] = CODEX[k];
       return has
-        ? `<div class="cx"><div class="h"><b>${k}</b><span class="cat">${cat}</span></div><p>${txt}</p></div>`
-        : `<div class="cx lock"><div class="h"><b>？ ？ ？</b><span class="cat">${cat}　还没见过</span></div></div>`;
+        ? `<div class="cx"><div class="h">
+            <u class="ci">${鉴图[图鉴类[cat]] || ""}</u><b>${k}</b><span class="cat">${cat}</span></div>
+            <p>${txt}</p></div>`
+        : `<div class="cx lock"><div class="h">
+            <u class="ci${图鉴类[cat] ? "" : " lock"}">${图鉴类[cat] ? 鉴图[图鉴类[cat]] : ""}</u>
+            <b>？ ？ ？</b><span class="cat">${cat}　还没见过</span></div></div>`;
     }).join("");
   } else {
     /* ⚠⚠ v6.0.1：这一支原来**根本没看 tab** —— 判据是
@@ -16974,8 +17124,12 @@ function viewBook() {
         + inC.map(k => {
           const has = S.codex[k];
           return has
-            ? `<div class="cx"><div class="h"><b>${k}</b></div><p>${CODEX[k][1]}</p></div>`
-            : `<div class="cx lock"><div class="h"><b>？ ？ ？</b><span class="cat">还没见过</span></div></div>`;
+            ? `<div class="cx"><div class="h">
+                <u class="ci">${鉴图[图鉴类[c]] || ""}</u><b>${k}</b></div>
+                <p>${CODEX[k][1]}</p></div>`
+            : `<div class="cx lock"><div class="h">
+                <u class="ci${图鉴类[c] ? "" : " lock"}">${图鉴类[c] ? 鉴图[图鉴类[c]] : ""}</u>
+                <b>？ ？ ？</b><span class="cat">还没见过</span></div></div>`;
         }).join("");
     }).join("");
   }
