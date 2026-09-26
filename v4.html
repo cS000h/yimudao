@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.2.5</title>
+<title>一亩稻 v6.2.6</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -642,6 +642,13 @@
   .grade-wrap.a::after,.grade-wrap.b::after{content:"";position:absolute;inset:0;
     background:linear-gradient(105deg,transparent 34%,rgba(255,251,235,.8) 50%,transparent 66%);
     animation:sweep 1.05s .4s ease-out both}
+  /* 等级图标 —— 挂在等级名上头，颜色跟着档位走 */
+  .grade-ico{display:grid;place-items:center;margin:0 0 2px;color:#8a7440;
+    animation:rise .55s .1s ease-out both}
+  .grade-ico.a{color:var(--gold);filter:drop-shadow(0 2px 10px rgba(232,200,106,.75))}
+  .grade-ico.b{color:#3f6b38}
+  .grade-ico.c{color:#5c7a52}
+  .grade-ico.d{color:#a08a5e}
   .grade-name{font-size:46px;font-weight:600;letter-spacing:.16em;text-indent:.16em;
     color:var(--green-d);animation:slam .6s cubic-bezier(.12,.9,.24,1) both}
   .grade-name.a{color:var(--gold);text-shadow:0 2px 20px rgba(232,200,106,.7)}
@@ -678,18 +685,27 @@
     box-shadow:0 16px 40px -14px rgba(0,0,0,.5),inset 0 0 0 1px var(--line);
     opacity:0;transition:transform .42s cubic-bezier(.16,.9,.3,1.05),opacity .3s}
   .pop.on{transform:translate(-50%,0);opacity:1;pointer-events:auto;cursor:pointer}
-  .pop .lv{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;
-    font-size:15px;font-weight:600;color:#fff;background:#b0a68e}
+  /* ⚠ v6.2.6：圆点改成**米色印章** —— 方、双框、微微歪一点，
+     盖上去的样子，不是贴上去的。三档只换框色不换形状。 */
+  .pop .lv{width:46px;height:46px;flex:none;border-radius:9px;display:grid;place-items:center;
+    position:relative;transform:rotate(-4deg);
+    font-size:19px;font-weight:700;line-height:1;color:#6b5533;
+    background:linear-gradient(165deg,#fdf7e8,#efe2c6);
+    box-shadow:inset 0 0 0 2.5px #c4ad82, inset 0 0 0 4.5px #fdf7e8,
+               inset 0 0 0 5.5px #d9cbaa, 0 3px 8px -3px rgba(90,70,35,.4)}
   .pop b{display:block;font-size:16.5px;font-weight:600;margin-bottom:2px}
   .pop p{margin:0;font-size:13px;color:var(--dim);line-height:1.5}
   .pop.铜{box-shadow:0 16px 40px -14px rgba(0,0,0,.45),inset 0 0 0 1px #d8cbb0}
-  .pop.铜 .lv{background:linear-gradient(160deg,#c9b48a,#a08a5e)}
+  .pop.铜 .lv{color:#6b5533}
+  .pop.银 .lv{color:#4f6357;background:linear-gradient(165deg,#f8fbf6,#e4ece2);
+    box-shadow:inset 0 0 0 2.5px #92ab9c, inset 0 0 0 4.5px #f8fbf6,
+               inset 0 0 0 5.5px #b9c9be, 0 3px 8px -3px rgba(60,80,68,.4)}
+  .pop.金 .lv{color:#7a5a12;background:linear-gradient(165deg,#fffbea,#f5e6b8);
+    box-shadow:inset 0 0 0 2.5px #c9a03a, inset 0 0 0 4.5px #fffbea,
+               inset 0 0 0 5.5px #e8c86a, 0 0 16px 1px rgba(232,200,106,.55)}
   .pop.银{box-shadow:0 16px 40px -14px rgba(0,0,0,.5),inset 0 0 0 1px #c3d0c0}
-  .pop.银 .lv{background:linear-gradient(160deg,#b9c9be,#8ba394)}
   .pop.金{background:linear-gradient(180deg,#fffdf4,#fbf3d9);
     box-shadow:0 18px 46px -14px rgba(168,125,36,.7),inset 0 0 0 1px #e3ce92}
-  .pop.金 .lv{background:linear-gradient(160deg,#e8c86a,#c39a2e);
-    box-shadow:0 0 0 3px rgba(232,200,106,.32),0 0 18px 2px rgba(232,200,106,.6)}
   .pop.金 b{color:var(--gold)}
 
   .ledger{margin:4px 0 0}
@@ -814,9 +830,9 @@
 
   .lvdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;
     vertical-align:1px;background:#b0a68e}
-  .lvdot.金{background:linear-gradient(160deg,#e8c86a,#c39a2e)}
-  .lvdot.银{background:linear-gradient(160deg,#b9c9be,#8ba394)}
-  .lvdot.铜{background:linear-gradient(160deg,#c9b48a,#a08a5e)}
+  .lvdot.金{background:#c9a03a;box-shadow:0 0 0 2px rgba(201,160,58,.22)}
+  .lvdot.银{background:#92ab9c;box-shadow:0 0 0 2px rgba(146,171,156,.22)}
+  .lvdot.铜{background:#b09059}
 
   /* 锁住的选项 —— 不是"不能选"，是"你手上没这个条件"。
      灰下去，并且把原因写清楚，别让人以为是坏了。 */
@@ -832,17 +848,25 @@
   .ach{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;margin-bottom:8px;
     border-radius:11px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);
     opacity:0;transform:translateY(8px);animation:rise .45s ease-out forwards}
-  .ach .d{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;
-    font-size:13px;font-weight:600;color:#fff;background:#b0a68e}
+  /* 列表里这枚跟弹窗那枚是**同一个东西**，只是小一号 —— 别改歪了，
+     两处形状不一样的话，同一个成就弹出来和躺在列表里看着像两件事。 */
+  .ach .d{width:34px;height:34px;flex:none;border-radius:7px;display:grid;place-items:center;
+    transform:rotate(-4deg);font-size:14px;font-weight:700;line-height:1;color:#6b5533;
+    background:linear-gradient(165deg,#fdf7e8,#efe2c6);
+    box-shadow:inset 0 0 0 2px #c4ad82, inset 0 0 0 3.5px #fdf7e8,
+               inset 0 0 0 4.5px #d9cbaa}
   .ach b{font-weight:600;display:block;margin-bottom:2px}
   .ach span{display:block;font-size:13.5px;color:var(--dim);line-height:1.6}
-  .ach.铜 .d{background:linear-gradient(160deg,#c9b48a,#a08a5e)}
+  .ach.铜 .d{color:#6b5533}
   .ach.银{box-shadow:inset 0 0 0 1px #c3d0c0}
-  .ach.银 .d{background:linear-gradient(160deg,#b9c9be,#8ba394)}
+  .ach.银 .d{color:#4f6357;background:linear-gradient(165deg,#f8fbf6,#e4ece2);
+    box-shadow:inset 0 0 0 2px #92ab9c, inset 0 0 0 3.5px #f8fbf6,
+               inset 0 0 0 4.5px #b9c9be}
   .ach.金{background:linear-gradient(180deg,#fffdf4,#fbf3d9);
     box-shadow:inset 0 0 0 1px #e3ce92,0 8px 22px -14px rgba(168,125,36,.7)}
-  .ach.金 .d{background:linear-gradient(160deg,#e8c86a,#c39a2e);
-    box-shadow:0 0 0 3px rgba(232,200,106,.3)}
+  .ach.金 .d{color:#7a5a12;background:linear-gradient(165deg,#fffbea,#f5e6b8);
+    box-shadow:inset 0 0 0 2px #c9a03a, inset 0 0 0 3.5px #fffbea,
+               inset 0 0 0 4.5px #e8c86a, 0 0 12px 0 rgba(232,200,106,.5)}
   .ach.金 b{color:var(--gold)}
 
   .cx{border-bottom:1px solid var(--line);padding:13px 0}
@@ -2230,6 +2254,17 @@
          下一季开局带几点熟练体力。玩家在这一屏做的是"要不要再来一季"的
          决定，得让他看见"再来一季我不是从零开始"。
 
+   v6.2.6 上图标。文字瘦身先搁一批，用户问「我怎么一个图标都还没见到」。
+
+         一、成就那枚圆点 → **米色印章**。原来是 44px 的圆，里头写个"铜/银/金"。
+            改成方、双框、微微歪一点 —— 盖上去的样子，不是贴上去的。
+            三档只换框色不换形状：形状一变，三档就不像一套东西了。
+
+         二、等级表里那个 `ico: "a"` —— **它一直是死的**，全文件没人读过，
+            一个字母 a/b/c/d 摆在那儿。换成真图标：特级整穗、一级米双、
+            二级单粒、等外瘪米。不读字也看得出高下。
+            挂在验米那一屏的等级名上头，颜色跟着档位走。
+
    v6.2.5 文案全面瘦身，第一批：感情线。单屏最长 251 → 79 字。
 
          用户原话：「文案改的有进步，就是所有地方都可以再修精简一点」
@@ -3077,17 +3112,39 @@ const 种档 = st => 种档表[(st && st.种)] || 种档表["二级"];
    ⚠ 判的是"整季少雨"，不是"这个节气没下雨"。见 年景池 里 旱 那一段。 */
 const 旱年 = st => !!(st && st.年景 && st.年景.旱);
 
+/* ── 米的四个成色，四个图标（v6.2.6）──
+   特级是整穗，往下米粒越来越少，等外是瘪的 —— 不读字也看得出高下。
+   ⚠ 用 currentColor 描边，颜色跟着它所在那一档走（见 .grade-ico.a/b/c/d）。
+   ⚠ 这个字段原来是死的：等级表里写的是 ico:"a" 这么个字母，全文件没人读过。 */
+/* ⚠ 是**函数**，不是对象。我第一版写成 (() => {…})() 返回了个 {a,b,c,d}，
+   然后拿它当函数调 —— 一跑就 TypeError。 */
+function 米图(气) {
+  const 壳 = 芯 => `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
+    stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">${芯}</svg>`;
+  const 谷 = (x, y, r) => `<ellipse cx="${x}" cy="${y}" rx="2.5" ry="4.8" transform="rotate(${r} ${x} ${y})"/>`;
+  return ({
+    a: 壳(`<path d="M12 22V7.5"/>`
+        + 谷(9.3, 17, -24) + 谷(14.7, 17, 24)
+        + 谷(9.5, 12, -24) + 谷(14.5, 12, 24)
+        + 谷(10.2, 7, -24) + 谷(13.8, 7, 24)),
+    b: 壳(谷(9, 13.4, -22) + 谷(15, 10.6, 22)),
+    c: 壳(谷(12, 12, -20)),
+    d: 壳(`<path d="M12 4.2c2.3 2.2 3.3 4.8 3.3 7.8s-1 5.6-3.3 7.8c-2.3-2.2-3.3-4.8-3.3-7.8s1-5.6 3.3-7.8z"/>`
+        + `<path d="M12 7.6v8.8"/>`),
+  }[气] || "");
+}
+
 const 等级表 = [
-  { 名: "等外", min: 0,  价: 3,  ico: "d", 礼盒: 0,   气: "d",
+  { 名: "等外", min: 0,  价: 3,  ico: 米图("d"), 礼盒: 0,   气: "d",
     口感: "跟普通粳米一个价，进不了等级",
     夸: "八个节气，一亩地，米是实打实收进仓了。第一季能干完这一趟的人不多。今年这米进不了等级，但你手里有了一份完整的账：什么时候下的种、什么时候放的水、最后收上来多少斤，一步不落。" },
-  { 名: "二级", min: 45, 价: 8,  ico: "c", 礼盒: 460, 气: "c",
+  { 名: "二级", min: 45, 价: 8,  ico: 米图("c"), 礼盒: 460, 气: "c",
     口感: "家常吃着没问题，端不上席",
     夸: "种成了。这一亩地头一年就把米交出来了，不是荒着，也不是白贴钱，这在海淀已经算件稀罕事。" },
-  { 名: "一级", min: 62, 价: 15, ico: "b", 礼盒: 560, 气: "b",
+  { 名: "一级", min: 62, 价: 15, ico: 米图("b"), 礼盒: 560, 气: "b",
     口感: "米粒匀、有光。这就是地头现碾鲜米的实价",
     夸: "一级。地头现碾的鲜米卖的就是这个等级：米粒匀、有光，抓一把从指缝里漏下去，手上是滑的。" },
-  { 名: "特级", min: 78, 价: 25, ico: "a", 礼盒: 620, 气: "a",
+  { 名: "特级", min: 78, 价: 25, ico: 米图("a"), 礼盒: 620, 气: "a",
     口感: "透亮、没白肚。装礼盒走，一斤能卖到五十往上",
     夸: "够得上贡米。玉泉山的水浇出来的稻子，三百年前送进宫的，就是这个成色。" },
 ];
@@ -13618,6 +13675,7 @@ function viewMiban() {
   return `<div style="margin:0 0 16px">${节气条()}</div>
     <div class="step">秋分之后 · 验米</div>
     <div class="grade-wrap ${气}">${星}
+      <div class="grade-ico ${气}">${g.ico || ""}</div>
       <div class="grade-name ${气}">${g.名}</div>
       <div class="grade-tag">${牌}</div>
       <p class="praise">${esc(g.夸)}</p></div>
