@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.3.0</title>
+<title>一亩稻 v6.3.1</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -890,11 +890,13 @@
   .cx{border-bottom:1px solid var(--line);padding:13px 0}
   .cx .h{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
   /* 每行左边那枚印章。双层内描边 = 印章的边栏，跟 .ach .d 一脉。
-     ⚠ <u> 天生带下划线，得去掉。 */
-  .cx .h .ci{flex:none;align-self:center;width:26px;height:26px;border-radius:6px;
+     ⚠ <u> 天生带下划线，得去掉。
+     ⚠ 印章尺寸和里面的 svg 尺寸是**一对**，别各改各的：内圈画在离边 3px 处，
+       所以内圈直径 = 印章 - 6。图标超过这个数就把内圈压掉了（探针里守着）。 */
+  .cx .h .ci{flex:none;align-self:center;width:32px;height:32px;border-radius:7px;
     display:grid;place-items:center;text-decoration:none;color:#7a6a48;background:#f4edda;
     box-shadow:inset 0 0 0 1px #ddd2b4,inset 0 0 0 3px #f8f3e4}
-  .cx .h .ci svg{width:16px;height:16px}
+  .cx .h .ci svg{width:22px;height:22px}
   .cx .h .ci.lock{color:#d2cbb6;background:#f8f5ec;box-shadow:inset 0 0 0 1px #e9e3d1,inset 0 0 0 3px #fcfaf4}
   .cx .h b{flex:1;min-width:0}
   .cx b{font-weight:600;font-size:16.5px}
@@ -2280,6 +2282,9 @@
          下一季开局带几点熟练体力。玩家在这一屏做的是"要不要再来一季"的
          决定，得让他看见"再来一季我不是从零开始"。
 
+   v6.3.1 图鉴那枚印章放大：26 → 32，里面 16 → 22（用户原话「图标再大点」）。
+         印章和里图是**一对**，比例锁在 32:22；探针_图验4里加了守卫 ——
+         里图一旦超过 印章-6（内圈直径）就把边栏压掉了。
    v6.3.0 图鉴和成就列表上图标。用户原话：「成就图鉴没有显示任何图标，比较单调」。
 
          **不按名字画。** 89 条成就 + 40 条图鉴各画一张，在 26px 的印章里
@@ -3182,7 +3187,7 @@ const 种档 = st => 种档表[(st && st.种)] || 种档表["二级"];
    ⚠ 判的是"整季少雨"，不是"这个节气没下雨"。见 年景池 里 旱 那一段。 */
 const 旱年 = st => !!(st && st.年景 && st.年景.旱);
 
-/* ── 图标（v6.2.7–v6.3.0）──
+/* ── 图标（v6.2.7–v6.3.1）──
    全文件一个壳：24×24、currentColor 描边、圆头。尺寸交给 CSS ——
    壳里**不带 width/height**，带了的话同一张图在别处缩不了，只能再抄一份。
 
