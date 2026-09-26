@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.1.4</title>
+<title>一亩稻 v6.1.5</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -779,8 +779,9 @@
   .mix-li{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:14.5px}
   .mix-li .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .mix-li .nm{flex:1;color:#5d5b45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* ⚠ .mix-li .amt 删掉了（v6.1.5）—— 图例不再报金额，见年终那段的注释。
+     金额在底账里，那六个名字和六个数只印一遍。 */
   .mix-li .pc{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
-  .mix-li .amt{font-variant-numeric:tabular-nums;min-width:82px;text-align:right}
 
   /* 两个转折 —— 直接写清是哪一步、前因是什么、后果是什么。
      这一块不用任何"你心里有数"式的话：日志里写着呢，摊开给人看。 */
@@ -2213,6 +2214,58 @@
          年终那张「这一季你留下了什么」也补了一句：手上剩多少、两成是多少、
          下一季开局带几点熟练体力。玩家在这一屏做的是"要不要再来一季"的
          决定，得让他看见"再来一季我不是从零开始"。
+
+   v6.1.5 三处玩家看得见的修，加一处玩家**看不见**的修。
+
+         一、年终那张屏把同一笔账印了两遍。图例每行除了名字和占比，
+             底下还挂着一个金额 —— 而那六行跟底账里那六行是**同样的六个
+             名字、同样的六个数**，中间只隔着"两个转折"。删掉图例里的钱：
+             图例的活是"哪个颜色叫哪个名字"，占比的活是"这一路占多大"，
+             钱是多少、怎么算出来的，是底账的活。各干各的，就不重了。
+             （.mix-li .amt 那条 CSS 随之作废，一并删掉。）
+
+         二、鸭子那三屏**不公平**（不是"第三屏太少见"）。灌浆段有 1／2／3 个
+             节气三种季，量出来 36%／51%／10%。三屏原来死钉在"第几个灌浆
+             节气"上：一屏槽 0、二屏槽 1、三屏槽 2。于是灌浆只摊到一个节气的
+             那些季（三分之一还多），玩家只见得到第一屏「还早」—— 它的小字
+             还劝他"再攒点肥，穗子还是青的，来得及"—— 然后下一屏直接到成熟，
+             被那条 -48 罚掉。而「再留几天」这同一个选择，在摊到两个节气的季
+             里会等到第二屏再决定，是稳的。
+             ⇒ **同一个选择安不安全，由一次玩家看不见的抽签定。**那是运气，不是判断。
+             现在：灌浆只摊到一个节气时，那一个节气就是最后机会，出第二屏
+             （它本来就是「就是这时候」那一屏）。三屏的账和文案一个字没动。
+             ⚠ 灌浆一个都没有的季照旧走成熟那条兜底，没在这儿接上 ——
+               槽会算成 -1，天真的 Math.min 会把它读成"该出第二屏"。
+
+         三、按钮底下的「undefined」。用户截图报的：年后第 2/3 步「他把烟掐了」
+             三个按钮，每个底下齐刷刷一行 undefined。
+             根子在 viewChain 里三处写的都是 `esc(取值(x))`：x 没写的时候
+             取值 原样返回 undefined，esc 里那个 String() 把它变成九个字母。
+             后话那一批的第二层只写了 text 和 后，一条 sub 都没写。
+             ⚠ 这不是"少写了一个字段"，是**渲染器把「没写」当成了「写了空」**。
+               同屏的 处置 那一屏早就防着（`小 ? … : ""`），链子这边漏了。
+             ⇒ 加 可选()：空串和 undefined 一样当"没写"，整块不印，
+               不留一个空的 .cost 在那儿占行高。
+
+         四（玩家看不见的）、81 个按钮点下去当场 TypeError。
+             onChain 里那行原来是无条件的 `o.pick(S)`，而 ECHO 里有 9 件后话
+             （赵站／家账／埂谈／地权／地失／村价／周料／评论／表，各 9 条）
+             的第二层**只写了 text 和 后**：按钮看着是活的，按了什么都不发生。
+             这种错最贵，因为它连报都不报（只落在 console 里）。
+             ⚠ 这儿**不是**把它当"本来就不用结账"就完了。那 81 条本来就该结账：
+               ECHO 头上那段写着"结账在第二层真正选完的那一条上"，其余 24 件
+               后话的 147 条第二层，每条都写了 pick。是内容那一批漏了。
+             ⇒ 两头各管一头：引擎这头不许有死按钮（没写 pick 就当一个空动作，
+               照样出 后、照样往下走）；漏没漏由 _年后.mjs ⑫ 数出来、甩在屏幕上，
+               不咽下去。内容补齐之后，那条欠账就该归零。
+               现在还欠着 81 条 —— 这是**内容欠账**，不是引擎的事。
+
+         ⚠ 这四条里有三条是**测试自己逮出来的**，不是玩家报的：
+           ⑫ 那节第一次跑就吐出 81 处 o.pick is not a function。
+           顺带修好了 ⑧b 的一个假档洞（它从 v6.1.1 起一直红）：那九条后话读的是
+           人-* 和 家-*／感-*，而 全开档() 只摆了七面旗，两个档都够不着。
+           现在旗名从表里收，不手抄 —— 手抄的那份会在下次加内容时静静地过期。
+           （先跑过 v6.1.4.html 确认：同样的红。不是这一版改出来的。）
 
    v6.1.4 修两条**自己写坏的测试**。内容、数值、文案一个字没动。
 
@@ -5998,6 +6051,27 @@ const 边批 = [
 const 灌浆槽 = s => s.节气.filter(d => d.阶段 === "灌浆").indexOf(s.节气[s.termIndex]);
 const 本季有灌浆 = s => s.节气.some(d => d.阶段 === "灌浆");
 
+/* ── 鸭子这一屏该出第几屏（v6.1.5）──
+   ⚠⚠ 修的是一个**不公平**，不是"第三屏太少见"。
+   灌浆段有 1／2／3 个节气三种季，量出来是 36%／51%／10%。
+   三屏原来死钉在"第几个灌浆节气"上：一屏槽 0、二屏槽 1、三屏槽 2。
+   于是灌浆只摊到一个节气的那些季（三分之一还多），玩家只见得到第一屏
+   「还早」—— 它的小字还劝他「再攒点肥，穗子还是青的，来得及」——
+   然后下一屏直接到成熟，被那条 -48 罚掉。而「再留几天」这同一个选择，
+   在摊到两个节气的季里会等到第二屏再决定，是稳的。
+   ⇒ **同一个选择安不安全，由一次玩家看不见的抽签定。** 那是运气，不是判断。
+   现在：灌浆只摊到一个节气时，那一个节气就是最后机会，出第二屏
+   （它本来就是「就是这时候」那一屏）。三屏的账和文案一个字没动。
+   ⚠ 灌浆一个都没有的季照旧走成熟那条兜底，**别在这儿接上** ——
+     槽会算成 -1，天真的 Math.min 会把它读成"该出第二屏"。 */
+const 灌浆数 = s => s.节气.filter(d => d.阶段 === "灌浆").length;
+const 鸭屏 = s => {
+  const n = 灌浆数(s), 槽 = 灌浆槽(s);
+  if (!n || 槽 < 0) return -1;        /* 这一季没灌浆节气 → 交给成熟那条兜底 */
+  if (n === 1) return 槽 === 0 ? 1 : -1;
+  return Math.min(槽, 2);             /* 0 → 还早，1 → 开始低头了，2 → 收不收 */
+};
+
 const EVENTS = [
 
 /* ══ 棚 ══ */
@@ -6235,7 +6309,7 @@ const EVENTS = [
        赶过来。他也照样是"收了钱就一定办到"。 */
   { at: "灌浆",
     when: s => s.flags["稻鸭"] && !s.flags["鸭-收了"] && !s.flags["鸭-托了"]
-               && 灌浆槽(s) === 0,
+               && 鸭屏(s) === 0,
     mood: "", effect: {},
     from: ["大暑", "赶鸭子下田"],
     line: "鸭群下田快一个月了。刚下去那几天它们踩倒过一片秧，现在那一片缓过来了，"
@@ -6275,7 +6349,7 @@ const EVENTS = [
 
   { at: "灌浆",
     when: s => s.flags["稻鸭"] && !s.flags["鸭-收了"] && !s.flags["鸭-托了"]
-               && 灌浆槽(s) === 1,
+               && 鸭屏(s) === 1,
     mood: "", effect: {},
     from: ["大暑", "赶鸭子下田"],
     line: "鸭子还在田里。\n"
@@ -6313,7 +6387,7 @@ const EVENTS = [
 
   { at: "灌浆",
     when: s => s.flags["稻鸭"] && !s.flags["鸭-收了"] && !s.flags["鸭-托了"]
-               && 灌浆槽(s) === 2,
+               && 鸭屏(s) === 2,
     mood: "", effect: {},
     from: ["大暑", "赶鸭子下田"],
     line: "鸭群在田里待了一个多月。毛色比刚下田那会儿亮，个头也壮了一圈。\n它们在稻丛里钻来钻去，嘴一直没停。你蹲下去看，啄的是穗子上还没灌满的空壳。\n再过十来天就是齐穗，那会儿穗子一沉，它们啄的就是真米了。",
@@ -13375,6 +13449,15 @@ function viewChain() {
   const step = S.chainIndex || 0, c = 链[step];
   if (!c) return viewYearEnd();
   const 取值 = v => typeof v === "function" ? v(S) : v;
+  /* ⚠⚠ 可选的说明字段一律走这个再进 esc（v6.1.5 修）。
+     原来这儿三处都写的是 `esc(取值(x))`：x 没写的时候 取值 原样返回 undefined，
+     esc 里那个 String() 把它变成那九个字母 —— 玩家读到的是「undefined」。
+     后话那一批的第二层（ECHO 的 续）只写了 text 和 后，一条 sub 都没写，
+     于是三个按钮底下齐刷刷一行 undefined（用户截图报的就是这个）。
+     ⚠ 这不是"少写了一个字段"，是**渲染器把「没写」当成了「写了空」** ——
+       同屏的 处置 那一屏早就防着（`小 ? … : ""`），链子这边漏了。
+       空串和 undefined 一样当"没写"。 */
+  const 可选 = v => { const x = 取值(v); return x == null ? "" : String(x); };
   /* ── 反应屏 ──
      刚点完一条路，先别翻页，把对方那一下演出来（见 onChain 里的 o.后）。
      ⚠ 它盖在**同一格**上，标题那一行照旧（还是第 N / M 步）——
@@ -13382,25 +13465,31 @@ function viewChain() {
        那正是它该有的手感：这一步的账还没结完。
      ⚠ 一定要是**单独一屏**，不能把那句话塞进选项的 sub 里：
        sub 在点之前就印在按钮上了，等于把他的反应提前剧透。 */
-  if (c.反应) return `${hud()}
+  if (c.反应) {
+    const 谁 = 可选(c.反应.谁);
+    return `${hud()}
     <div class="step">${年 ? "转过年来" : esc(c.term) + " · 收完之后"} 第 ${step + 1} / ${链.length} 步</div>
     <h2 class="term cmp">${esc(c.term)}<small>${年 ? "转 过 年 来" : "收 完 之 后"}</small></h2>
-    <div class="say"><span class="who">${esc(取值(c.反应.谁))}</span><p style="white-space:pre-line">${esc(取值(c.反应.说))}</p></div>
+    <div class="say">${谁 ? `<span class="who">${esc(谁)}</span>` : ""}<p style="white-space:pre-line">${esc(可选(c.反应.说))}</p></div>
     <div class="spacer"></div>
     <button class="go" onclick="反应完()">知 道 了</button><div class="spacer"></div>`;
+  }
   const buttons = c.options.map((o, i) => {
     /* 锁可以是 true（死锁），也可以是个谓词 —— 谓词当场读 live 状态。
        有的条件（手头够不够）是在这一屏**之前**才定下来的。 */
     const 锁 = o.锁 === true || (typeof o.锁 === "function" && o.锁(S));
+    /* sub 没写就整块不印 —— 别留一个空的 .cost 在那儿占行高。 */
+    const 副 = 可选(o.sub);
     return `<button class="btn${锁 ? " lockbtn" : ""}" ${锁 ? "disabled" : `onclick="onChain(${i})"`}>
-      ${esc(o.text)}<span class="cost">${esc(取值(o.sub))}</span></button>`;
+      ${esc(o.text)}${副 ? `<span class="cost">${esc(副)}</span>` : ""}</button>`;
   }).join("");
+  const 谁 = 可选(c.who);
   return `${hud()}
     <div class="step">${年 ? "转过年来" : esc(c.term) + " · 收完之后"} 第 ${step + 1} / ${链.length} 步</div>
     <h2 class="term cmp">${esc(c.term)}<small>${年 ? "转 过 年 来" : "收 完 之 后"}</small></h2>
     <h3 class="title cmp">${esc(c.title)}</h3>
     <p class="brief cmp">${esc(c.brief)}</p>
-    ${c.say ? `<div class="say"><span class="who">${esc(c.who)}</span><p style="white-space:pre-line">${esc(取值(c.say))}</p></div>` : ""}
+    ${c.say ? `<div class="say">${谁 ? `<span class="who">${esc(谁)}</span>` : ""}<p style="white-space:pre-line">${esc(可选(c.say))}</p></div>` : ""}
     <div class="spacer"></div>${buttons}<div class="spacer"></div>`;
 }
 
@@ -13625,11 +13714,16 @@ function viewYearEnd() {
   ].filter(x => x.v > 0);
   const 总 = 源.reduce((a, x) => a + x.v, 0) || 1;
   const 条 = 源.map(x => `<span style="width:${(x.v/总*100).toFixed(1)}%;background:${x.色}"></span>`).join("");
+  /* ⚠ 图例**只报名字和占比，不报钱**（v6.1.5）。
+     原来它每行还带一个金额，而底账里那六行是**同样的六个名字、同样的六个数**
+     —— 一个屏里把同一笔账印了两遍，中间只隔着「两个转折」。
+     图例的活是"哪个颜色叫哪个名字"，占比的活是"这一路占多大"；
+     钱是多少、怎么算出来的，是底下底账的活。各干各的，就不重了。
+     （.mix-li .amt 那条 CSS 随之作废，一并删掉。）*/
   const 图例 = 源.map(x => `<div class="mix-li">
       <span class="dot" style="background:${x.色}"></span>
       <span class="nm">${esc(x.名)}</span>
-      <span class="pc">${(x.v/总*100).toFixed(0)}%</span>
-      <span class="amt">${yuan(x.v)}</span></div>`).join("");
+      <span class="pc">${(x.v/总*100).toFixed(0)}%</span></div>`).join("");
 
   /* ⚠ 第三个参数是类名。CSS 里 .li.sub / .li.sum / .li.big 三个类早就写好了 ——
      其中 sub 只在别处用过一次，sum 和 big **一次都没被用过**。
@@ -16933,7 +17027,21 @@ window.onChain = function (i) {
     if (o.续谁 !== undefined) c.who = o.续谁;
     响("tap"); render(); return;
   }
-  o.pick(S);
+  /* ⚠⚠ pick 可以是空的（v6.1.5 修）。
+     原来这一行是无条件的 `o.pick(S)`，而 ECHO 里有 9 件后话
+     （赵站／家账／埂谈／地权／地失／村价／周料／评论／表，各 9 条，共 81 条）
+     的第二层**只写了 text 和 后**：点下去当场 TypeError，
+     按钮看着是活的，按了什么都不发生 —— 玩家那边就是"点了没反应"，
+     而这种错最贵，因为它连报都不报（只落在 console 里）。
+
+     ⚠ 这儿**不是**把它当"本来就不用结账"就完了。那 81 条本来就该结账：
+       ECHO 头上那段写着"结账在第二层真正选完的那一条上"，
+       其余 24 件后话的 147 条第二层，每条都写了 pick。是内容那一批漏了。
+       所以两头各管一头 ——
+         · 引擎这头不许有死按钮：没写 pick 就当一个空动作，照样出 后、照样往下走；
+         · 漏没漏由 _年后.mjs ⑤ 数出来，甩在屏幕上，不咽下去。
+         内容补齐之后，那条欠账就该归零。 */
+  if (typeof o.pick === "function") o.pick(S);
   /* 反应在 pick **之后**：o.后 里读到的 S 是"已经选完"的。 */
   if (o.后) {
     c.反应 = { 说: o.后, 谁: o.后谁 !== undefined ? o.后谁 : c.who, 进: o };
