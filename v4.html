@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.2.6</title>
+<title>一亩稻 v6.2.7</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -78,6 +78,15 @@
     padding-bottom:9px}
   .hud .c{flex:1;text-align:center}
   .hud .c b{display:block;font-size:18px;font-weight:600;color:var(--ink);}
+  /* 数值条的小图标。三档三色，暗一档 —— 它得能扫，但不能跟数字抢。
+     ⚠ 数字变绿变红的时候图标不跟着变：那是"刚才涨了"的信号，
+       图标要是也闪，同一件事就有两个东西在喊。 */
+  .hud .c .ic{display:inline-grid;place-items:center;vertical-align:-2.5px;
+    margin-right:3px;color:#a89a76}
+  .hud .c.harvest .ic{color:#b09566}
+  .hud .c.quality .ic{color:#c9a03a}
+  .hud .c.ecology .ic{color:#7d9b6a}
+  .hud .c .ic svg{width:14px;height:14px}
   /* 品质底下那一行 —— 等级和"离下一条线还差几点"。
      这一行是全局最要紧的信息：米价是跳档的（3/8/15/25），
      过了线以后再堆品质一分钱不多，而堆品质是要拿产量换的。 */
@@ -183,6 +192,15 @@
   .tstrip{display:flex;gap:3px;padding-bottom:7px}
   .tstrip .td{flex:1;text-align:center;font-size:10.5px;line-height:1.3;
     color:#cbc3aa;transition:color .3s}
+  /* 节气条上的物候图标。⚠ 这一行会让节气条**高出一截**（原来只有
+     一根 4px 的条 + 一行字）。换来的是一眼能看出稻子到哪一步了，
+     从左到右就是它的一辈子。嫌高的话把 15px 调小，别删。 */
+  .tstrip .td .ph{display:grid;place-items:center;height:15px;margin-bottom:2px;
+    color:#cfc7ae;transition:color .3s}
+  .tstrip .td .ph svg{width:15px;height:15px}
+  .tstrip .td.过 .ph{color:var(--green)}
+  .tstrip .td.今 .ph{color:var(--green-d)}
+  .tstrip .td.收 .ph{color:#d2cab0}
   .tstrip .td i{display:block;height:4px;border-radius:2px;background:#e6dfc8;
     margin-bottom:4px;transition:background .3s,box-shadow .3s}
   .tstrip .td.过{color:#8a8574}
@@ -2254,6 +2272,19 @@
          下一季开局带几点熟练体力。玩家在这一屏做的是"要不要再来一季"的
          决定，得让他看见"再来一季我不是从零开始"。
 
+   v6.2.7 铺图标第二批：数值条三个 + 节气条六个。
+
+         数值条：产量=粮袋、品质=米粒带星、生态=叶子带露。
+         14px 上三个形状必须一眼分得开 —— 都是"一坨"就等于没做。
+
+         节气条：**不按 17 个节气名画，按 阶段 画**。节气对象里本来就有
+         阶段 字段（苗期/分蘖/孕穗/灌浆/成熟），加上冬天那六个没阶段的，
+         一共六个形状。条上从左到右就是稻子的一辈子。
+         17 个名字各画一个是顶住了的诱惑：那格子只有 42px 宽、字 10.5px，
+         17 张图在那个尺寸上会糊成一片噪声，等于没有。
+
+         ⚠ 这一版会让节气条高一截（多了 15px 的图标行）。
+
    v6.2.6 上图标。文字瘦身先搁一批，用户问「我怎么一个图标都还没见到」。
 
          一、成就那枚圆点 → **米色印章**。原来是 44px 的圆，里头写个"铜/银/金"。
@@ -3112,6 +3143,66 @@ const 种档 = st => 种档表[(st && st.种)] || 种档表["二级"];
    ⚠ 判的是"整季少雨"，不是"这个节气没下雨"。见 年景池 里 旱 那一段。 */
 const 旱年 = st => !!(st && st.年景 && st.年景.旱);
 
+/* ── 图标（v6.2.7）──
+   全文件一个壳：24×24、currentColor 描边、圆头。尺寸交给 CSS ——
+   壳里**不带 width/height**，带了的话同一张图在别处缩不了，只能再抄一份。
+
+   ⚠ 数值条那三个的形状必须**一眼分得开**：粮袋 / 米粒带星 / 叶子带露。
+     在 14px 上"三个都是小方块"就等于没有图标。 */
+const 图 = 芯 => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${芯}</svg>`;
+
+const 数图 = {
+  harvest: 图(`<path d="M9.1 9h5.8l1.7 9.9a2 2 0 0 1-2 2.3H9.4a2 2 0 0 1-2-2.3z"/>`
+             + `<path d="M10.3 9V6.7a1.7 1.7 0 0 1 3.4 0V9"/>`
+             + `<path d="M8.3 7.9h7.4"/>`),
+  quality: 图(`<ellipse cx="10.4" cy="14" rx="3.2" ry="5.9" transform="rotate(-18 10.4 14)"/>`
+             + `<path d="M10.4 10.6c.8.8 1.2 1.8 1.2 2.8"/>`
+             + `<path d="M17.9 2.5l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/>`),
+  ecology: 图(`<path d="M19.6 3.6c0 8.4-4.9 12.5-11.3 12.5C8.3 7.7 13.2 3.6 19.6 3.6z"/>`
+             + `<path d="M8.3 16.1C10.7 11.7 14.1 8.7 18 6.7"/>`
+             + `<path d="M6.3 14.6c1.5 1.7 2.3 2.9 2.3 3.9a2.3 2.3 0 0 1-4.6 0c0-1 .8-2.2 2.3-3.9z"/>`),
+};
+
+/* 节气条上那六个 —— 按 `阶段` 认，不按节气名认。
+   从左到右是稻子的一辈子：苗 → 分蘖 → 孕穗 → 灌浆 → 成熟 → 冬天的茬。
+   ⚠ 冬天那六个节气（立冬/小雪/大雪/小寒/大寒/年后）没有 阶段 字段，
+     落到 冬 这一张 —— 别让它们变成空白格。 */
+const 节图 = {
+  苗期: 图(`<path d="M12 21.5v-7"/>`
+          + `<path d="M12 14.5c0-3.4 2-5.8 4.8-5.8 0 3.4-2 5.8-4.8 5.8z"/>`
+          + `<path d="M12 14.5c0-3.4-2-5.8-4.8-5.8 0 3.4 2 5.8 4.8 5.8z"/>`),
+  分蘖: 图(`<path d="M12 21.5V10.5"/>`
+          + `<path d="M12 21.5 6.6 10.8"/>`
+          + `<path d="M12 21.5l5.4-10.7"/>`
+          + `<path d="M11.7 11.6c-.3-2.7.9-4.9 3.1-5.7.4 2.7-.9 4.9-3.1 5.7z"/>`),
+  孕穗: 图(`<path d="M12 21.5V8.4"/>`
+          + `<path d="M12 13.4c0-2.6 1.5-4.5 3.5-4.5 0 2.6-1.5 4.5-3.5 4.5z"/>`
+          + `<path d="M12 13.4c0-2.6-1.5-4.5-3.5-4.5 0 2.6 1.5 4.5 3.5 4.5z"/>`
+          + `<ellipse cx="12" cy="4.6" rx="1.9" ry="3.3"/>`),
+  灌浆: 图(`<path d="M12 21.5v-8"/>`
+          + `<path d="M12 13.5c0-2.5 1.5-4.3 3.4-4.3 0 2.5-1.5 4.3-3.4 4.3z"/>`
+          + `<path d="M12 13.5c0-2.5-1.5-4.3-3.4-4.3 0 2.5 1.5 4.3 3.4 4.3z"/>`
+          + `<path d="M12 10.5V2.6"/>`
+          + `<ellipse cx="10.3" cy="6.1" rx="1.4" ry="2" transform="rotate(-20 10.3 6.1)"/>`
+          + `<ellipse cx="13.7" cy="6.1" rx="1.4" ry="2" transform="rotate(20 13.7 6.1)"/>`
+          + `<ellipse cx="10.3" cy="9.6" rx="1.4" ry="2" transform="rotate(-20 10.3 9.6)"/>`
+          + `<ellipse cx="13.7" cy="9.6" rx="1.4" ry="2" transform="rotate(20 13.7 9.6)"/>`),
+  成熟: 图(`<path d="M12 21.5v-8"/>`
+          + `<path d="M12 13.5c0-2.5 1.5-4.3 3.4-4.3 0 2.5-1.5 4.3-3.4 4.3z"/>`
+          + `<path d="M12 13.5c0-2.5-1.5-4.3-3.4-4.3 0 2.5 1.5 4.3 3.4 4.3z"/>`
+          + `<path d="M12 11.6C12.4 6.6 15 3.4 19.4 3"/>`
+          + `<ellipse cx="18" cy="3.4" rx="1.5" ry="2.1" transform="rotate(62 18 3.4)"/>`
+          + `<ellipse cx="15.2" cy="5.4" rx="1.5" ry="2.1" transform="rotate(42 15.2 5.4)"/>`
+          + `<ellipse cx="13.1" cy="8.4" rx="1.5" ry="2.1" transform="rotate(22 13.1 8.4)"/>`),
+  冬:   图(`<path d="M3.8 20.6h16.4"/>`
+          + `<path d="M7.2 20.6v-4.1"/>`
+          + `<path d="M12 20.6v-5.4"/>`
+          + `<path d="M16.8 20.6v-4.1"/>`
+          + `<circle cx="8.4" cy="7.4" r="1" fill="currentColor" stroke="none"/>`
+          + `<circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/>`
+          + `<circle cx="15.6" cy="7.4" r="1" fill="currentColor" stroke="none"/>`),
+};
 /* ── 米的四个成色，四个图标（v6.2.6）──
    特级是整穗，往下米粒越来越少，等外是瘪的 —— 不读字也看得出高下。
    ⚠ 用 currentColor 描边，颜色跟着它所在那一档走（见 .grade-ico.a/b/c/d）。
@@ -12917,7 +13008,10 @@ function 节气条() {
             || S.termIndex >= S.节气.length;
   const cells = S.节气.map((d, i) => {
     const cls = 全收 || i < S.termIndex ? "过" : i === S.termIndex ? "今" : "";
-    return `<div class="td ${cls}"><i></i><span>${d.term}</span></div>`;
+    /* ⚠ 冬天那六个节气没有 阶段，落到 冬 —— 不然那几格是空白，
+       看着像坏了。 */
+    return `<div class="td ${cls}"><u class="ph">${节图[d.阶段] || 节图.冬}</u>`
+      + `<i></i><span>${d.term}</span></div>`;
   }).join("");
   return `<div class="tstrip">${cells}</div>`;
 }
@@ -12948,7 +13042,7 @@ function hud(withField) {
     /* 把上一次显示的数写进 DOM —— 渲染完再滚过去，数字才是"变"出来的 */
     const 从 = S.显数[k], 滚 = (f && 从 !== undefined && 从 !== v) ? ` data-from="${从}"` : "";
     S.显数[k] = v;
-    return `<div class="c ${cls}"><b${滚}>${v}</b>${LABEL[k]}${k === "quality" ? 品阶行(v, S.移线) : ""}</div>`;
+    return `<div class="c ${cls} ${k}"><b${滚}>${v}</b><u class="ic">${数图[k]}</u>${LABEL[k]}${k === "quality" ? 品阶行(v, S.移线) : ""}</div>`;
   }).join("");
   /* 种地那一段看"已投入"，收完之后看"手里还剩多少" —— 后半段的每一步都是拿这笔钱换的 */
   const 后段中 = screen === "hangqing" || screen === "chain";
