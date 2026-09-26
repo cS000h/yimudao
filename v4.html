@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2efe4">
-<title>一亩稻 v6.0.3</title>
+<title>一亩稻 v6.0.4</title>
 <style>
   :root{
     --paper:#f3ecdb; --card:#fffcf1; --ink:#2d2a20; --dim:#8b8270;
@@ -683,16 +683,29 @@
   .pop.金 b{color:var(--gold)}
 
   .ledger{margin:4px 0 0}
-  .ledger .li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
+  /* ⚠ 底账 17 行，一行 46px（上下各 8px 的 padding 加 15.5px×1.85 的行高），
+     光它自己 782px —— 比一个 iPhone 视口（约 710px）还高。
+     padding 收到 6px，一段账下来省出小半屏。 */
+  .ledger .li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
     border-bottom:1px solid var(--line);font-size:15.5px;
     opacity:0;transform:translateY(6px);animation:rise .42s ease-out forwards}
+  /* 三段之间的那道横杠：田里出的 / 卖出去的 / 扣掉的。
+     不是账目行，是一条分界，所以不给 li 的动画、也不占行高。 */
+  .ledger .hr{height:0;border-top:2px solid var(--ink);opacity:.22;margin:15px 0 13px}
   .ledger .li .k{color:#5d5b45}
   .ledger .li .v{font-variant-numeric:tabular-nums;white-space:nowrap}
   .ledger .li.sub{padding-left:16px;font-size:14.5px;color:var(--dim)}
   .ledger .li.sub .k{color:var(--dim)}
   .ledger .li.sum{border-bottom:none;border-top:2px solid var(--ink);margin-top:4px;
     padding-top:12px;font-weight:600;font-size:17px}
+  /* 落账那一条 —— 整本账唯一的落点，也是玩家真正要记住的那个数。
+     原来它跟「礼盒包装」一样是 15.5px 的平铺一行，白瞎了。 */
+  .ledger .li.big{border-bottom:none;border-top:2px solid var(--ink);
+    margin-top:9px;padding-top:14px}
   .ledger .li.big .v{font-size:26px;font-weight:600;color:var(--green-d)}
+  /* 副行本来就是缩进灰字（.li.sub 在 691 行），这儿只补一句：
+     副行右列的数字别加粗 —— 它是注脚，不该跟账目抢眼。 */
+  .ledger .li.sub .v{font-weight:400}
   .ledger .li .v.neg{color:var(--bad)}
   @keyframes rise{to{opacity:1;transform:translateY(0)}}
 
@@ -12012,7 +12025,10 @@ function viewYearEnd() {
       <span class="pc">${(x.v/总*100).toFixed(0)}%</span>
       <span class="amt">${yuan(x.v)}</span></div>`).join("");
 
-  const li = (k, v) => `<div class="li"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  /* ⚠ 第三个参数是类名。CSS 里 .li.sub / .li.sum / .li.big 三个类早就写好了 ——
+     其中 sub 只在别处用过一次，sum 和 big **一次都没被用过**。
+     底账 17 行长得一模一样、没有落点，差的就是这个。 */
+  const li = (k, v, 类) => `<div class="li${类 ? " " + 类 : ""}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
 
   /* ⚠ 底账这几行是**算出来的**，不是写死在模板里的。
      v5.9.7 之前底账只有"二产"一个总数，玩家把上面几行加起来对不上，
@@ -12028,6 +12044,25 @@ function viewYearEnd() {
         + (r.礼盒量 < r.礼盒上限 ? "（装得起这么多，上限本来有 " + yuan(r.礼盒上限) + " 斤）" : ""),
         yuan(r.礼盒钱) + " 元")
     : "";
+
+  /* ── 底账为什么不长那样了（v6.0.4）──
+     用户原话：「每次结算界面田里的帐都篇幅好大，让人几乎没有阅读兴趣，你调整一下」
+
+     量出来的：17 行平铺，一行 46px，光底账 782px —— 比一个 iPhone 视口还高；
+     而它前头还压着星芒/种法/净收益/收入构成/两个转折约 940px，
+     底账第一行要到第二屏才露头。
+     但根子不是行多，是 17 行**长得一模一样**：「打下来的稻谷」「礼盒包装」
+     「收完粮之后手里还剩」—— 三件完全不同量级的事，字号颜色缩进全一样。
+
+     所以分三段，段间一条横杠（.hr），副行退成缩进灰字（.li.sub），
+     只给落账那一行 .big（26px 绿字）。一行都没删。
+     顺带把两处账目错位摆正（毛收入 = 一产+二产+三产+粮补+额外，见 10538 行）：
+       ① 三产和大寒原先排在「手里还剩」后头 —— 它们是收入，却印在结果后面；
+       ② 「政策 · 粮补」原先一行都没有 —— 于是收入几行加起来，
+          跟净收益那块大字写着的毛收入差一截粮补，玩家只会以为自个儿算错了。
+     ⚠ 「手里还剩」是 Math.round(现金)（10572 行），**不是**上面几段的合计 ——
+       它含上一季带过来的存底。所以那一行不带任何"小计"的写法，
+       上面净收益那块也已经给过 毛收入 − 本季投入 了。 */
 
   /* 成就 —— 按档位从高到低排，金牌先上场 */
   const 序 = { 金:0, 银:1, 铜:2 };
@@ -12076,26 +12111,32 @@ function viewYearEnd() {
     <div class="ledger">
       ${li("打下来的稻谷", yuan(S.grain) + " 斤")}
       ${li("验米等级", r.grade.名 + "（" + yuan(r.米价) + " 元/斤）")}
-      ${li("今年的行情", r.行情.名 + (r.行情.原粮 !== 1
-          ? "（原粮 " + (r.行情.原粮 > 1 ? "+" : "") + Math.round((r.行情.原粮 - 1) * 100) + "%）" : ""))}
-      ${li("牌子 · 生态 " + S.stats.ecology + " 撑起来的量", Math.round(r.牌 * 100) + "%")}
       ${li("折成米", yuan(r.米) + " 斤" + (r.兑米 ? "（认养兑走 " + r.兑米 + " 斤）" : ""))}
+      ${li("今年的行情", r.行情.名 + (r.行情.原粮 !== 1
+          ? "（原粮 " + (r.行情.原粮 > 1 ? "+" : "") + Math.round((r.行情.原粮 - 1) * 100) + "%）" : "")
+          + "　牌子撑起 " + Math.round(r.牌 * 100) + "%", "sub")}
+
+      <div class="hr"></div>
       ${li("一产 · 卖原粮 " + yuan(r.已卖谷 + r.原粮量) + " 斤 @ " + r.谷价 + " 元"
           + (r.已卖谷 && r.原粮量 ? "（立冬卖掉 " + yuan(r.已卖谷) + " 斤）" : ""), yuan(r.一产) + " 元")}
+      ${r.原粮量 ? li("没装盒也没加工的米", yuan(r.原粮量) + " 斤，走了原粮", "sub") : ""}
       ${礼盒行}
       ${r.直销量 ? li("二产 · 自己拉进城 " + yuan(r.直销量) + " 斤 @" + yuan(r.直销单价) + " 元"
           + (r.直 && r.直 !== "敲门" ? "（" + (r.直 === "摆摊" ? "摆摊" : "跑饭馆") + "）" : ""),
           yuan(r.直销钱) + " 元") : ""}
       ${r.加工量 ? li("二产 · 深加工 " + yuan(r.加工量) + " 斤 @" + yuan(Math.round(r.加工钱 / r.加工量 * 100) / 100) + " 元",
           yuan(r.加工钱) + " 元") : ""}
-      ${r.原粮量 ? li("没装盒也没加工的米", yuan(r.原粮量) + " 斤，走了原粮") : ""}
+      ${li("三产 · " + r.三产说明, yuan(r.三产) + " 元")}
+      ${r.额外 ? li("大寒 · " + S.大寒说明, (r.额外 > 0 ? "+" : "") + yuan(r.额外) + " 元") : ""}
+      ${li("政策 · 粮补", yuan(r.补贴) + " 元")}
+
+      ${(r.包装费 || r.加工费 || r.站里 || r.账来源 === "师") ? '<div class="hr"></div>' : ""}
       ${r.包装费 ? li("礼盒包装", "-" + yuan(r.包装费) + " 元") : ""}
       ${r.加工费 ? li("深加工费", "-" + yuan(r.加工费) + " 元") : ""}
       ${r.站里 ? li("站里的账 · 今年的地租", "-" + yuan(r.站里) + " 元") : ""}
-      ${r.账来源 === "师" ? li("站里的账 · 老师垫的", yuan(NUM.站里年费) + " 元，不用你还") : ""}
-      ${li("收完粮之后，手里还剩", yuan(r.兜里剩) + " 元" + (r.兜里剩 < NUM.礼盒包装 * 20 ? "（不够再铺一摊了）" : ""))}
-      ${li("三产 · " + r.三产说明, yuan(r.三产) + " 元")}
-      ${r.额外 ? li("大寒 · " + S.大寒说明, (r.额外 > 0 ? "+" : "") + yuan(r.额外) + " 元") : ""}
+      ${r.账来源 === "师" ? li("站里的账 · 老师垫的", yuan(NUM.站里年费) + " 元，不用你还", "sub") : ""}
+
+      ${li("收完粮之后，手里还剩", yuan(r.兜里剩) + " 元" + (r.兜里剩 < NUM.礼盒包装 * 20 ? "（不够再铺一摊了）" : ""), "big")}
     </div>
     ${ach}
     ${人情账(S, r)}
