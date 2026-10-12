@@ -1063,6 +1063,15 @@
    ⚠ 全文只在**点得着的**那几行印 —— 锁着的那几行不印，理由见 田里单 上头。 */
 .roster .r .full{display:block;font-size:12.5px;color:var(--ink);opacity:.7;
   margin-top:3px;line-height:1.5}
+
+  .canal-grid{width:min(100%,320px);margin-inline:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;background:#b6a384;border:6px solid #b6a384;border-radius:12px;overflow:hidden}
+  .canal-tile{position:relative;aspect-ratio:1;border:0;padding:0;background:#e5d9bd;cursor:pointer;min-width:0;touch-action:manipulation}
+  .canal-tile svg{display:block;width:100%;height:100%}.canal-tile:disabled{opacity:1;cursor:default}.canal-tile.fixed{background:#c8d8b8}
+  .canal-tile:focus-visible{outline:3px solid var(--bad);outline-offset:-3px;z-index:1}
+  .canal-label{position:absolute;bottom:2px;left:0;right:0;font-size:10px;color:var(--green-d);background:#f3ecdbdd}
+  .canal-flow{stroke-dasharray:5 6;animation:canal-flow .65s linear infinite}
+  @keyframes canal-flow{to{stroke-dashoffset:-22}}
+  @media(prefers-reduced-motion:reduce){.canal-flow{animation:none}}
 </style>
 </head>
 <body>
@@ -19341,6 +19350,7 @@ function showFieldEventResult() {
   const positions = [[65,85],[125,100],[195,80],[255,105]];
   const marks = positions.map(([x,y],i) => {
     const style = `style="animation-delay:${i*.15}s"`;
+    if (event.kind === "canal") return `<path class="canal-flow" d="M${x-25} ${y}h50" fill="none" stroke="#63bac9" stroke-width="6"/>`;
     if (event.kind === "drought") return `<g class="event-water" ${style}><path d="M${x} ${y-30}q-12 15 0 18q12-3 0-18" fill="#5eaec4"/><ellipse cx="${x}" cy="${y}" rx="18" ry="5" fill="none" stroke="#c4eef5" stroke-width="2"/></g>`;
     if (event.kind === "weeds") return `<g class="event-weed" ${style}><path d="M${x} ${y}v-25m0 12q-18 0-15-15q15 0 15 15m0 4q17-1 15-16q-14 0-15 16" fill="#658d36" stroke="#42662c" stroke-width="2"/><path d="M${x-4} ${y+5}l4-5 4 5" fill="none" stroke="#957245"/></g>`;
     return `<g class="event-pest" ${style}><ellipse cx="${x}" cy="${y}" rx="7" ry="10" fill="#80613d"/><path d="M${x-10} ${y-4}h20m-20 8h20" stroke="#59472d" stroke-width="2"/><path d="M${x+9} ${y-12}l4 4 8-10" fill="none" stroke="#fdf5d8" stroke-width="3"/></g>`;
@@ -19366,6 +19376,7 @@ const 练图 = (() => {
 })();
 /* 首页练习独立于正式季节进度，不写入收成、成就或存档。 */
 const practiceEvents = {
+  canal: {name:"村里的水渠坏了",action:"修水渠",hint:"16 种随机水路，旋转直管、L 型和 T 型接头，接通固定的起点与终点。",icon:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 24h20V6m0 18h20m-20 0v18" stroke="#837963" stroke-width="12" fill="none"/><path d="M4 24h20V6m0 18h20m-20 0v18" stroke="#63bac9" stroke-width="6" fill="none"/></svg>',seconds:60},
   pest: { name: "虫害来袭 · 移动靶", action: "除虫", target: "虫子", verb: "清除", title: "点掉叶片上的虫子", win: "虫子清光了！", hint: "追着移动的虫子点，每只点三下才能清除，数字表示剩余次数。", icon: 练图.虫, hits: 3, seconds: 15, insect: true, moving: true },
   pestFixed: { name: "虫害来袭 · 固定靶", action: "除虫", target: "虫子", verb: "清除", title: "清除停在叶片上的虫子", win: "虫子清光了！", hint: "虫子停在原地，每只点三下才能清除，数字表示剩余次数。", icon: 练图.虫, hits: 3, seconds: 15, insect: true, moving: false },
   drought: { name: "旱情告急", action: "浇水", target: "干土", verb: "浇透", title: "给干裂的田地浇水", win: "田地喝饱水了！", hint: "每块干土点击两次：第一次润湿，第二次浇透。", icon: 练图.旱, hits: 2, seconds: 8 },
@@ -19375,7 +19386,7 @@ function openPractice() { screen = "practice"; render(); }
 function leavePractice() { screen = "cover"; render(); }
 function viewPractice() {
   return `<div class="pest-kicker">田间练习场</div><h1 class="term">突发事件练习</h1>
-    <p class="brief">先练练手，再从容下田。选择一种事件，准备好后开始挑战。虫害 20 秒，浇水和拔草各 10 秒。</p>
+    <p class="brief">先练练手，再从容下田。选择一种事件，准备好后开始挑战。每种玩法的时限见下方。</p>
     <p class="pest-copy">随时重玩，不消耗体力，也不影响收成和存档。</p>
     ${Object.entries(practiceEvents).map(([key,c]) => `<button class="practice-card" onclick="openPests(true,'${key}')">
       <span class="practice-icon" aria-hidden="true">${c.icon}</span><span><b>${c.name}</b><small>${c.hint}</small><em>${c.seconds} 秒 · 开始${c.action} →</em></span></button>`).join("")}
@@ -19403,6 +19414,7 @@ function openPests(practice = false, kind = "pest") {
     if (!S.fieldEventSeen) S.fieldEventSeen = {};
     S.fieldEventSeen[kind] = true;
   }
+  if (kind === "canal") { showCanalIntro(); return; }
   pestDialog.innerHTML = `<div class="pest-kicker">${practice ? "田间练习 · 不影响收成" : "突发事件 · " + config.name}</div>
     <h2 id="pest-title">${config.name}</h2>
     <p class="pest-copy">这次有 ${count} 处${config.target}需要处理。${config.hint} 准备好后开始 ${config.seconds} 秒计时。<span class="kb-hint">也可用 Tab 和回车操作。</span></p>
@@ -19415,6 +19427,7 @@ function openPests(practice = false, kind = "pest") {
 function beginPests() {
   const e = pestEvent;
   if (!e || e.phase !== "ready") return;
+  if (e.kind === "canal") { beginCanal(); return; }
   e.phase = "playing";
   const config = e.config;
   const positions = [[18,30],[50,28],[82,35],[32,72],[70,73]];
@@ -19460,6 +19473,7 @@ function catchPest(id, button) {
 function finishPests(skipped = false) {
   const e = pestEvent;
   if (!e || e.phase === "done") return;
+  if (e.kind === "canal") { finishCanal(skipped); return; }
   e.phase = "done";
   const missed = e.count - e.caught.size, won = missed === 0;
   let message = "练习结束，不影响本季收成。";
@@ -19478,6 +19492,96 @@ function finishPests(skipped = false) {
   响(won ? "好" : "tap");
   pestDialog.querySelector(".go").focus();
 }
+/* 修水渠：起终点固定，16种可解主路，直管/L/T管随机旋转。 */
+const canalMaps = [[0, 1, 2, 3, 7, 6, 10, 14, 15], [0, 1, 2, 6, 5, 9, 10, 14, 15], [0, 1, 2, 6, 10, 9, 13, 14, 15], [0, 1, 5, 4, 8, 9, 13, 14, 15], [0, 1, 5, 6, 10, 9, 13, 14, 15], [0, 1, 2, 3, 7, 6, 5, 9, 10, 14, 15], [0, 1, 2, 3, 7, 11, 10, 9, 13, 14, 15], [0, 1, 2, 6, 5, 4, 8, 9, 13, 14, 15], [0, 1, 2, 6, 7, 11, 10, 9, 13, 14, 15], [0, 1, 5, 4, 8, 12, 13, 9, 10, 14, 15], [0, 1, 5, 6, 10, 9, 8, 12, 13, 14, 15], [0, 1, 2, 3, 7, 6, 5, 4, 8, 9, 13, 14, 15], [0, 1, 2, 3, 7, 6, 10, 9, 8, 12, 13, 14, 15], [0, 1, 2, 3, 7, 11, 10, 9, 8, 12, 13, 14, 15], [0, 1, 2, 6, 10, 9, 5, 4, 8, 12, 13, 14, 15], [0, 1, 5, 6, 7, 11, 10, 9, 8, 12, 13, 14, 15]];
+function rotatePipe(mask) { return ((mask << 1) & 15) | (mask >> 3); }
+function makeCanal(index) {
+  const route=canalMaps[index], tiles=Array.from({length:16},()=>[5,3,7][Math.floor(Math.random()*3)]);
+  route.forEach((cell,i)=>{
+    let mask=i===0?8:i===route.length-1?2:0;
+    for(const n of [route[i-1],route[i+1]]) {
+      if(n!==undefined) mask|=n===cell-4?1:n===cell+1?2:n===cell+4?4:8;
+    }
+    if(i>0&&i<route.length-1&&(i===2||Math.random()<.3)) {
+      const spare=[1,2,4,8].filter(b=>!(mask&b));mask|=spare[Math.floor(Math.random()*spare.length)];
+    }
+    tiles[cell]=mask;
+  });
+  for(let i=1;i<15;i++) for(let r=Math.floor(Math.random()*4);r>0;r--) tiles[i]=rotatePipe(tiles[i]);
+  while(tiles[1]&8) tiles[1]=rotatePipe(tiles[1]);
+  return tiles;
+}
+function canalWater(tiles) {
+  const wet=new Set(), parents={}, queue=[];
+  if(tiles[0]&8){wet.add(0);queue.push(0);}
+  for(let i=0;i<queue.length;i++) {
+    const c=queue[i], row=Math.floor(c/4), col=c%4;
+    [row>0?c-4:-1,col<3?c+1:-1,row<3?c+4:-1,col>0?c-1:-1].forEach((n,d)=>{
+      if(n<0||wet.has(n)||!(tiles[c]&(1<<d))||!(tiles[n]&(1<<((d+2)%4))))return;
+      wet.add(n);parents[n]=c;queue.push(n);
+    });
+  }
+  return {wet,parents,won:wet.has(15)&&!!(tiles[15]&2)};
+}
+function showCanalIntro() {
+  const e=pestEvent, enough=e.practice||S.stamina>=8;
+  pestDialog.innerHTML=`<div class="pest-kicker">${e.practice?'修水渠 · 练习':'村里的水渠坏了'}</div><h2 id="pest-title">田里的水，等着这条渠</h2>
+    <p class="pest-copy">村口水渠接头错了位，水流不到田里。起点和终点固定，点击中间水管，每次顺时针旋转 90°，把水引到稻田。</p>
+    <p class="pest-copy">16 种地图随机抽取，含直管、L 型和 T 型。限时 60 秒，切到后台暂停。</p>
+    <p class="pest-copy">${e.practice?'练习不消耗体力，不影响收成。':`自己修扣 8 点体力（当前 ${S.stamina} 点）；接通增产 8 斤，动手后未修好减产 2 斤。`}</p>
+    <button class="go" onclick="beginCanal()" ${enough?'':'disabled'}>${enough?(e.practice?'开始修水渠练习':'我自己上 · 体力 −8'):'体力不足，至少需要 8 点'}</button>
+    <button class="pest-practice" onclick="finishCanal(true)">${e.practice?'退出练习':'留给村里维修 · 不扣体力'}</button>`;
+  pestDialog.showModal();
+}
+function beginCanal() {
+  const e=pestEvent;
+  if(!e||e.kind!=='canal'||e.phase!=='ready'||(!e.practice&&S.stamina<8))return;
+  if(!e.practice)S.stamina-=8;
+  e.started=true;e.phase='playing';e.mapIndex=Math.floor(Math.random()*canalMaps.length);e.tiles=makeCanal(e.mapIndex);
+  pestLastTick=performance.now();
+  pestDialog.innerHTML=`<div class="pest-kicker">${e.practice?'修水渠 · 练习':'自己维修 · 已扣 8 点体力'}</div><h2 id="pest-title">转动水管，让水流进田里</h2>
+    <div class="pest-meta"><span id="canal-status" role="status"></span><b id="pest-time">60.0 秒</b></div><div class="pest-meter"><span id="pest-bar"></span></div>
+    <p class="pest-copy">水路 ${e.mapIndex+1} / 16 · 左上进水，右下出水</p><div id="canal-grid" class="canal-grid"></div>
+    <p class="pest-copy">点击旋转 90°，蓝色表示已通水。T 型可以分流，不必接通全部支路。也可用 Tab 和回车操作。</p>
+    <div id="canal-result"><button class="pest-practice" onclick="finishCanal(true)">结束维修</button></div>`;
+  drawCanal();document.getElementById('canal-cell-1').focus({preventScroll:true});
+}
+function drawCanal(focusCell) {
+  const e=pestEvent,w=canalWater(e.tiles),points=[[50,0],[100,50],[50,100],[0,50]];
+  document.getElementById('canal-grid').innerHTML=e.tiles.map((mask,i)=>{
+    const arms=points.map(([x,y],d)=>mask&(1<<d)?`M50 50L${x} ${y}`:'').join(' ');
+    const p=w.parents[i], inlet=i===0?3:p===i-4?0:p===i+1?1:p===i+4?2:3;
+    const flow=points.map(([x,y],d)=>!(mask&(1<<d))?'':d===inlet?`M${x} ${y}L50 50`:`M50 50L${x} ${y}`).join(' ');
+    const fixed=i===0||i===15,dirs=['上','右','下','左'].filter((_,d)=>mask&(1<<d)).join('、');
+    return `<button id="canal-cell-${i}" class="canal-tile ${fixed?'fixed':''}" ${fixed||e.phase!=='playing'?'disabled':''} onclick="turnCanal(${i})" aria-label="${fixed?(i===0?'固定起点':'固定终点'):`第 ${Math.floor(i/4)+1} 行第 ${i%4+1} 列水管`}，接口朝${dirs}${w.wet.has(i)?'，已通水':''}">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="${arms}" fill="none" stroke="#837963" stroke-width="27"/><path d="${arms}" fill="none" stroke="${w.wet.has(i)?'#459cb7':'#bdb59d'}" stroke-width="18"/>${w.wet.has(i)?`<path class="canal-flow" d="${flow}" fill="none" stroke="#c9f6fa" stroke-width="6"/>`:''}</svg>${fixed?`<span class="canal-label">${i===0?'水源 · 固定':'稻田 · 固定'}</span>`:''}</button>`;
+  }).join('');
+  document.getElementById('canal-status').textContent=w.won?'水流已到达稻田！':'蓝色水流正在寻找通路';
+  if(focusCell!==undefined&&e.phase==='playing')document.getElementById(`canal-cell-${focusCell}`).focus({preventScroll:true});
+}
+function turnCanal(i) {
+  const e=pestEvent;
+  if(!e||e.kind!=='canal'||e.phase!=='playing'||!Number.isInteger(i)||i<=0||i>=15)return;
+  e.tiles[i]=rotatePipe(e.tiles[i]);响('tap');
+  if(canalWater(e.tiles).won)finishCanal();else drawCanal(i);
+}
+function finishCanal(skipped=false) {
+  const e=pestEvent;if(!e||e.kind!=='canal'||e.phase==='done')return;
+  const won=!!e.started&&!skipped&&canalWater(e.tiles).won;e.phase='done';
+  let line=!e.started?'你把维修留给村里。':won?'水渠接通，清水重新流进田里。':'这次没能接通，村里会继续安排维修。';
+  if(!e.practice&&e.season===S) {
+    const delta=applyEffect(S,{harvest:!e.started?0:won?8:-2});
+    line+=` 体力 −${e.started?8:0}，产量 ${delta.harvest>=0?'+':''}${delta.harvest} 斤。`;
+    S.log.push({term:S.节气[S.termIndex].term,line,delta});
+    if(!S.fieldEvents)S.fieldEvents=[];
+    S.fieldEvents.push({term:S.termIndex,kind:'canal',line,won,caught:won?1:0});
+  }else line=(won?'水渠接通了！':'练习结束。')+' 不消耗体力，不影响收成。';
+  const result=`<p class="pest-copy" role="status">${line}</p><button class="go" onclick="closePests()">${e.practice?'返回练习场':'回到田里'}</button>`;
+  if(e.started){drawCanal();document.getElementById('pest-time').textContent=won?'已接通':'已结束';document.getElementById('canal-result').innerHTML=result;}
+  else pestDialog.innerHTML=`<h2 id="pest-title">${e.practice?'练习结束':'交给村里维修'}</h2>${result}`;
+  响(won?'好':'tap');pestDialog.querySelector('.go').focus({preventScroll:true});
+}
+
 function closePests(refresh = true) {
   pestDialog.close(); pestEvent = null;
   if (refresh) render();
@@ -19557,12 +19661,13 @@ function 抽突发() {
 function 挑突发种() {
   const 局 = 局势();
   const 用过 = S.fieldEventSeen || {};
-  const 全 = ["drought", "weeds", "pest", "pestFixed"];
+  const 全 = ["drought", "weeds", "pest", "pestFixed", "canal"];
   let 候 = 全.filter(k => !用过[k]);
   if (!候.length) { S.fieldEventSeen = {}; 候 = 全.slice(); }
   if (局.旱 && 候.includes("drought")) return "drought";
   if ((局.虫过 || 局.病过) && 候.includes("pest")) return "pest";
   const 重 = k => {
+    if (k === "canal") return 局.雨 ? 3 : 2;
     if (k === "drought") return 局.旱 ? 6 : 局.雨 ? 1 : 2;
     if (k === "weeds")   return 局.雨 ? 6 : 局.旱 ? 1 : 2;
     return 局.雨 ? 3 : 局.寒 ? 1 : 2;              // pest / pestFixed
