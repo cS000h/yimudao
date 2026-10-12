@@ -48,7 +48,7 @@ ctx.viewPractice = function () {
 
 // openPests：保留原玩法的计算或流程。
 ctx.openPests = function (practice: any = false, kind: any = "pest") {
-    if (ctx.pestEvent || (practice ? ctx.screen !== "practice" : ctx.screen !== "decision" || ctx.S.选了 !== null))
+    if (ctx.pestEvent || (practice ? ctx.screen !== "practice" : ctx.screen !== "decision" || ctx.S["选了"] !== null))
         return;
     const config: any = ctx.practiceEvents[kind];
     if (!config || (!practice && ctx.S.fieldEventSeen?.[kind]))
@@ -72,7 +72,7 @@ ctx.openPests = function (practice: any = false, kind: any = "pest") {
     <button class="go" onclick="beginPests()">准备好了 · 开始${config.action}</button>
     <button class="pest-practice" onclick="finishPests(true)">${practice ? "退出练习" : "这次交给自然"}</button>`;
     ctx.pestDialog.showModal();
-    ctx.响("tap");
+    ctx.playCue("tap");
 };
 
 // beginPests：保留原玩法的计算或流程。
@@ -96,7 +96,7 @@ ctx.beginPests = function () {
     <h2 id="pest-title">${config.title}</h2>
     <div class="pest-meta"><span id="pest-progress" role="status">已${config.verb} 0 / ${e.count}</span><b id="pest-time">${config.seconds}.0 秒</b></div>
     <div class="pest-meter"><span id="pest-bar"></span></div>
-    <div class="pest-field">${ctx.田的画(ctx.S)}${positions.slice(0, e.count).map(([x, y]: any, i?: any) => `<button class="pest-bug ${e.kind}" data-pest-id="${i}" data-left="${config.hits}" style="left:${x}%;top:${y}%;animation-delay:-${i * .2}s" aria-label="${config.action}：第 ${i + 1} 处${config.target}" onclick="catchPest(${i},this)">
+    <div class="pest-field">${ctx.drawField(ctx.S)}${positions.slice(0, e.count).map(([x, y]: any, i?: any) => `<button class="pest-bug ${e.kind}" data-pest-id="${i}" data-left="${config.hits}" style="left:${x}%;top:${y}%;animation-delay:-${i * .2}s" aria-label="${config.action}：第 ${i + 1} 处${config.target}" onclick="catchPest(${i},this)">
         ${config.icon}
       </button>`).join("")}</div>
     <p class="pest-copy">${config.hint} 离开页面自动暂停</p>
@@ -116,18 +116,18 @@ ctx.catchPest = function (id?: any, button?: any) {
         button.setAttribute("data-left", left);
         button.setAttribute("aria-label", `${e.config.action}：第 ${id + 1} 处${e.config.target}，还需 ${left} 次`);
         if (e.kind === "drought") {
-            button.innerHTML = ctx.练图.湿;
+            button.innerHTML = ctx.practiceIcons["湿"];
             button.style.background = "#cce3dd";
         }
         else
             button.style.background = left === 2 ? "#ffe5b0" : "#ffd0a6";
-        ctx.响("tap");
+        ctx.playCue("tap");
         return;
     }
     e.caught.add(id);
     button.disabled = true;
     button.classList.add("caught");
-    ctx.响("tap");
+    ctx.playCue("tap");
     ctx.document.getElementById("pest-progress").textContent = `已${e.config.verb} ${e.caught.size} / ${e.count}`;
     if (e.caught.size === e.count)
         ctx.finishPests();
@@ -151,7 +151,7 @@ ctx.finishPests = function (skipped: any = false) {
         const delta: any = ctx.applyEffect(ctx.S, { harvest: won ? 8 : -missed * 2 });
         message = `本季产量 ${delta.harvest >= 0 ? "+" : ""}${delta.harvest} 斤。`;
         const line: any = `${e.config.name}：已${e.config.verb} ${e.caught.size}/${e.count} 处${e.config.target}。${message}`;
-        ctx.S.log.push({ term: ctx.S.节气[ctx.S.termIndex].term, line, delta });
+        ctx.S.log.push({ term: ctx.S["节气"][ctx.S.termIndex].term, line, delta });
         if (!ctx.S.fieldEvents)
             ctx.S.fieldEvents = [];
         ctx.S.fieldEvents.push({ term: ctx.S.termIndex, kind: e.kind, line, won, caught: e.caught.size });
@@ -160,7 +160,7 @@ ctx.finishPests = function (skipped: any = false) {
     <h2 id="pest-title">${won ? e.config.win : skipped ? "这次先到这里" : "时间到了"}</h2>
     <p class="pest-copy">已${e.config.verb} ${e.caught.size} / ${e.count} 处${e.config.target}。${won ? "稻苗又能安心生长了。" : `还有 ${missed} 处没处理好，下次再加把劲。`}</p>
     <p>${message}</p><button class="go" onclick="closePests()">${e.practice ? "返回练习场" : "回到田里"}</button>`;
-    ctx.响(won ? "好" : "tap");
+    ctx.playCue(won ? "好" : "tap");
     ctx.pestDialog.querySelector(".go").focus();
 };
 
@@ -265,7 +265,7 @@ ctx.turnCanal = function (i?: any) {
     if (!e || e.kind !== 'canal' || e.phase !== 'playing' || !Number.isInteger(i) || i <= 0 || i >= 15)
         return;
     e.tiles[i] = ctx.rotatePipe(e.tiles[i]);
-    ctx.响('tap');
+    ctx.playCue('tap');
     if (ctx.canalWater(e.tiles).won)
         ctx.finishCanal();
     else
@@ -283,7 +283,7 @@ ctx.finishCanal = function (skipped: any = false) {
     if (!e.practice && e.season === ctx.S) {
         const delta: any = ctx.applyEffect(ctx.S, { harvest: !e.started ? 0 : won ? 8 : -2 });
         line += ` 体力 −${e.started ? 8 : 0}，产量 ${delta.harvest >= 0 ? '+' : ''}${delta.harvest} 斤。`;
-        ctx.S.log.push({ term: ctx.S.节气[ctx.S.termIndex].term, line, delta });
+        ctx.S.log.push({ term: ctx.S["节气"][ctx.S.termIndex].term, line, delta });
         if (!ctx.S.fieldEvents)
             ctx.S.fieldEvents = [];
         ctx.S.fieldEvents.push({ term: ctx.S.termIndex, kind: 'canal', line, won, caught: won ? 1 : 0 });
@@ -298,7 +298,7 @@ ctx.finishCanal = function (skipped: any = false) {
     }
     else
         ctx.pestDialog.innerHTML = `<h2 id="pest-title">${e.practice ? '练习结束' : '交给村里维修'}</h2>${result}`;
-    ctx.响(won ? '好' : 'tap');
+    ctx.playCue(won ? '好' : 'tap');
     ctx.pestDialog.querySelector('.go').focus({ preventScroll: true });
 };
 
@@ -311,106 +311,106 @@ ctx.closePests = function (refresh: any = true) {
 };
 
 // 局势：保留原玩法的计算或流程。
-ctx.局势 = function () {
-    const Y: any = ctx.S.年景 || {};
-    let 病过: any = false, 虫过: any = false;
+ctx.getSeasonConditions = function () {
+    const Y: any = ctx.S["年景"] || {};
+    let hasDisease: any = false, hasPests: any = false;
     for (const x of (ctx.S.log || [])) {
-        const 名: any = x && x.诊 && x.诊.名;
-        if (!名)
+        const gameName: any = x && x["诊"] && x["诊"]["名"];
+        if (!gameName)
             continue;
-        if (/病|瘟|枯|霉/.test(名))
-            病过 = true;
+        if (/病|瘟|枯|霉/.test(gameName))
+            hasDisease = true;
         else
-            虫过 = true;
+            hasPests = true;
     }
-    const 这: any = (ctx.S.节气 || [])[ctx.S.termIndex] || {};
-    return { 旱: !!Y.旱, 雨: !!Y.雨, 寒: !!Y.寒,
-        名: Y.名 || "平年", 段: 这.阶段 || "", 病过, 虫过 };
+    const thisEntry: any = (ctx.S["节气"] || [])[ctx.S.termIndex] || {};
+    return { "旱": !!Y["旱"], "雨": !!Y["雨"], "寒": !!Y["寒"],
+        "名": Y["名"] || "平年", "段": thisEntry["阶段"] || "", "病过": hasDisease, "虫过": hasPests };
 };
 
 // 抽突发：保留原玩法的计算或流程。
-ctx.抽突发 = function () {
-    const 位: any = [];
-    for (let i: any = 1; i < ctx.S.节气.length - 1; i++)
-        位.push(i);
-    for (let i: any = 位.length - 1; i > 0; i--) {
+ctx.drawFieldEventSchedule = function () {
+    const slots: any = [];
+    for (let i: any = 1; i < ctx.S["节气"].length - 1; i++)
+        slots.push(i);
+    for (let i: any = slots.length - 1; i > 0; i--) {
         const j: any = Math.floor(Math.random() * (i + 1));
-        [位[i], 位[j]] = [位[j], 位[i]];
+        [slots[i], slots[j]] = [slots[j], slots[i]];
     }
     ctx.pestTerms.clear();
     ctx.S.fieldEventSeen = {};
     const n: any = Math.random() < .5 ? 2 : 3;
-    return { 季: ctx.S.季 || 1, 位: 位.slice(0, n).sort((a?: any, b?: any) => a - b), 种: [] };
+    return { "季": ctx.S["季"] || 1, "位": slots.slice(0, n).sort((a?: any, b?: any) => a - b), "种": [] };
 };
 
 // 挑突发种：保留原玩法的计算或流程。
-ctx.挑突发种 = function () {
-    const 局: any = ctx.局势();
-    const 用过: any = ctx.S.fieldEventSeen || {};
-    const 全: any = ["drought", "weeds", "pest", "pestFixed", "canal"];
-    let 候: any = 全.filter((k?: any) => !用过[k]);
-    if (!候.length) {
+ctx.chooseFieldEventKind = function () {
+    const conditions: any = ctx.getSeasonConditions();
+    const used: any = ctx.S.fieldEventSeen || {};
+    const allValues: any = ["drought", "weeds", "pest", "pestFixed", "canal"];
+    let pool: any = allValues.filter((k?: any) => !used[k]);
+    if (!pool.length) {
         ctx.S.fieldEventSeen = {};
-        候 = 全.slice();
+        pool = allValues.slice();
     }
-    if (局.旱 && 候.includes("drought"))
+    if (conditions["旱"] && pool.includes("drought"))
         return "drought";
-    if ((局.虫过 || 局.病过) && 候.includes("pest"))
+    if ((conditions["虫过"] || conditions["病过"]) && pool.includes("pest"))
         return "pest";
-    const 重: any = (k?: any) => {
+    const gameWeight: any = (k?: any) => {
         if (k === "canal")
-            return 局.雨 ? 6 : 4; // Cocos 版提高修水渠的抽取权重。
+            return conditions["雨"] ? 6 : 4; // Cocos 版提高修水渠的抽取权重。
         if (k === "drought")
-            return 局.旱 ? 6 : 局.雨 ? 1 : 2;
+            return conditions["旱"] ? 6 : conditions["雨"] ? 1 : 2;
         if (k === "weeds")
-            return 局.雨 ? 6 : 局.旱 ? 1 : 2;
-        return 局.雨 ? 3 : 局.寒 ? 1 : 2;
+            return conditions["雨"] ? 6 : conditions["旱"] ? 1 : 2;
+        return conditions["雨"] ? 3 : conditions["寒"] ? 1 : 2;
     };
-    const 总: any = 候.reduce((s?: any, k?: any) => s + 重(k), 0);
-    let r: any = Math.random() * 总;
-    for (const k of 候) {
-        r -= 重(k);
+    const gameTotal: any = pool.reduce((s?: any, k?: any) => s + gameWeight(k), 0);
+    let r: any = Math.random() * gameTotal;
+    for (const k of pool) {
+        r -= gameWeight(k);
         if (r <= 0)
             return k;
     }
-    return 候[候.length - 1];
+    return pool[pool.length - 1];
 };
 
 // triggerFieldEvent：保留原玩法的计算或流程。
 ctx.triggerFieldEvent = function () {
-    if (ctx.document.hidden || ctx.pestEvent || ctx.screen !== "decision" || ctx.S.选了 !== null
-        || ctx.S.termIndex < 1 || ctx.S.termIndex >= ctx.S.节气.length - 1
+    if (ctx.document.hidden || ctx.pestEvent || ctx.screen !== "decision" || ctx.S["选了"] !== null
+        || ctx.S.termIndex < 1 || ctx.S.termIndex >= ctx.S["节气"].length - 1
         || ctx.pestTerms.has(ctx.S.termIndex))
         return;
-    if (!ctx.S.突发 || ctx.S.突发.季 !== (ctx.S.季 || 1))
-        ctx.S.突发 = ctx.抽突发();
-    const 第几: any = ctx.S.突发.位.indexOf(ctx.S.termIndex);
-    if (第几 < 0)
+    if (!ctx.S["突发"] || ctx.S["突发"]["季"] !== (ctx.S["季"] || 1))
+        ctx.S["突发"] = ctx.drawFieldEventSchedule();
+    const ordinal: any = ctx.S["突发"]["位"].indexOf(ctx.S.termIndex);
+    if (ordinal < 0)
         return;
-    if (!ctx.S.突发.种[第几])
-        ctx.S.突发.种[第几] = ctx.挑突发种();
-    ctx.openPests(false, ctx.S.突发.种[第几]);
+    if (!ctx.S["突发"]["种"][ordinal])
+        ctx.S["突发"]["种"][ordinal] = ctx.chooseFieldEventKind();
+    ctx.openPests(false, ctx.S["突发"]["种"][ordinal]);
 };
 }
 
 // 所有函数注册后，再按原顺序初始化数据，避免循环依赖。
 export function initialize(ctx: GameContext): void {
-ctx.练图 = (() => {
-    const 壳: any = (芯?: any) => `<svg viewBox="0 0 48 48" aria-hidden="true">${芯}</svg>`;
+ctx.practiceIcons = (() => {
+    const shell: any = (core?: any) => `<svg viewBox="0 0 48 48" aria-hidden="true">${core}</svg>`;
     return {
-        虫: 壳(`<path d="M13 17 5 12M13 25 4 26M15 33 7 39M35 17 43 12M35 25 44 26M33 33 41 39" stroke="#614a2b" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="27" rx="12" ry="15" fill="#8f663a"/><path d="M24 14v28M15 25h18M16 33h16" stroke="#503b24" stroke-width="2"/><circle cx="24" cy="12" r="8" fill="#526438"/><circle cx="21" cy="10" r="2" fill="#fff"/><circle cx="27" cy="10" r="2" fill="#fff"/>`),
-        旱: 壳(`<path d="M6 33c0-8 8-14 18-14s18 6 18 14v4a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#e6d3ae" stroke="#7a5c37" stroke-width="2.5"/><path d="M15 40l5-7 6 4 7-6M24 20v9M33 25l-5 3" fill="none" stroke="#8d6b42" stroke-width="2.2" stroke-linecap="round"/>`),
-        湿: 壳(`<path d="M6 33c0-8 8-14 18-14s18 6 18 14v4a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#7d5b38" stroke="#4d3720" stroke-width="2.5"/><path d="M15 40l5-7 6 4 7-6" fill="none" stroke="#5d452a" stroke-width="2.2" stroke-linecap="round"/><path d="M24 4c3.2 4.6 5 7.8 5 10.2a5 5 0 0 1-10 0C19 11.8 20.8 8.6 24 4z" fill="#5aa6c8" stroke="#3d7f9e" stroke-width="2"/>`),
-        草: 壳(`<path d="M24 41C24 30 18 24 11 21c2 8 5 16 13 20z" fill="#5d8a34" stroke="#3f6425" stroke-width="2"/><path d="M24 41C24 30 30 24 37 21c-2 8-5 16-13 20z" fill="#6d9c3f" stroke="#3f6425" stroke-width="2"/><path d="M24 41V15" stroke="#4f7a2e" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="12" rx="3.2" ry="5.6" fill="#8aab52" stroke="#4f7a2e" stroke-width="1.8"/>`),
+        "虫": shell(`<path d="M13 17 5 12M13 25 4 26M15 33 7 39M35 17 43 12M35 25 44 26M33 33 41 39" stroke="#614a2b" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="27" rx="12" ry="15" fill="#8f663a"/><path d="M24 14v28M15 25h18M16 33h16" stroke="#503b24" stroke-width="2"/><circle cx="24" cy="12" r="8" fill="#526438"/><circle cx="21" cy="10" r="2" fill="#fff"/><circle cx="27" cy="10" r="2" fill="#fff"/>`),
+        "旱": shell(`<path d="M6 33c0-8 8-14 18-14s18 6 18 14v4a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#e6d3ae" stroke="#7a5c37" stroke-width="2.5"/><path d="M15 40l5-7 6 4 7-6M24 20v9M33 25l-5 3" fill="none" stroke="#8d6b42" stroke-width="2.2" stroke-linecap="round"/>`),
+        "湿": shell(`<path d="M6 33c0-8 8-14 18-14s18 6 18 14v4a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#7d5b38" stroke="#4d3720" stroke-width="2.5"/><path d="M15 40l5-7 6 4 7-6" fill="none" stroke="#5d452a" stroke-width="2.2" stroke-linecap="round"/><path d="M24 4c3.2 4.6 5 7.8 5 10.2a5 5 0 0 1-10 0C19 11.8 20.8 8.6 24 4z" fill="#5aa6c8" stroke="#3d7f9e" stroke-width="2"/>`),
+        "草": shell(`<path d="M24 41C24 30 18 24 11 21c2 8 5 16 13 20z" fill="#5d8a34" stroke="#3f6425" stroke-width="2"/><path d="M24 41C24 30 30 24 37 21c-2 8-5 16-13 20z" fill="#6d9c3f" stroke="#3f6425" stroke-width="2"/><path d="M24 41V15" stroke="#4f7a2e" stroke-width="3" stroke-linecap="round"/><ellipse cx="24" cy="12" rx="3.2" ry="5.6" fill="#8aab52" stroke="#4f7a2e" stroke-width="1.8"/>`),
     };
 })();
 
 ctx.practiceEvents = {
     canal: { name: "村里的水渠坏了", action: "修水渠", hint: "16 种随机水路，旋转直管、L 型和 T 型接头，接通固定的起点与终点。", icon: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 24h20V6m0 18h20m-20 0v18" stroke="#837963" stroke-width="12" fill="none"/><path d="M4 24h20V6m0 18h20m-20 0v18" stroke="#63bac9" stroke-width="6" fill="none"/></svg>', seconds: 60 },
-    pest: { name: "虫害来袭 · 移动靶", action: "除虫", target: "虫子", verb: "清除", title: "点掉叶片上的虫子", win: "虫子清光了！", hint: "追着移动的虫子点，每只点三下才能清除，数字表示剩余次数。", icon: ctx.练图.虫, hits: 3, seconds: 15, insect: true, moving: true },
-    pestFixed: { name: "虫害来袭 · 固定靶", action: "除虫", target: "虫子", verb: "清除", title: "清除停在叶片上的虫子", win: "虫子清光了！", hint: "虫子停在原地，每只点三下才能清除，数字表示剩余次数。", icon: ctx.练图.虫, hits: 3, seconds: 15, insect: true, moving: false },
-    drought: { name: "旱情告急", action: "浇水", target: "干土", verb: "浇透", title: "给干裂的田地浇水", win: "田地喝饱水了！", hint: "每块干土点击两次：第一次润湿，第二次浇透。", icon: ctx.练图.旱, hits: 2, seconds: 8 },
-    weeds: { name: "杂草冒头", action: "拔草", target: "杂草", verb: "拔除", title: "拔掉稻苗间的杂草", win: "杂草拔干净了！", hint: "点击带标记的杂草，把养分留给稻苗。", icon: ctx.练图.草, hits: 1, seconds: 8 }
+    pest: { name: "虫害来袭 · 移动靶", action: "除虫", target: "虫子", verb: "清除", title: "点掉叶片上的虫子", win: "虫子清光了！", hint: "追着移动的虫子点，每只点三下才能清除，数字表示剩余次数。", icon: ctx.practiceIcons["虫"], hits: 3, seconds: 15, insect: true, moving: true },
+    pestFixed: { name: "虫害来袭 · 固定靶", action: "除虫", target: "虫子", verb: "清除", title: "清除停在叶片上的虫子", win: "虫子清光了！", hint: "虫子停在原地，每只点三下才能清除，数字表示剩余次数。", icon: ctx.practiceIcons["虫"], hits: 3, seconds: 15, insect: true, moving: false },
+    drought: { name: "旱情告急", action: "浇水", target: "干土", verb: "浇透", title: "给干裂的田地浇水", win: "田地喝饱水了！", hint: "每块干土点击两次：第一次润湿，第二次浇透。", icon: ctx.practiceIcons["旱"], hits: 2, seconds: 8 },
+    weeds: { name: "杂草冒头", action: "拔草", target: "杂草", verb: "拔除", title: "拔掉稻苗间的杂草", win: "杂草拔干净了！", hint: "点击带标记的杂草，把养分留给稻苗。", icon: ctx.practiceIcons["草"], hits: 1, seconds: 8 }
 };
 
 ctx.pestDialog = ctx.document.getElementById("pest-dialog");
@@ -459,7 +459,7 @@ ctx.setInterval(() => {
         ctx.triggerFieldEvent();
 }, 100);
 
-ctx.备事();
+ctx.prepareEvents();
 
 ctx.render();
 }

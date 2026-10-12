@@ -24,7 +24,7 @@ export class GameRuntime {
     };
     modules.forEach(module=>module.register(ctx));
     modules.forEach(module=>module.initialize(ctx));
-    ctx.响 = (name: string) => { if(ctx.开声)platform.playSound(name); };
+    ctx.playCue = (name: string) => { if(ctx.soundEnabled)platform.playSound(name); };
   }
 
   tick(seconds: number): void { if (!this.document.hidden)this.clock.tick(seconds*1000); }

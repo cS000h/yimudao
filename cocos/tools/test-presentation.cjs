@@ -17,8 +17,8 @@ module.exports=output=>{
  assert.equal(styles.get(app.querySelector('.cost'))['font-size'],'12.5px');
  const values=new Map(),r=new GameRuntime({storage:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)},playSound(){},request:()=>Promise.reject(new Error('offline'))});
  const c=r.context;
- assert.equal(c.带过来({...c.S,季:1}),'');
- const carry=c.带过来({...c.S,季:4,底金:2000,熟练:6});
+ assert.equal(c.getCarryover({...c.S,"季":1}),'');
+ const carry=c.getCarryover({...c.S,"季":4,"底金":2000,"熟练":6});
  assert.match(carry,/带过来/);assert.match(carry,/2,000/);assert.match(carry,/第 4 季/);assert.match(carry,/6 点体力/);
  r.invoke("openBook('封面')");assert.ok(r.document.getElementById('app').querySelectorAll('[onclick]').length>2);
  r.invoke('openPractice()');const choices=r.document.getElementById('app').querySelectorAll('.practice-card');assert.equal(choices.length,5);assert.ok(choices.some(e=>e.attributes.onclick.includes('canal')));
