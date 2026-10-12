@@ -5,13 +5,28 @@ module.exports=function test(output){
   const {GameRuntime}=require(path.join(output,'runtime/GameRuntime.js'));
   const {GameClock}=require(path.join(output,'runtime/GameClock.js'));
   const {TemplateDocument}=require(path.join(output,'ui/TemplateTree.js'));
-  const original=fs.readFileSync(path.resolve(__dirname,'../../index.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+  const browserSource=fs.readFileSync(path.resolve(__dirname,'../../index.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+  // Cocos 有意提高水渠权重；仅将参考版本这一项平衡规则对齐，其他玩法继续逐步比较。
+  const original=browserSource.replace('if (k === "canal") return 局.雨 ? 3 : 2;', 'if (k === "canal") return 局.雨 ? 6 : 4;');
+  assert.notEqual(original,browserSource,'browser canal weights should remain unchanged');
   const storage=()=>{const map=new Map();return {getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),map};};
   const offline=()=>Promise.reject(new Error('offline'));
   const make=(seed,store=storage())=>{
     const saved=Math.random;Math.random=random(seed);
     try{return new GameRuntime({storage:store,playSound(){},request:offline});}finally{Math.random=saved;}
   };
+  const probabilityRuntime=make(1),pc=probabilityRuntime.context,savedRandom=Math.random;
+  try{
+    for(const rainy of [false,true]){
+      pc.局势=()=>({雨:rainy});pc.S.fieldEventSeen={};let canals=0;
+      for(let i=0;i<12000;i++){Math.random=()=> (i+.5)/12000;if(pc.挑突发种()==='canal')canals++;}
+      assert.equal(canals,rainy?Math.round(12000*6/19):4000,'Cocos canal probability');
+    }
+    pc.局势=()=>({旱:true});assert.equal(pc.挑突发种(),'drought');
+    pc.局势=()=>({虫过:true});assert.equal(pc.挑突发种(),'pest');
+    pc.局势=()=>({});pc.S.fieldEventSeen={canal:true};Math.random=()=>.999;assert.notEqual(pc.挑突发种(),'canal');
+  }finally{Math.random=savedRandom;probabilityRuntime.dispose();}
+
   let compared=0,completed=0;
   for(let seed=1;seed<=30;seed++){
     const stream=random(seed),saved=Math.random;Math.random=stream;

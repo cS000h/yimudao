@@ -359,7 +359,7 @@ ctx.挑突发种 = function () {
         return "pest";
     const 重: any = (k?: any) => {
         if (k === "canal")
-            return 局.雨 ? 3 : 2;
+            return 局.雨 ? 6 : 4; // Cocos 版提高修水渠的抽取权重。
         if (k === "drought")
             return 局.旱 ? 6 : 局.雨 ? 1 : 2;
         if (k === "weeds")

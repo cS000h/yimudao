@@ -7,7 +7,7 @@ import { StyleSheet, Style, pixels, edges, lineHeight } from './StyleSheet';
 import { richText } from './TextFlow';
 import { drawJournalField } from './JournalArtwork';
 
-interface Binding { element:TemplateElement; node:Node; label?:Label; rich?:RichText; button?:Button; area?:{width:number;height:number}; meter?:{width:number;fill:string}; }
+interface Binding { element:TemplateElement; node:Node; label?:Label; rich?:RichText; button?:Button; pointer?:number; area?:{width:number;height:number}; meter?:{width:number;fill:string}; }
 const inlineTags=new Set(['#text','span','b','strong','i','em','u','small','br']);
 
 function readableText(e:TemplateElement):string {
@@ -112,6 +112,10 @@ export class NativeRenderer {
       if(binding.label)binding.label.string=readableText(e);
       if(binding.rich)binding.rich.string=richText(e,this.styles,2);
       if(binding.button)binding.button.interactable=!e.disabled;
+      if(binding.pointer!==undefined){
+        const pressed=e.classList.contains('on'),ui=binding.node.getComponent(UITransform);
+        this.choiceCard(binding.node,ui.width,ui.height,binding.pointer,pressed?Theme.green:Theme.card,pressed?Theme.green:Theme.line);
+      }
       if(binding.meter)this.background(binding.node,binding.meter.width*pixels(this.styles.get(e).width)/100,6,binding.meter.fill,undefined,3);
       if(e.classList.contains('pest-bug')) {
         binding.node.active=!e.classList.contains('caught');
@@ -192,14 +196,14 @@ export class NativeRenderer {
     return natural+offset;
   }
 
-  private text(e:TemplateElement,parent:Node,width:number,x:number,y:number):number {
+  private text(e:TemplateElement,parent:Node,width:number,x:number,y:number,nowrap=false):number {
     const s=this.styles.get(e),markup=richText(e,this.styles,2);
     if(!readableText(e).trim())return 0;
     // 以两倍分辨率绘制，再缩回逻辑字号；半像素字号与汉字边缘更接近网页。
     const node=this.box(parent,e.className||'Paragraph',width*2,1);node.setPosition(x,-y);node.setScale(.5,.5,1);
     const text=node.addComponent(RichText);text.handleTouchEvent=false;text.fontFamily=Theme.fontFamily;text.fontSize=pixels(s['font-size'],17)*2;
     const inlineHeight=(part:TemplateElement):number=>Math.max(lineHeight(this.styles.get(part)),...part.children.filter(c=>inlineTags.has(c.tag)&&this.styles.get(c).display!=='block').map(inlineHeight));
-    text.lineHeight=inlineHeight(e)*2;text.verticalAlign=RichText.VerticalAlign.CENTER;text.maxWidth=width*2;text.fontColor=color(s.color||Theme.ink);
+    text.lineHeight=inlineHeight(e)*2;text.verticalAlign=RichText.VerticalAlign.CENTER;text.maxWidth=nowrap?0:width*2;text.fontColor=color(s.color||Theme.ink);
     text.horizontalAlign=s['text-align']==='center'?RichText.HorizontalAlign.CENTER:s['text-align']==='right'?RichText.HorizontalAlign.RIGHT:RichText.HorizontalAlign.LEFT;
     text.string=markup;
     if(text.horizontalAlign===RichText.HorizontalAlign.LEFT){
@@ -389,22 +393,94 @@ export class NativeRenderer {
     const node=this.box(parent,'RiceField',width,height);node.setPosition(x,-y);this.background(node,width,height,'#d5dfc5');
     const svg=e.children.find(c=>c.tag==='svg');if(svg)drawVector(svg,node,width,height);
     for(const button of e.querySelectorAll('.hot, .pest-bug')) {
-      const pest=button.classList.contains('pest-bug'),size=pest?48:36;
+      const pest=button.classList.contains('pest-bug'),size=pest?48:58;
+      const anchorX=parseFloat(button.style.left||'50')*width/100,anchorY=parseFloat(button.style.top||'50')*height/100;
       const target=this.box(node,button.attributes.onclick||'FieldAction',size,size);
-      target.setPosition(parseFloat(button.style.left||'50')*width/100-size/2,-parseFloat(button.style.top||'50')*height/100+size/2);
-      this.background(target,size,size,pest?'#fff2d2':'#fffaf0',Theme.green);
-      const icon=button.querySelector('svg');if(icon)drawVector(icon,target,size,size);
+      target.setPosition(anchorX-size/2,-anchorY+size/2);
       if(pest) {
+        this.background(target,size,size,'#fff2d2',Theme.green);
+        const icon=button.querySelector('svg');if(icon)drawVector(icon,target,size,size);
         const counter=this.label(target,button.attributes['data-left']||'',size,14,20,Theme.ink,2,0);counter.node.name='HitCounter';counter.isBold=true;
-      }else this.label(target,button.textContent.trim()||String((+button.attributes.onclick?.match(/\((\d+)/)?.[1]||0)+1),size-4,14,20,Theme.green,5,7);
+      }else {
+        // 热区只负责点击；圆点与说明气泡各自排版，不把整段说明挤进小圆点。
+        if(button.querySelector('.dot')){
+          const dot=this.box(target,'FieldDot',30,30);dot.setPosition(14,-14);
+          const g=dot.addComponent(Graphics),locked=button.classList.contains('lk');
+          g.fillColor=color(locked?'#e3dfcd':'#fffdf6');g.strokeColor=color(locked?'#a89f86':'#3d5c36');g.lineWidth=2;
+          g.circle(15,-15,14);g.fill();g.stroke();g.fillColor=color(locked?'#a89f86':Theme.green);g.circle(15,-15,4.5);g.fill();
+        }
+        const bubble=button.querySelector('.bub');
+        if(bubble)this.fieldBubble(bubble,target,width,height,anchorX,anchorY,size);
+      }
       const component=target.addComponent(Button);component.transition=Button.Transition.SCALE;component.interactable=!button.disabled;
       target.on(Button.EventType.CLICK,()=>this.safeInvoke(button.attributes.onclick,button));
       this.bindings.push({element:button,node:target,button:component,area:{width,height}});
+    }
+    // 说明卡片统一置顶，后面的锁定圆点不会盖住前面的选项文字。
+    for(const target of [...node.children]){
+      const card=target.getChildByName('FieldChoiceCard');if(!card)continue;
+      const left=target.position.x+card.position.x,top=target.position.y+card.position.y;
+      card.setParent(node);card.setPosition(left,top);
     }
     // 田图后的说明由页面继续排版；图中的热区与下面的文字选项共享动作。
     const caption=e.children.filter(c=>c.tag!=='svg'&&!c.attributes.onclick).map(readableText).join(' ').trim();
     if(caption){const label=this.label(node,caption,width,13,22,Theme.dim,0,height+6);return height+label.node.getComponent(UITransform).height+18;}
     return height+12;
+  }
+
+  private fieldBubble(e:TemplateElement,target:Node,fieldWidth:number,fieldHeight:number,anchorX:number,anchorY:number,hitSize:number):void {
+    const card=this.box(target,'FieldChoiceCard',1,1),title=e.querySelector('b'),cost=e.querySelector('i'),effect=e.querySelector('.dir');
+    // 消耗和效果分行，沿用原模板的字号、颜色与粗体；不修改玩法模板。
+    const rows:TemplateElement[]=[];
+    if(title)rows.push(title);
+    if(cost){
+      const children=cost.children.filter(c=>c!==effect);
+      const row={tag:'span',attributes:{},style:{},parent:cost,children,className:'',classList:{contains:()=>false}} as any as TemplateElement;
+      Object.defineProperty(row,'textContent',{get:()=>children.map(c=>c.textContent).join('')});rows.push(row);
+    }
+    if(effect)rows.push(effect);
+    let top=7,contentWidth=0;
+    for(const row of rows){
+      const before=card.children.length,h=this.text(row,card,fieldWidth-32,9,top,true);
+      const text=card.children[before];if(text)contentWidth=Math.max(contentWidth,text.getComponent(UITransform).width/2);
+      top+=h+(row===title?1:0);
+    }
+    const w=Math.min(fieldWidth-16,Math.ceil(contentWidth)+18),h=Math.ceil(top)+7;
+    card.getComponent(UITransform).setContentSize(w,h);
+    // 极窄屏幕才允许换行，保证文字仍完整落在卡片内。
+    if(contentWidth>w-18){
+      top=7;
+      for(const text of card.children){const rich=text.getComponent(RichText);if(!rich)continue;rich.maxWidth=(w-18)*2;rich.string=rich.string;const measured=text.getComponent(UITransform).height;const lines=Math.max(1,Math.floor(measured/rich.lineHeight+.001));const rh=lines*rich.lineHeight/2;text.setPosition(9,-top+(measured-rh*2)/4);top+=rh+1;}
+      card.getComponent(UITransform).height=Math.ceil(top)+7;
+    }
+    const cardHeight=card.getComponent(UITransform).height;
+    // 整张卡片随尖角内缩一起移动，尖角的水平坐标仍对准原热区（家什中心）。
+    const desired=e.classList.contains('l')?anchorX-20:e.classList.contains('r')?anchorX+20-w:anchorX-w/2;
+    const left=Math.max(8,Math.min(fieldWidth-w-8,desired));
+    const raised=(e.attributes.style||'').includes('translateY(-20px)')?20:0;
+    const cardTop=Math.max(8,Math.min(fieldHeight-cardHeight-8,anchorY-26-cardHeight-raised));
+    card.setPosition(left-anchorX+hitSize/2,-cardTop+anchorY-hitSize/2);
+    // 尖角避开圆角，从直边自然伸出；整张卡片共用一个轮廓，不留下拼接线。
+    const pointer=Math.max(20,Math.min(w-20,anchorX-left));
+    this.choiceCard(card,w,cardHeight,pointer,Theme.card,Theme.line);
+    // 气泡也属于同一选择，点击文字与点击田中标记执行相同动作。
+    const choice=card.addComponent(Button);choice.transition=Button.Transition.SCALE;choice.zoomScale=.985;
+    choice.interactable=!e.parent.disabled;card.on(Button.EventType.CLICK,()=>this.safeInvoke(e.parent.attributes.onclick,e.parent));
+    this.bindings.push({element:e.parent,node:card,button:choice,pointer});
+  }
+
+  private choiceCard(node:Node,w:number,h:number,tip:number,fill:string,stroke:string):void {
+    const g=node.getComponent(Graphics)||node.addComponent(Graphics);g.clear();
+    for(let spread=6;spread>=2;spread-=2){g.fillColor=color('#352f1d',.025);g.roundRect(-spread,-h-spread-3,w+spread*2,h+spread*2,11+spread);g.fill();}
+    const r=11,k=r*.5523;
+    g.fillColor=color(fill);g.strokeColor=color(stroke);g.lineWidth=1;
+    g.moveTo(r,0);g.lineTo(w-r,0);g.bezierCurveTo(w-r+k,0,w,-r+k,w,-r);
+    g.lineTo(w,-h+r);g.bezierCurveTo(w,-h+r-k,w-r+k,-h,w-r,-h);
+    // 14px 宽、5px 高的柔和尖角，与底边连续绘制。
+    g.lineTo(tip+7,-h);g.bezierCurveTo(tip+4,-h,tip+2,-h-5,tip,-h-5);
+    g.bezierCurveTo(tip-2,-h-5,tip-4,-h,tip-7,-h);
+    g.lineTo(r,-h);g.bezierCurveTo(r-k,-h,0,-h+r-k,0,-h+r);
+    g.lineTo(0,-r);g.bezierCurveTo(0,-r+k,r-k,0,r,0);g.close();g.fill();g.stroke();
   }
 
   private clearChildren(parent:Node):void {
