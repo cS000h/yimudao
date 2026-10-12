@@ -1,0 +1,10 @@
+{
+  "__version__": "1.3.9",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/Main.scene",
+      "uuid": "e5f09540-e14f-9d23-3a06-d9be2cf0c048"
+    }
+  ],
+  "startScene": "e5f09540-e14f-9d23-3a06-d9be2cf0c048"
+}

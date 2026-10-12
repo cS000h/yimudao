@@ -1,0 +1,9 @@
+{
+  "name": "yimudao-cocos",
+  "uuid": "df3e81be-6f58-4d17-bdd2-2e3e2836f72e",
+  "version": "1.0.0",
+  "creator": {
+    "version": "3.8.8"
+  },
+  "description": "一亩稻：从网页迁移的 Cocos 原生界面工程"
+}

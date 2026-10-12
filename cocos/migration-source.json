@@ -1,0 +1,18 @@
+{
+  "source": "../index.html",
+  "sha256": "8dfe6e6028576d0bae915e63186d63b18ffb10c4200ffc3704ebd53a1b1ec5d9",
+  "sections": [
+    "data/Balance",
+    "data/Decisions",
+    "data/Events",
+    "data/Business",
+    "data/Collections",
+    "logic/Season",
+    "ui/FieldArtwork",
+    "logic/Settlement",
+    "ui/Screens",
+    "logic/Flow",
+    "minigames/FieldEvents"
+  ],
+  "note": "迁移后以 assets/scripts 为准；重新运行工具会覆盖迁移模块。"
+}

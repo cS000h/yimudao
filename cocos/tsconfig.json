@@ -1,0 +1,4 @@
+{
+  "extends": "./temp/tsconfig.cocos.json",
+  "compilerOptions": { "strict": false, "noImplicitAny": false }
+}
