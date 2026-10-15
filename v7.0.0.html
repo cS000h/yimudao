@@ -303,6 +303,108 @@ body{display:flex;justify-content:center;align-items:stretch}
   border-radius:12px 0 10px 0;
   background:linear-gradient(180deg,#e0bb79,#bb9247)}
 
+/* ══════ 灾警：跟决策卡一个辈分，但它是朱砂不是金 ══════════
+   金色的那枚角标是「该定的事」；这一张角标也是金的（都是这一屏最要紧的），
+   可左边那道色条换成朱砂 —— 金是请你做个决定，朱砂是已经砸下来了。
+   牌面上只写年景名和要备的什么，不剧透会怎样：
+   灾害那一页说得很明白，【好】【中】只写动作，后果是事后印的。 */
+.act.alert{border-color:rgba(207,101,83,.5);
+  background:
+    radial-gradient(120% 150% at 100% 50%, rgba(207,101,83,.16) 0%, rgba(207,101,83,0) 62%),
+    linear-gradient(180deg,#322b29,#241f1e);
+  box-shadow:0 0 0 1px rgba(207,101,83,.14), 0 8px 26px -16px rgba(207,101,83,.65)}
+.act.alert::before{top:0;bottom:0;width:4px;border-radius:0;opacity:1;
+  background:linear-gradient(180deg,#e2826d,#a8442f)}
+.act.alert .act-kind{background:linear-gradient(180deg,#e2937d,#b8503a);color:#2a1109}
+/* 急的那句话是整句原话，字号压一档、行距放开 —— 16px 宋体排三行太吵 */
+.act.alert .act-main{font-family:var(--font-serif);font-size:14px;font-weight:700;
+  line-height:1.55;color:#f7ddd2;letter-spacing:.2px}
+.act-sub .cost{font-size:11px;color:#e8b9a9;background:rgba(207,101,83,.16);
+  border:1px solid rgba(207,101,83,.36);border-radius:99px;padding:2px 9px;white-space:nowrap}
+
+/* 灾警屏上那两行：好 / 中 */
+.alert-text{font-size:14px;line-height:1.75;color:var(--ink-narr);
+  background:var(--paper-bg);border:1px solid var(--paper-border);
+  border-radius:12px;padding:11px 13px;margin-bottom:10px}
+.sh-acts{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.sh-act{position:relative;overflow:hidden;cursor:pointer;
+  background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  border:1px solid var(--line);border-radius:12px;padding:11px 13px 11px 15px;
+  transition:border-color .16s ease, transform .1s ease}
+.sh-act::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;
+  border-radius:0 3px 3px 0;background:var(--green);opacity:.75}
+.sh-act:active{transform:translateY(1px)}
+.sh-act.off{opacity:.42;cursor:default}
+.sh-act.off::before{background:var(--muted)}
+.sh-act-t{font-size:14px;font-weight:600;color:var(--ink);line-height:1.45}
+/* 【好】是稻禾青，【中】是麦芽黄 —— 两条路，不是好坏两档 */
+.sh-act-k{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;
+  color:#16210f;background:var(--green);border-radius:5px;padding:1px 6px;
+  margin-right:7px;vertical-align:1px}
+.sh-act-k.mid{background:var(--warn);color:#2a1c06}
+.sh-act-n{font-size:11.5px;color:var(--dim);margin-top:5px;line-height:1.5}
+
+/* ══════ 叙事区里年景那几笔 ══════
+   二三月里飘过的一个兆头，跟「你刚拔了半垄草」不该长一个样。 */
+#narr .year{font-family:var(--font-serif);font-size:14.5px;font-weight:700;
+  color:#f4e3bd;letter-spacing:.4px;
+  border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong);
+  padding:7px 0;margin:0 0 8px}
+#narr .warn{font-size:13.5px;line-height:1.7;color:#f0c3b4;
+  background:rgba(207,101,83,.1);border-left:2px solid rgba(207,101,83,.55);
+  border-radius:0 8px 8px 0;padding:7px 10px;margin:0 0 8px}
+#narr .omen{font-family:var(--font-serif);font-size:13.5px;line-height:1.7;
+  color:#c9c0ac;font-style:normal;
+  border-left:2px solid var(--line-strong);padding-left:9px;margin:0 0 8px}
+
+/* ══════ 田况页新增：今年是什么年 / 备了什么 / 还有几步 ══════ */
+.year{background:var(--paper-bg);border:1px solid var(--paper-border);
+  border-radius:12px;padding:10px 12px;margin-bottom:9px}
+.year-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px;margin-bottom:6px}
+.year-h b{font-family:var(--font-serif);font-size:16px;font-weight:700;
+  color:#f4e3bd;letter-spacing:1px}
+.year-h .why{font-size:11px;color:var(--dim)}
+.year-say{font-size:12.5px;line-height:1.7;color:var(--ink-narr)}
+
+/* 四段报 + 发作，一格一格摆出来 —— 飘过去的那几行，在这儿能坐定了看 */
+.ladder{display:flex;gap:5px;margin-bottom:9px}
+.lad{flex:1 1 0;min-width:0;text-align:center;border-radius:9px;padding:6px 2px 7px;
+  background:rgba(255,255,255,.03);border:1px solid var(--line)}
+/* 每格顶上那一点：报了是绿的，还没到是灰的 */
+.lad i{display:block;width:6px;height:6px;border-radius:99px;margin:0 auto 4px;
+  background:var(--muted);opacity:.5}
+.lad span{display:block;font-size:10px;color:var(--dim);letter-spacing:.5px}
+.lad b{display:block;font-size:9.5px;font-weight:600;color:var(--muted);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lad.done{border-color:rgba(104,166,120,.4);background:var(--green-soft)}
+.lad.done i{background:var(--green);opacity:1}
+.lad.done span{color:#a8cdb0}
+.lad.here{border-color:rgba(217,178,111,.5)}
+.lad.here b{color:var(--gold)}
+.lad.hit{border-color:rgba(207,101,83,.34)}
+.lad.hit span{color:#e0a292}
+.lad.hit.done{border-color:rgba(207,101,83,.5);background:var(--bad-soft)}
+
+/* 屋角那三样。今年要的那一样挑出来说 —— 那是这一季唯一的硬条件 */
+.goods{display:flex;gap:6px}
+.gd{flex:1 1 0;min-width:0;border-radius:10px;padding:8px 9px 9px;
+  background:rgba(255,255,255,.03);border:1px solid var(--line)}
+.gd-n{font-size:11px;color:var(--dim);letter-spacing:1px}
+.gd-v{display:block;font-family:var(--font-mono);font-size:17px;font-weight:700;
+  color:var(--ink);margin:2px 0 3px}
+.gd-u{font-family:var(--font-sans);font-size:10px;font-weight:400;color:var(--muted)}
+.gd-t{display:block;font-size:9.5px;color:var(--muted);line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gd.none .gd-v{color:var(--muted)}
+.gd.need{border-color:rgba(217,178,111,.5);background:var(--gold-soft)}
+.gd.need .gd-t{color:var(--gold)}
+.gd.need.none{border-color:rgba(207,101,83,.45);background:var(--bad-soft)}
+.gd.need.none .gd-t{color:#e0a292}
+
+/* 去年那一季。写在最底下、比正文淡一档 —— 是个注脚，不是当下的正事 */
+.past{margin-top:7px;font-size:11px;color:var(--muted);letter-spacing:.4px}
+.past b{color:var(--dim);font-weight:700}
+
 /* ── 底部地点移动栏 ─────────────────────────────────────────── */
 /* 五格平分，一个都不许被推出屏幕 ——
    移动栏要是还得横着划才够得着「镇上集市」，那它就不算「常驻」了。 */
@@ -1722,12 +1824,76 @@ const GameData = {
     }
   ],
 
+  /* ══════ 挡灾的货 ══════
+     「挡它的货」里那三样：膜 / 肥 / 工。
+     前两样是买回来压在屋角的存货，用了就少一件；「工」是当场掏钱请的人，
+     一样是存货 —— 备着不用，钱也还在手上，只是压着。
+
+     ⚠ 这一块的价钱**不在这儿写**。买捆膜 / 买袋肥 / 请一天工这三件事
+     各在动作池里有自己的动作，costMoney 就是唯一的价钱。
+     灾年那边只记「要哪一种货」，两边对不上的可能从根上掐掉。
+
+     standIn 是「顶货」那一路的六件里的四件：作者在藏品表上写死了
+     「顶一次盖膜」「顶一次追肥」—— 「顶一次」就是**用掉**，
+     所以走 standIn 顶上这一回，那件东西就从包里出去了。
+     秧盘（34）带的是「育秧插秧省工」，管的是插秧那一天的工，
+     不是灾头上的雇工，所以「工」这一路没有顶的，只能花钱请。
+     ────────────────────────────────────────────────────────── */
+  goods: {
+    membrane:   { label:'膜', unit:'捆', desc:'盖棚挡寒、遮阴' },
+    fertilizer: { label:'肥', unit:'袋', desc:'叶面补一口' },
+    labor:      { label:'工', unit:'天', desc:'请人下田' }
+  },
+
+  goodsStandIn: {
+    membrane:   ['35', '32'],   // 膜卷「顶一次盖膜」/ 干稻茬「顶一次盖膜」
+    fertilizer: ['36', '31'],   // 化肥袋「顶一次追肥」/ 草木灰「顶一次追肥」
+    labor:      []
+  },
+
+  /* ══════ 年景抽牌的权重 ══════
+     按牌面 rarity 抽。没有 hit 的是「什么都不发生」的那种年景
+     （平年），抽中它这一季就太平 —— 太平年景得常见，不然一季接一季
+     全是灾，人喘不过气。quietBonus 就是给它乘的那个倍数。
+     这几个数是我配的，等作者过目。
+     ────────────────────────────────────────────────────────── */
+  yearCardWeight: { SSR:16, SR:20, R:30, quietBonus:2.4 },
+
+  /* ══════ 灾害发作之后，田里那笔账 ══════
+     三档对三种收场：备了货走了【好】→ 撑住了；硬扛走了【中】→ 吃重；
+     没搭理 → 折。
+     ⚠ 数值是我配的，等作者过目。
+     摆法：撑住了 = 擦破点皮，心疼一下但这一季照走；
+           吃重   = 明摆着掉一块，秋后碾出来的米少一截；
+           折     = 这一季基本白种，300 是地板的边（shiftField 的底是 300）。
+     quality 那三档贴着 82 的底子给，折到 64 是「碾不成整米」的量级。
+     ────────────────────────────────────────────────────────── */
+  disasterOutcome: {
+    held:   { id:'held',   name:'撑住了', yield:-15,  quality:-2,  stress:8  },
+    heavy:  { id:'heavy',  name:'吃重',   yield:-90,  quality:-8,  stress:16 },
+    broken: { id:'broken', name:'折',     yield:-220, quality:-18, stress:26 }
+  },
+
+  /* ══════ 好年景过去之后，田里那笔账 ══════
+     好年景（丰年、暖秋…）没有灾，可牌上照样写着「这一季成了什么样」，
+     而且分成了三句：走对冲的 counterLine、没碰着的 line、走反的 antiLine。
+     丰年那句 counterLine 是「穗子压得秆子都弯了」—— 老天爷给了，
+     还得你接得住。所以好年景也吃决策，只是方向反过来：
+     走对了是白捡的，走反了是白丢的。平年那句是空的，两样都不给。
+     ⚠ 数值是我配的，等作者过目。
+     ────────────────────────────────────────────────────────── */
+  goodYearOutcome: {
+    counter: { id:'counter', name:'接住了', yield:45,  quality:3  },
+    plain:   { id:'plain',   name:'平过',   yield:0,   quality:0  },
+    anti:    { id:'anti',    name:'没接住', yield:-45, quality:-3 }
+  },
 
   /* ══════ 年景卡：一季开头抽的那张天气牌 ══════
      16 张，文案（名/说/报/line/对冲线/反线）全是 3-天灾.md 里的原话，机器抄的。
      「对冲」「反」在表里只是一个词，我把它接到了对应决策的那个选项上 ——
      收口在 C:\tmp\ymd7\build-yearcards.mjs 的 BIND 表里，没接上的词会当场报错。
-     抽牌权重、以及下面「挡它的货」的价钱，是我配的，等作者过目。
+     抽牌权重是我配的，等作者过目。「挡它的货」只记要哪一种货，
+     价钱在动作池那三个买货的动作上，一处写死。
      ────────────────────────────────────────────────────────── */
   yearCards: [
     { id:'pingNian', name:'平年', rarity:'R', tag:'中', say:'风调雨顺。该下雨下雨，该晒晒。',
@@ -1885,7 +2051,7 @@ const GameData = {
      ────────────────────────────────────────────────────────── */
   disasterYears: [
     { id:'daoChunHan', name:'倒春寒',
-      need:{ label:'膜', kind:'membrane', price:60, stamina:13 },
+      need:{ label:'膜', kind:'membrane', stamina:13 },
       stock:'今年春天冷。膜备上一捆 —— 寒潮那一夜，棚里的秧就指望它。',
       omen:'北风一阵一阵的，从早刮到晚，埂上的草都朝一个方向倒。',
       sign:'老周在秧田边上站了一会儿，说：「今年的冷还没走干净。秧在露天地里，你得想点办法。」',
@@ -1896,7 +2062,7 @@ const GameData = {
       heavy:'寒潮还是进来了。露地那一片，叶尖先白、整株软下去。你补了一遍种，节气往后挪了几天。',
       broken:'秧烂了大半，补的种又赶不上节气。这一季，苗就没齐过。' },
     { id:'fuHan', name:'伏旱',
-      need:{ label:'工', kind:'labor', price:150, stamina:15 },
+      need:{ label:'工', kind:'labor', stamina:15 },
       stock:'今年要旱。雇工的钱备着 —— 旱了挑水，张口就有人。',
       omen:'渠里的水声一天比一天小，到后来只剩一点滴答。',
       sign:'渠里的水一天比一天浅。老周说：「今年这天，得早做打算。」',
@@ -1907,7 +2073,7 @@ const GameData = {
       heavy:'旱了一个月。田裂了口子，稻苗黄下去半截，后来的雨也只救回大半。',
       broken:'渠底见了泥。稻苗一半枯在田里 —— 这一季，从分蘖起就欠着账。' },
     { id:'liangXia', name:'凉夏',
-      need:{ label:'肥', kind:'fertilizer', price:120, stamina:12 },
+      need:{ label:'肥', kind:'fertilizer', stamina:12 },
       stock:'今年夏天不热。叶面肥备一袋 —— 天不热、稻子不长的时候，叶面上补一口，能抢回来一点是一点。',
       omen:'日头总在云后头，露水到晌午还没干。',
       sign:'进了七月，天一直阴着。老周说：「不热，稻子就不长。你心里得有个数。」',
@@ -1918,7 +2084,7 @@ const GameData = {
       heavy:'天一直没热起来。稻子灌得慢，米粒上半截饱、下半截虚，碾出来整米要少。',
       broken:'一个夏天没热起来。稻子没灌上浆 —— 收上来的，大半是瘪的。' },
     { id:'qiuLin', name:'秋淋',
-      need:{ label:'工', kind:'labor', price:150, stamina:16 },
+      need:{ label:'工', kind:'labor', stamina:16 },
       stock:'收的时候要下雨。雇工钱备着 —— 雨前抢收，得有人手。',
       omen:'西边的云压得低，风里有股潮气，衣裳晾两天还是软的。',
       sign:'老周看了看西边的云，说：「今年的雨，怕是要下在收的时候。」',
@@ -1929,7 +2095,7 @@ const GameData = {
       heavy:'雨连着下了几天。倒了一片，穗上还发了芽；收上来的湿谷，烘干都得从头来。',
       broken:'雨没停过。稻子成片倒在泥里，割回来的发了芽，碾不成米。' },
     { id:'zaoShuang', name:'早霜',
-      need:{ label:'工', kind:'labor', price:150, stamina:14 },
+      need:{ label:'工', kind:'labor', stamina:14 },
       stock:'霜来得早。雇工钱备着 —— 霜前连夜割，一个人是不够的。',
       omen:'今年秋来得急，太阳一落，手上就凉。',
       sign:'今年的秋来得早。老周说：「霜要早下，你得把日子往前赶。」',
@@ -1940,7 +2106,7 @@ const GameData = {
       heavy:'头场霜比往年早。米没长足，青粒多，碾出来碎米也要多。',
       broken:'霜下来的时候，稻子还在长米。这一季收回来的，大半是青的。' },
     { id:'daShui', name:'大水',
-      need:{ label:'工', kind:'labor', price:150, stamina:15 },
+      need:{ label:'工', kind:'labor', stamina:15 },
       stock:'今年雨大。雇工钱备着 —— 田里积了水，得有人连夜往外排。',
       omen:'雨一阵一阵地砸，田埂上的泥踩上去直陷。',
       sign:'雨连着下了三天。老周披着塑料布过来，站在埂上看了一会儿：「围沟里的水，快平埂了。」',
@@ -1951,7 +2117,7 @@ const GameData = {
       heavy:'田里积了半尺水。稻苗在水下待了一整天，叶子发黄，后面的分蘖也慢了半拍。',
       broken:'水没退。分蘖期淹过顶的稻子缓不过来 —— 这一季，穗数从这儿就少了一大截。' },
     { id:'daFeng', name:'大风',
-      need:{ label:'工', kind:'labor', price:150, stamina:14 },
+      need:{ label:'工', kind:'labor', stamina:14 },
       stock:'今年风大。雇工钱备着 —— 风来之前把水放浅、把风口那几厢扶一遍，都得人手。',
       omen:'风从南边过来，一阵比一阵沉，稻叶哗哗地响成一片。',
       sign:'连着两天大风。老周蹲在田头，手把一丛稻子往根上按了按：「根扎得浅的，站不住。」',
@@ -1962,7 +2128,7 @@ const GameData = {
       heavy:'风过之后，田里倒了一片。秆子折的折、弯的弯，穗子沾了泥，碾出来整米要少。',
       broken:'稻子成片趴在田里。穗子一沾地就霉，收上来的多半是瘪的 —— 这一季，风替你收了。' },
     { id:'lengYu', name:'冷雨',
-      need:{ label:'肥', kind:'fertilizer', price:120, stamina:13 },
+      need:{ label:'肥', kind:'fertilizer', stamina:13 },
       stock:'今年雨冷。叶面肥备一袋 —— 天冷又下雨，叶子扛不住，得从叶面上补一口。',
       omen:'雨不大，可一直不停，落在胳膊上是凉的。',
       sign:'连着几天阴雨，气温上不来。老周扒开一丛稻子看了看穗：「这种天，穗子最娇。」',
@@ -1973,7 +2139,7 @@ const GameData = {
       heavy:'低温加连阴雨，穗颈上起了病斑。不重，可碾出来整米要少一截。',
       broken:'病从穗颈上走了一圈。穗子空了一大半，碾不成整米 —— 这一季，白长了个儿。' },
     { id:'zhaQing', name:'乍晴',
-      need:{ label:'膜', kind:'membrane', price:60, stamina:12 },
+      need:{ label:'膜', kind:'membrane', stamina:12 },
       stock:'今年春天雨多。膜备上一捆 —— 天一回晴，棚里的苗就得遮。',
       omen:'雨刚停，日头就毒起来，田里的水汽一股一股往上蒸。',
       sign:'连着晴了三天，一天比一天热。老周掀开你棚帘看了一眼：「闷在里头，苗要受不了。」',
@@ -1984,7 +2150,7 @@ const GameData = {
       heavy:'棚里闷了两天。秧苗蹿得又细又软，一揭膜趴下一片，补了不少种。',
       broken:'闷过头了。整厢苗子像被开水烫过，立不起来 —— 这一季的秧，从开头就欠着。' },
     { id:'menRe', name:'闷热',
-      need:{ label:'肥', kind:'fertilizer', price:120, stamina:12 },
+      need:{ label:'肥', kind:'fertilizer', stamina:12 },
       stock:'今年伏天闷。叶面肥备一袋 —— 穗子上要补，也得挑着补。',
       omen:'一丝风也没有，在日头底下站一会儿，衣裳就湿透了。',
       sign:'连着十天又闷又潮。老周捏着一穗稻子翻过来看：「这种天，穗子上容易长东西。」',
@@ -1995,7 +2161,7 @@ const GameData = {
       heavy:'又闷又潮，穗子上起了灰绿色的霉点。不重，可碾出来整米要少。',
       broken:'穗子上长满了。那一层霉一碰就飞，碾出来尽是碎米 —— 这一季，收的是个色。' },
     { id:'chongNian', name:'虫年',
-      need:{ label:'工', kind:'labor', price:150, stamina:13 },
+      need:{ label:'工', kind:'labor', stamina:13 },
       stock:'今年虫子多。雇工钱备着 —— 要治就得趁早，人手越齐越快。',
       omen:'日头一落，田边的虫叫声比往年密。',
       sign:'田里的虫子比往年多。老周蹲下来，翻起一片叶子的背面给你看：「看到了吧。」',
@@ -2081,8 +2247,9 @@ const GameData = {
           onFailText:'老周在院里忙，应了一声就没下文。你站了会儿，走了。',
           onSuccess:{ opinionDelta:{ zhou:5 }, yieldMarginDelta:-10 } } },
 
-      { id:'village_hire', label:'找帮工老太太', detail:'请一天工',
+      { id:'village_hire', label:'找帮工老太太', detail:'请一天工 · 也是备着的灾工',
         costTimeMinutes:60, costStamina:4, costMoney:300, costHookNpc:null, check:null,
+        goodsAdd:'labor',
         onSuccessText:'老太太答应了，说明天一大早就过来。' }
     ],
 
@@ -2097,9 +2264,14 @@ const GameData = {
         stressDelta:-10,
         onSuccessText:'一碗面，汤是热的。吃完坐在小马扎上歇了会儿才起身。' },
 
-      { id:'town_fert', label:'农资店买袋肥', detail:'追肥用',
+      { id:'town_film', label:'农资店买捆膜', detail:'盖棚用 · 也是备着的灾膜',
+        costTimeMinutes:50, costStamina:6, costMoney:60, costHookNpc:null, check:null,
+        goodsAdd:'membrane',
+        onSuccessText:'柜台后头立着一卷农膜。老板按你要的长度扯下来卷好，拿草绳捆上。\n「压紧点，别让风抽了。」' },
+
+      { id:'town_fert', label:'农资店买袋肥', detail:'追肥用 · 也是备着的灾肥',
         costTimeMinutes:50, costStamina:8, costMoney:180, costHookNpc:null, check:null,
-        grants:'36',
+        goodsAdd:'fertilizer', grants:'36',
         onSuccessText:'老板把袋子往柜台上一放，说潮天别堆在墙角。' },
 
       { id:'town_price', label:'粮站问问行情', detail:'多一层底',
@@ -2312,7 +2484,9 @@ class GameEngine {
         equipment: { head:null, feet:{ ...this.data.starterGear, states:[],
                                       effect:{ ...this.data.starterGear.effect } },
                      tool:null, accessory:null },
-        relics: []
+        relics: [],
+        // 挡灾的货：买回来压在屋角的存货，用一件少一件
+        goods: { membrane:0, fertilizer:0, labor:0 }
       },
       field: {
         trueYield:s.trueYield, trueQuality:s.trueQuality,
@@ -2320,7 +2494,17 @@ class GameEngine {
         modifiers: []
       },
       npcs: {},
-      flags: {}
+      flags: {},
+      /**
+       * 这一季的年景。一季一张牌，牌一抽出来就知道今年是什么年。
+       *   cardId   抽中的那张年景卡的 id
+       *   hedge    面对牌上那个「对冲 / 反」的时候，你选了哪一边
+       *            'counter' 走了对冲 / 'anti' 走了反 / null 还没定
+       *   warned   四段报（备货/兆/显/急）里已经报过的那几段，免得重复刷屏
+       *   answer   灾警屏上按的是【好】还是【中】
+       *   outcome  事后印的那个字：撑住了 / 吃重 / 折
+       */
+      season: { cardId:null, hedge:null, warned:{}, answer:null, outcome:null }
     };
     for (const n of this.data.npcs) {
       this.state.npcs[n.id] = { opinion:0, opinionLogs:[], hooks:0 };
@@ -2329,6 +2513,8 @@ class GameEngine {
       this.changeOpinion(o.npcId, o.delta, o.reason);
     }
     this.events = [];
+    this.state.lastSeason = null;
+    this.startSeason();
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -2347,9 +2533,11 @@ class GameEngine {
       this.state.time.day++;
       if (this.state.time.day > this.currentTerm.days) {
         this.state.time.day = 1;
+        const leaving = this.state.time.solarTermIndex;
         this.state.time.solarTermIndex =
           (this.state.time.solarTermIndex + 1) % this.data.solarTerms.length;
         this.pushEvent('sys', `交节了。${this.currentTerm.id}。`);
+        this.onNewTerm(leaving, this.state.time.solarTermIndex);
       }
       this.onNewDay();
       // 保险丝。正常调用最多跨一两天，4000 是给「一口气推到秋后」那种测试留的余量
@@ -2362,6 +2550,252 @@ class GameEngine {
     this.changeStress(-15);
     const pool = this.data.weatherPool;
     this.state.time.weather = pool[Math.floor(this.rng() * pool.length)];
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     年景：一季一张牌，四个时间点，最后一次问话
+     ──────────────────────────────────────────────────────────────
+     原稿在 3-天灾.md，那一页把话说得很死：
+     「每个灾年四个时间点（备货 / 兆 / 显 / 急）+ 三手的动作句 + 四种结局。
+       【好】【中】是灾警屏上那两行动作（**只写动作，不写会怎样**），
+       【撑住了】【吃重】【折】是事后印的。」
+
+     所以这台机器只有四件事：
+       ① 交节进谷雨那天抽一张年景牌 —— 今年是什么年，一开头就定了。
+       ② 牌上带灾的，按「备货 → 兆 → 显 → 急」在四个节气上各报一段。
+       ③ 发作那一节，灾警屏摆出【好】和【中】—— 按了才算数。
+       ④ 离开发作那一节，事后印字：撑住了 / 吃重 / 折。
+
+     牌上那个「对冲 / 反」是跟决策连着的：你这一季在那屏决策上选了
+     对冲那一边，灾警屏上的【好】才是顺的；选了反的一边，人就站在
+     反的那一边上，【好】那条路自己就堵了 —— 不用额外编台词，
+     决策一选完，后面的账已经记上了。
+     ══════════════════════════════════════════════════════════════ */
+
+  /** 抽牌定这一季的年景。权重在 data.yearCardWeight，按 rarity 走。 */
+  startSeason() {
+    // 先把上一季的账收进 lastSeason，再开新的。
+    // 顺序不能反：结账是在「离开上一季最后一节」那一下做的，
+    // 而换牌也是那一下 —— 先结后换，结完的那笔账一换就被新 season
+    // 顶掉了，田况那块就再也说不出「去年是什么年、结了个什么果」。
+    const old = this.state.season, oldCard = this.activeCard();
+    if (old?.cardId) {
+      this.state.lastSeason = {
+        cardId: old.cardId, name: oldCard?.name || '',
+        outcome: old.outcome || null, answer: old.answer || null, hedge: old.hedge || null
+      };
+    }
+    const cards = this.data.yearCards;
+    const wt = this.data.yearCardWeight;
+    const weights = cards.map(c => (wt[c.rarity] ?? 10) * (c.hit ? 1 : (wt.quietBonus ?? 1)));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let roll = this.rng() * total, card = cards[cards.length - 1];
+    for (let i = 0; i < cards.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) { card = cards[i]; break; }
+    }
+    this.state.season = { cardId:card.id, hedge:null, warned:{}, answer:null, outcome:null };
+    this.pushEvent('year', `今年是${card.name}。${card.say}`);
+    if (card.report) this.pushEvent('norm', card.report);
+    // 牌一发下来，这一季该备什么货就摆到明面上了 ——
+    // 灾害那一页说的是「备货」，不是「到时候再说」。
+    // 记上 warned，免得 onNewTerm 在谷雨这一节又把它报第二遍。
+    const d = this.activeDisaster();
+    if (d) {
+      this.pushEvent('warn', `${d.stock}`);
+      this.state.season.warned.stock = true;
+    }
+    return card;
+  }
+
+  /** 这一季抽中的那张牌。 */
+  activeCard() {
+    const id = this.state.season?.cardId;
+    return id ? (this.data.yearCards.find(c => c.id === id) || null) : null;
+  }
+
+  /**
+   * 牌上那个灾（好年景没有灾，返回 null）。两边的 id 是一套的。
+   * 十六张牌分三种：
+   *   · 十一张 color:'d' 的灾年 —— 有 hit、有 stageTerm，disasterYears 里有一条对着
+   *   · 四张 color:'a' 的好年景（丰年、暖秋…）—— 也有 hit 和 stageTerm，
+   *     但那个 hit 是**好收成落在哪个生育期**，不是灾。它们没有阶梯、没有灾警屏，
+   *     只有牌上那三句 line / counterLine / antiLine 在季末印一次。
+   *   · 平年 —— 连 hit 都没有，一季太平。
+   * 所以「有 hit」不等于「有灾」，得看阶梯里有没有这一条；
+   * 倒是 color:'d' 的查不到那一条，那是数据对不上，不该装作没有灾。
+   */
+  activeDisaster() {
+    const card = this.activeCard();
+    if (!card?.hit) return null;
+    const d = this.data.disasterYears.find(x => x.id === card.id) || null;
+    if (!d && card.color === 'd') {
+      throw new Error(`灾年「${card.id}」的牌在 disasterYears 里查不到`);
+    }
+    return d;
+  }
+
+  /** 发作落在第几个节气上。没灾或者节气名打错了都返回 -1。 */
+  hitTermIndex() {
+    const card = this.activeCard();
+    if (!card?.stageTerm) return -1;
+    return this.data.solarTerms.findIndex(t => t.id === card.stageTerm);
+  }
+
+  /** 手里的货有几件。 */
+  goodsCount(kind) { return this.state.player.goods[kind] || 0; }
+
+  /**
+   * 这一样货能不能顶。先看买回来的存货，再看「顶货」那一路的家什。
+   * 家什顶上要**用掉** —— 作者在藏品表上写的是「顶一次」。
+   */
+  canCover(kind) {
+    if (this.goodsCount(kind) > 0) return { by:'stock' };
+    for (const id of (this.data.goodsStandIn[kind] || [])) {
+      if (this.state.player.relics.includes(id)) {
+        return { by:'relic', relic:this.findRelic(id) };
+      }
+    }
+    return null;
+  }
+
+  /** 交节。leaving 是刚走完那一节，now 是刚进来的这一节。 */
+  onNewTerm(leaving, now) {
+    if (!this.activeCard()) return;
+
+    // ① 刚离开的那一节，正好是发作的那一节 —— 秋后算账。
+    //    这一步必须在抽新牌前头：一季正好走完（十节绕回谷雨）的时候，
+    //    牌还是旧的那张，得先把它结掉。
+    if (leaving === this.hitTermIndex() && !this.state.season.outcome) this.resolveSeason();
+
+    // ② 一季过完了，下一张牌。startSeason 会换掉 season，
+    //    所以底下报四段用的那几个量，一律重新取。
+    if (now === 0) this.startSeason();
+
+    // ③ 报灾年那四段。落在这一节的，报最早还没报过的那一段
+    const d = this.activeDisaster(), h = this.hitTermIndex();
+    if (!d || h < 0) return;
+    const steps = ['stock', 'omen', 'sign', 'urgent'];
+    for (let i = 0; i < steps.length; i++) {
+      if (Math.max(0, h - 4 + i) !== now) continue;
+      if (this.state.season.warned[steps[i]]) continue;
+      // 撞在同一节上的（节气不够铺四段），只报头一段。
+      // 头一段正是「备货」—— 四段里只有它点名说要备什么，
+      // 后三段是气氛，挤掉不可惜，挤掉它就没得准备了。
+      this.pushEvent(steps[i] === 'stock' ? 'warn' : 'omen', d[steps[i]]);
+      this.state.season.warned[steps[i]] = true;
+      break;
+    }
+  }
+
+  /**
+   * 灾警屏该不该摆出来。
+   * 摆的时机就是发作那一节 —— 决策已经定过（天灾那个档期是跟着决策走的），
+   * 人也准备好了，这时候才问「顶不顶得住」。
+   */
+  pendingAlert() {
+    const s = this.state.season, card = this.activeCard(), d = this.activeDisaster();
+    if (!s || !d || !card) return null;
+    if (s.outcome || s.answer) return null;
+    const h = this.hitTermIndex();
+    if (h < 0 || this.state.time.solarTermIndex !== h) return null;
+    const cover = this.canCover(d.need.kind);
+    return {
+      card, disaster:d, need:d.need, term:card.stageTerm,
+      // 决策那屏选的是对冲还是反。选反了，人站在对面那条路上，
+      // 【好】就顺不过来了 —— 不是禁止点，是这一手使不上。
+      hedged: s.hedge === 'counter',
+      against: s.hedge === 'anti',
+      cover,                       // { by:'stock' } / { by:'relic', relic } / null
+      enough: !!cover
+    };
+  }
+
+  /**
+   * 灾警屏上按了哪一下。which 是 'good'（好）或 'fair'（中）。
+   * ⚠ 只记「按了哪一下」，不在这儿落数值 —— 数值等离开这一节时一起算，
+   *    免得人按两回就吃两回。
+   */
+  answerAlert(which) {
+    const p = this.pendingAlert();
+    if (!p) return { error:'这会儿没有灾警' };
+
+    if (which === 'good') {
+      const cover = p.cover;
+      if (!cover) {
+        return { error:`手上没有${p.need.label}，这个手使不上。`
+                     + `去农资店备一件，或者看看屋里有没有能顶的。` };
+      }
+      // 备的货先出：推开门就有，最快。
+      // 用家什顶是备选 —— 那是拿一件以后还能使的东西换这一夜。
+      if (cover.by === 'stock') {
+        this.state.player.goods[p.need.kind] -= 1;
+        this.pushEvent('good', `${p.disaster.good}`
+          + `\n用掉了备着的${p.need.label}，还剩 ${this.goodsCount(p.need.kind)}${this.data.goods[p.need.kind].unit}。`);
+      } else {
+        const name = cover.relic?.name || '家什';
+        this.state.player.relics = this.state.player.relics.filter(r => r !== cover.relic.id);
+        this.pushEvent('good', `${p.disaster.good}`
+          + `\n${name}顶上这一回，用完了 —— 它本来就写着「顶一次」。`);
+      }
+    } else {
+      this.pushEvent('norm', p.disaster.fair);
+    }
+
+    this.state.season.answer = which;
+    this.spendStamina(p.need.stamina);
+    // 【中】是硬扛：多熬一夜。时间往前推六个钟头，推过夜就顺带跨日。
+    if (which === 'fair') {
+      this.advanceTime(6 * 60);
+      this.changeStress(10);
+    }
+    return { alert:p, which };
+  }
+
+  /**
+   * 事后印字。离开发作那一节的时候走一趟。
+   * 灾年：撑住了 = 备了货走了【好】/ 吃重 = 硬扛走了【中】/ 折 = 没搭理。
+   * 好年景：接住了 = 走对冲 / 平过 = 没碰着 / 没接住 = 走了反的那一边。
+   */
+  resolveSeason() {
+    const card = this.activeCard(), s = this.state.season;
+    if (!card || s.outcome) return null;
+    const d = this.activeDisaster();
+    const timed = this.hitTermIndex() >= 0;      // 这一季有没有一个「发作的点」
+
+    if (d) {
+      const tierId = s.answer === 'good' ? 'held'
+                   : s.answer === 'fair' ? 'heavy' : 'broken';
+      const tier = this.data.disasterOutcome[tierId];
+      this.shiftField('yield', tier.yield);
+      this.shiftField('quality', tier.quality);
+      this.changeStress(tier.stress);
+      s.outcome = tierId;
+      this.pushEvent(tierId === 'held' ? 'good' : 'bad', d[tierId]);
+      // 牌上那一句写的是「这一季最后成了什么样」——
+      // 走了【好】就印对冲那一句（补的那一手顶了事，正是它说的），
+      // 没碰着印中间那句；走反了又没顶住的，印反线。
+      const line = s.answer === 'good' ? (card.counterLine || card.line)
+                 : s.answer === 'fair' ? card.line
+                 : (s.hedge === 'anti' ? (card.antiLine || card.line) : card.line);
+      if (line && line !== d[tierId]) this.pushEvent('norm', line);
+      this.pushEvent('sys', `${card.name} · ${tier.name} · 亩产 ${tier.yield} 米质 ${tier.quality}`);
+      return tier;
+    }
+
+    if (!timed) { s.outcome = 'plain'; return null; }   // 平年：什么都不发生
+
+    const kind = s.hedge === 'counter' ? 'counter' : s.hedge === 'anti' ? 'anti' : 'plain';
+    const tier = this.data.goodYearOutcome[kind];
+    this.shiftField('yield', tier.yield);
+    this.shiftField('quality', tier.quality);
+    s.outcome = kind;
+    const line = kind === 'counter' ? (card.counterLine || card.line)
+               : kind === 'anti' ? (card.antiLine || card.line)
+               : (card.line || card.say);
+    if (line) this.pushEvent(kind === 'anti' ? 'bad' : 'norm', line);
+    this.pushEvent('sys', `${card.name} · ${tier.name} · 亩产 ${tier.yield} 米质 ${tier.quality}`);
+    return tier;
   }
 
   clockText() {
@@ -2787,6 +3221,14 @@ class GameEngine {
 
     if (a.grants) { this.acquire(a.grants); if (a.equipAfterGrant) this.equip(a.grants); }
 
+    // 买回来的挡灾货，压在屋角。一次动作一件 —— 两件要跑两趟。
+    if (a.goodsAdd) {
+      this.state.player.goods[a.goodsAdd] =
+        (this.state.player.goods[a.goodsAdd] || 0) + 1;
+      const g = this.data.goods[a.goodsAdd];
+      this.pushEvent('good', `屋角多了一件：${g.label} ${this.goodsCount(a.goodsAdd)}${g.unit}。`);
+    }
+
     return { action:a, check, effect, text };
   }
 
@@ -2855,7 +3297,31 @@ class GameEngine {
 
     const result = this.commit(o);
     this.state.flags['done_' + d.id] = optionId;
+    this.recordHedge(d.id, optionId);
     return { ...result, decision:d, option:o };
+  }
+
+  /**
+   * 这一屏决策定完，顺手记一下：你站在年景牌上说的哪一边。
+   * 牌上「对冲」「反」那两栏本来只是一个词（盖膜、清沟、晒田…），
+   * 生成器按 BIND 表把它们接到了具体选项上，所以这儿能直接对上。
+   * 只记第一次 —— 一屏决策只定一回。
+   */
+  recordHedge(decisionId, optionId) {
+    const card = this.activeCard(), s = this.state.season;
+    if (!card || !s) return;
+    for (const key of ['counter', 'anti']) {
+      const b = card[key];
+      if (!b || !b.decision || b.decision !== decisionId) continue;
+      // negate 是「没做这件事」那种：清沟的反面是**没**清沟，
+      // 所以选中的不是 b.option 才算数。
+      const hit = b.negate ? optionId !== b.option : optionId === b.option;
+      if (!hit) continue;
+      s.hedge = key;
+      s.hedgeLabel = b.label;
+      s.hedgeOption = optionId;
+      return;
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -3137,6 +3603,14 @@ class UIRenderer {
    * 事情那一截是滚动窗，最多留三条 —— 一次动作有时候会连出好几笔
    * （比如陷进泥里：干了什么、出了什么事、该怎么办）。
    */
+  /** 叙事区那一行是什么来头。sys 和 travel 是一路的（地方交代，
+   *  压暗一档）；年景、备货、兆头各给一个自己的调子 ——
+   *  二三月里飘过的兆头，跟「你刚拔了半垄草」不该长一个样。 */
+  static KIND_CLASS = {
+    sys:'sys', travel:'sys',
+    year:'year', warn:'warn', omen:'omen'
+  };
+
   renderNarrative(mate) {
     // 头一句是交代地方，不是正文，压暗一档分开
     const parts = [`<p class="scene-desc">${
@@ -3144,7 +3618,7 @@ class UIRenderer {
     if (mate) parts.push(`<p class="said">${mate.presenceText.replace(/\n/g, '<br>')}</p>`);
     let first = true;
     for (const e of this.engine.peekEvents(3)) {
-      const cls = (e.kind === 'sys' || e.kind === 'travel') ? 'sys' : 'ev';
+      const cls = UIRenderer.KIND_CLASS[e.kind] || 'ev';
       // 新发生的第一笔上面划一道虚线 —— 这一窗里哪几行是刚出来的，一眼看得出
       parts.push(`<p class="${cls}${first ? ' ev-first' : ''}">${
         e.text.replace(/\n/g, '<br>')}</p>`);
@@ -3158,6 +3632,11 @@ class UIRenderer {
   renderActions() {
     const box = this.el.actions;
     box.innerHTML = '';
+
+    // 灾警压在最上头 —— 它是这一节里唯一有期限的那件事，
+    // 拖到交节就自动算「没搭理」，直接印「折」。
+    const alert = this.engine.pendingAlert();
+    if (alert) box.appendChild(this.alertCard(alert));
 
     const decision = this.engine.currentDecision();
     if (decision) {
@@ -3188,6 +3667,96 @@ class UIRenderer {
    *  免得同一个数在列表里是绿的、点进去变黄的。 */
   static chanceClass(chance) {
     return chance > 75 ? 'good' : chance > 50 ? 'mid' : 'low';
+  }
+
+  /**
+   * 灾警那一张。跟决策卡长得像（都是这一屏最要紧的事），
+   * 但左边那道色条换成朱砂 —— 决策是「该定的事」，灾警是「已经砸下来了」。
+   * 牌面只写年景名和要备什么，不剧透会怎样：
+   * 灾害那一页说了，【好】【中】只写动作，后果是事后印的。
+   */
+  alertCard(p) {
+    const el = document.createElement('div');
+    el.className = 'act decision alert' + (p.enough ? '' : ' locked');
+    const g = this.data.goods[p.need.kind];
+    const have = this.engine.goodsCount(p.need.kind);
+    const cover = p.cover
+      ? (p.cover.by === 'stock'
+          ? `备着的${g.label} ${have}${g.unit}`
+          : `能拿 ${p.cover.relic.name} 顶一次`)
+      : `手上没有${g.label}`;
+    el.innerHTML =
+      `<div class="act-body">
+         <div class="act-kind">灾警 · ${p.card.name}</div>
+         <div class="act-main">${p.disaster.urgent}</div>
+         <div class="act-sub"><span class="cost">${cover}</span></div>
+         <div class="act-note">顶这一夜要 ${p.need.stamina} 分体力 · 交节前不定就按没搭理算</div>
+       </div>
+       <div class="act-badge low"><b>!</b><span>急</span></div>`;
+    el.onclick = () => this.openAlert(p);
+    return el;
+  }
+
+  /** 灾警屏。两行动作，就照作者写的那样 —— 只写动作，不写会怎样。 */
+  openAlert(p) {
+    const g = this.data.goods[p.need.kind];
+    const have = this.engine.goodsCount(p.need.kind);
+    const st = this.engine.state.season;
+
+    // 你在那屏决策上站的是哪一边，摊开给人看 ——
+    // 这不是加分项，是让人明白自己这一季是怎么走到这一步的。
+    let hedge = '';
+    if (st.hedge) {
+      const ok = st.hedge === 'counter';
+      hedge = `<div class="mod ${ok ? '' : 'bad'}"><span>这一季你走的是
+        <b>${st.hedgeLabel}</b></span>
+        <span class="why">${ok ? '跟这块牌是顺的' : '跟这块牌反着'} </span></div>`;
+    }
+
+    const stockLine = have
+      ? `<div class="chk-row"><span>屋角备着的${g.label}</span><b class="p">${have}${g.unit}</b></div>`
+      : `<div class="chk-row off"><span>屋角备着的${g.label}
+          <span class="mk">· 没备</span></span><b class="m">0</b></div>`;
+    const relicRows = (this.data.goodsStandIn[p.need.kind] || [])
+      .map(id => this.engine.findRelic(id))
+      .filter(r => r && this.engine.state.player.relics.includes(r.id))
+      // 标「备选」不是「能顶」：备的货先出，家什是拿一件以后还能使的
+      // 东西换这一夜 —— 两样都写着「能顶」，看着像是要一起用掉。
+      .map(r => `<div class="chk-row"><span>${r.name} <span class="mk">· ${r.effect.desc}</span></span>
+        <b class="p">备选</b></div>`).join('');
+
+    this.setSheet(
+      `<h2>${p.card.name} · ${p.term}</h2>
+       <div class="sh-sec">这一节的事</div>
+       <div class="alert-text">${p.disaster.urgent.replace(/\n/g, '<br>')}</div>
+       ${hedge}
+       <div class="sh-sec">顶这一夜的家底</div>
+       ${stockLine}${relicRows}
+       <div class="sh-sec">两行办法</div>
+       <div class="sh-acts">
+         <div class="sh-act ${p.enough ? '' : 'off'}" data-alert="good">
+           <div class="sh-act-t"><span class="sh-act-k">好</span>${p.disaster.good}</div>
+           <div class="sh-act-n">${p.enough
+             ? `${p.cover.by === 'stock' ? `用掉一件${g.label}` : `${p.cover.relic.name} 顶掉，用完了`}
+                · 体力 -${p.need.stamina}`
+             : `手上没有能顶的${g.label} —— 这一手使不上`}</div>
+         </div>
+         <div class="sh-act" data-alert="fair">
+           <div class="sh-act-t"><span class="sh-act-k mid">中</span>${p.disaster.fair}</div>
+           <div class="sh-act-n">体力 -${p.need.stamina} · 再熬六个钟头 · 压力 +10</div>
+         </div>
+       </div>
+       <div class="sh-acts"><div class="sh-btn" id="sheetClose">先放一放</div></div>`);
+
+    this.el.sheet.querySelectorAll('[data-alert]').forEach(node => {
+      node.onclick = () => {
+        const r = this.engine.answerAlert(node.dataset.alert);
+        if (r.error) { this.toast(r.error); return; }
+        this.closeSheet();
+        this.renderAll();
+        this.toast(node.dataset.alert === 'good' ? '顶住了' : '硬扛了一夜');
+      };
+    });
   }
 
   actionButton(a) {
@@ -3323,6 +3892,78 @@ class UIRenderer {
     </div>`;
   }
 
+  /**
+   * 「今年是什么年，备了什么，还有几步到」。
+   * 这段是常驻的 —— 灾年那四段报是滚动一行一行飘过去的，
+   * 飘完就捞不回来了；人得有个地方能静下来看一眼自己站到哪一步了。
+   */
+  seasonBlock() {
+    const e = this.engine, card = e.activeCard();
+    if (!card) return '';
+    const s = e.state.season, terms = this.data.solarTerms;
+    const d = e.activeDisaster(), h = e.hitTermIndex();
+
+    // 四段报 + 发作，各落在哪个节气上
+    let ladder = '';
+    if (d && h >= 0) {
+      const steps = ['stock', 'omen', 'sign', 'urgent'];
+      const names = { stock:'备货', omen:'兆', sign:'显', urgent:'急' };
+      ladder = `<div class="ladder">` + steps.map((k, i) => {
+        const t = terms[Math.max(0, h - 4 + i)];
+        const done = !!s.warned[k];
+        const here = e.state.time.solarTermIndex === Math.max(0, h - 4 + i);
+        return `<div class="lad${done ? ' done' : ''}${here ? ' here' : ''}">
+          <i></i><span>${names[k]}</span><b>${t.id}</b></div>`;
+      }).join('') + `<div class="lad hit${s.outcome ? ' done' : ''}">
+        <i></i><span>发作</span><b>${card.stageTerm}</b></div></div>`;
+    }
+
+    // 备着的那三样。今年要哪一样，那一样挑出来说 ——
+    // 「屋角有没有那件东西」就是这一季唯一的硬条件。
+    const goods = ['membrane', 'fertilizer', 'labor'].map(kind => {
+      const g = this.data.goods[kind], n = e.goodsCount(kind);
+      const need = d?.need.kind === kind;
+      return `<div class="gd${need ? ' need' : ''}${n ? '' : ' none'}">
+        <span class="gd-n">${g.label}</span>
+        <b class="gd-v">${n}<span class="gd-u"> ${g.unit}</span></b>
+        ${need ? '<span class="gd-t">今年要这个</span>' : `<span class="gd-t">${g.desc}</span>`}
+      </div>`;
+    }).join('');
+
+    // 走到哪一步了。过了发作那一节就印事后那个字。
+    let stage;
+    if (s.outcome) {
+      const tier = this.data.disasterOutcome[s.outcome] || this.data.goodYearOutcome[s.outcome];
+      stage = `<span class="why">${card.name} · <b>${tier.name}</b> ·
+        亩产 ${tier.yield >= 0 ? '+' : ''}${tier.yield} 米质 ${tier.quality >= 0 ? '+' : ''}${tier.quality}</span>`;
+    } else if (d && e.state.time.solarTermIndex === h) {
+      stage = `<span class="why">就是这一节 —— 灾警摆出来了</span>`;
+    } else if (d) {
+      stage = `<span class="why">到 ${card.stageTerm} 见账</span>`;
+    } else if (h >= 0) {
+      stage = `<span class="why">到 ${card.stageTerm} 看这一季收成</span>`;
+    } else {
+      stage = `<span class="why">一季太平</span>`;
+    }
+
+    // 去年那一季结的果。牌一换 season 就是新的了，上一季的账在 lastSeason 上。
+    const last = e.state.lastSeason;
+    const lastTier = last?.outcome &&
+      (this.data.disasterOutcome[last.outcome] || this.data.goodYearOutcome[last.outcome]);
+    const past = lastTier
+      ? `<div class="past">去年：${last.name} · <b>${lastTier.name}</b></div>` : '';
+
+    return `
+      <h3>今年的年景</h3>
+      <div class="year">
+        <div class="year-h"><b>${card.name}</b>${stage}</div>
+        <div class="year-say">${card.say.replace(/\n/g, '<br>')}</div>
+      </div>
+      ${ladder}
+      <div class="goods">${goods}</div>
+      ${past}`;
+  }
+
   renderFieldTab(box) {
     const e = this.engine;
     const [y0, y1] = e.yieldRange(), [q0, q1] = e.qualityRange();
@@ -3331,6 +3972,7 @@ class UIRenderer {
     const fit = margin <= 35 ? '收得挺窄了' : margin <= 55 ? '大致有数' : '还虚着';
 
     box.innerHTML = `
+      ${this.seasonBlock()}
       <h3>田里的估值</h3>
       <div class="stat-cards">
         ${UIRenderer.gaugeCard('预估亩产', '斤', y0, y1, margin, 1200)}
