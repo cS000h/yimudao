@@ -1,0 +1,3664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14110e">
+<title>一亩稻 v7.0.0</title>
+
+<!--
+================================================================================
+  一亩稻 v7.0.0 —— 移动端竖屏重构骨架
+  Intent → Spec → Implementation · 第一步
+================================================================================
+
+  这一版交付的是【架构骨架 + 四个标杆闭环的数据】，不是完整游戏。
+
+  ── 三层解耦 ─────────────────────────────────────────────────
+  按 spec，从这一版起游戏拆成三层，中间不许串门：
+
+    GameData     纯配置。只有数据，没有逻辑，没有 DOM
+    GameEngine   纯逻辑。不碰 document / window / localStorage
+    UIRenderer   只干一件事：读 GameEngine 的状态，画到屏幕上
+
+  前两层可以原样复制进 Cocos Creator 的 .ts 文件（补上 export 就行）。
+  自查办法：把 ◆ VIEW 以上抠出来，搜 document / window / localStorage
+  这三个标识符（属性名和字符串不算），应该一个都没有。
+
+  ── 命名约定 ─────────────────────────────────────────────────
+  接口上的名字（GameState、ActionOption 的字段，moveTo / executeAction
+  这些方法名）一律照 spec 走英文，为的是搬 TypeScript 时能一一对上。
+  文案、地名、人名、注释照旧是中文；函数名、参数名、变量名一律英文，
+  连 C:\tmp\ymd7\ 下面那几个自查脚本也一样。
+
+  ── 段落标记 ─────────────────────────────────────────────────
+    ◆ DATA  ◆ ENGINE  ◆ VIEW  ◆ BOOT
+
+  ── 文案来源（分三路，别混） ─────────────────────────────────
+  ① 照抄总表，一个字没动 —— 已逐字校验
+      36 件藏品的 name / quote / origin      ← 藏品模块全量修订 01-36
+      11 屏决策的屏名、brief、story、选N 的按钮文案、
+        关、说、result、锁说                  ← 4-农事决策.md
+      11 个节气名、5 个地点名、3 个人的名字和身份
+      校验：C:\tmp\ymd7\check-relics.mjs    （108 项）
+            C:\tmp\ymd7\check-decisions.mjs （253 项，11 屏全在）
+
+      立夏到秋分这八屏是 build-decisions.mjs 从源表里机器抄的，
+      人没经手，所以不会错字；重跑一次是替换，不会叠成两份。
+
+  ② 重构时新写的过渡文案，等作者过目
+      地点描述 5 句、人物嗓音 3 句、动作回执 19 句、两位同窗的在场
+      与互动、压力失控旁白 3 句、夏至那屏的 story、13 条决策的 onFailText。
+      每一处上面压了一行注释写着「不是总表里的」，搜这句能全找到。
+
+  ③ 这一版我配的数值，也等作者过目
+      藏品的 effect、检定的 baseChance 与各项加成、动作的耗时耗力、
+      以及 26 个决策选项各自的加减账。
+
+  文件里另有 1 处写着【待作者过目】的（镇上那双高筒黑胶鞋），
+  是我留给作者的问题，不是总表原文 —— 搜这四个字就能找到。
+
+  ── 自查 ─────────────────────────────────────────────────────
+  C:\tmp\ymd7\ 下六个脚本，共 1019 项，全绿（跑 check-all.mjs 一次全过）：
+    check-boundary.mjs   红线：◆ VIEW 以上那一块，哈希对得上一个字没动
+    check-engine.mjs     把 ◆ VIEW 以上抠出来单独在 node 里跑（235 项）
+    check-ui.mjs         整份 HTML 丢进 jsdom，照真人那样点（175 项）
+    check-relics.mjs     36 件藏品逐字对源表（108 项）
+    check-decisions.mjs  11 屏决策逐字对源表（253 项）
+    check-gen.mjs        生成器自己产出的东西逐字对源表（248 项）
+  另有两个扫描器，各扫一遍「代码区还有没有汉字」：
+    scan-html.mjs  扫这一份的 <script> 段   scan-ids.mjs  扫 C:\tmp\ymd7\*.mjs
+
+  ── 外皮 ─────────────────────────────────────────────────────
+  这一版换过一次皮：<style> 整块重写、#phone 里头的修饰结构重排、
+  UIRenderer 那几个 HTML 模板改写。改的全在 ◆ VIEW 以下（外加 script
+  外头的 <style> 和 markup）。GameData 与 GameEngine 一个字节没动 ——
+  check-boundary.mjs 拿哈希盯着这件事。
+  断点：窄屏 480 封顶、≥440 摆成一台手机壳、≥1024 让抽屉常驻右栏
+  （那个 1024 在样式和 UIRenderer.isWide() 里各有一份，改要一起改）。
+================================================================================
+-->
+
+<style>
+/* ── 外皮：苍山墨底 × 宣纸叙事 ───────────────────────────────────
+   两层明暗：底下是深邃苍青墨（护眼、耐看），浮在上头的是温润宣纸卡片
+   （叙事、藏品详情、决策），点缀只有两色 —— 稻禾青与秋收金。
+
+   宋体留给标题、叙事、藏品；数字一律等宽体（数着方便）；
+   UI 文字仍旧黑体 —— Windows 上小字号的宋体不好认。
+
+   宽屏（≥1024px）抽屉改成右边常驻，断点在下面「宽屏」那一段，
+   跟 UIRenderer.isWide() 里那个数是同一个，改要一起改。 */
+:root{
+  /* 背景层 */
+  --bg-outer:#0d1110;
+  --bg-app:#151a18;
+  --panel:#1d2421;
+  --panel-elevated:#252e2a;
+  --line:rgba(212,197,169,.14);
+  --line-strong:rgba(212,197,169,.28);
+
+  /* 叙事纸张层 */
+  --paper-bg:linear-gradient(165deg, rgba(42,48,44,.92) 0%, rgba(29,36,33,.96) 100%);
+  --paper-border:rgba(205,179,128,.25);
+
+  /* 文字色阶 */
+  --ink:#f0eadc;
+  --ink-narr:#e6dfd1;
+  --dim:#9aa39c;
+  --muted:#646e68;
+
+  /* 强调色 */
+  --gold:#d9b26f;
+  --gold-soft:rgba(217,178,111,.15);
+  --gold-deep:#a8802f;
+  --green:#68a678;
+  --green-soft:rgba(104,166,120,.15);
+  --warn:#e09f45;
+  --bad:#cf6553;
+  --bad-soft:rgba(207,101,83,.15);
+  --blue:#7c9fb0;
+
+  /* UIRenderer 里 gaugeColor() 直接回这几个名字，别改名 */
+  --ok:#68a678;
+
+  --font-sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB",
+              "Microsoft YaHei",sans-serif;
+  --font-serif:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC","SimSun",serif;
+  --font-mono:"SF Mono","JetBrains Mono",Consolas,"Courier New",monospace;
+
+  --sh-card:0 2px 10px -8px #000;
+  --sh-lift:0 10px 26px -18px #000;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;background:var(--bg-outer);color:var(--ink);
+  font-family:var(--font-sans);font-size:15px;line-height:1.5;overscroll-behavior:none}
+body{display:flex;justify-content:center;align-items:stretch}
+
+/* ── 手机竖屏容器：一屏放下，不许滚动 ─────────────────────────── */
+/* 底子三层：顶上一点稻禾青的微光、一层极淡的胶片颗粒、底色本身。
+   颗粒是内嵌的 SVG 噪声，不引外部文件 —— 单文件得能离线打开。 */
+#phone{width:100%;max-width:480px;height:100vh;height:100dvh;display:flex;
+  flex-direction:column;overflow:hidden;position:relative;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(104,166,120,.10), transparent 65%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"),
+    var(--bg-app)}
+
+/* ── 顶栏 ─────────────────────────────────────────────────── */
+#topbar{flex:0 0 auto;padding:9px 11px 8px;z-index:20;
+  background:linear-gradient(180deg, rgba(37,46,42,.92), rgba(21,26,24,.78));
+  border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+.tb-row1{display:flex;align-items:center;gap:9px}
+#drawerBtn{flex:0 0 auto;display:flex;align-items:center;gap:6px;cursor:pointer;
+  background:linear-gradient(180deg, rgba(217,178,111,.10), rgba(217,178,111,.03));
+  border:1px solid rgba(217,178,111,.42);border-radius:9px;padding:6px 9px;
+  color:var(--gold);font-family:var(--font-sans);backdrop-filter:blur(6px);
+  transition:border-color .16s, box-shadow .16s}
+.db-ic{font-size:13px;line-height:1;letter-spacing:0}
+.db-tx{font-size:10px;letter-spacing:1.5px;color:var(--gold);opacity:.85}
+.tb-time{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;
+  overflow:hidden;white-space:nowrap}
+/* 节气做成金色印底 —— 一屏里最先看见的就是它 */
+.tb-term{font-family:var(--font-serif);font-size:14.5px;font-weight:700;letter-spacing:2px;
+  color:#20180b;background:linear-gradient(160deg,#e6c383,#c09646);
+  border-radius:7px;padding:2px 9px 3px;flex:0 0 auto;
+  box-shadow:0 3px 10px -6px rgba(217,178,111,.9)}
+.tb-clock{font-family:var(--font-mono);font-size:12px;color:var(--dim);letter-spacing:.2px;
+  margin-left:9px;text-overflow:ellipsis;overflow:hidden}
+.tb-weather{flex:0 0 auto;font-size:11.5px;color:var(--dim);white-space:nowrap;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);
+  border-radius:99px;padding:3px 10px}
+
+/* 三张微缩仪表盘 */
+.tb-row2{display:flex;align-items:stretch;gap:6px;margin-top:8px}
+.gauge{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;
+  background:rgba(255,255,255,.035);border:1px solid var(--line);
+  border-radius:10px;padding:6px 9px 7px}
+.gauge-h{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+.gauge-l{font-size:10.5px;color:var(--muted);letter-spacing:.5px;flex:0 0 auto}
+.gauge-h b{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--ink);
+  margin-left:auto;line-height:1.2}
+.gauge-u{font-size:9.5px;color:var(--muted);flex:0 0 auto}
+/* 那点微光和颜色由 renderTopBar() 一起写进 style —— 光晕得跟圆点同色，
+   写死在样式里就只能是 currentColor（奶白），跟红的绿的圆点对不上。 */
+.gauge-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
+.gauge-bar{height:3px;border-radius:99px;background:rgba(0,0,0,.4);overflow:hidden;margin-top:6px}
+.gauge-bar i{display:block;height:100%;border-radius:99px;width:0;
+  transition:width .35s ease, background .35s ease}
+/* 钱那格没有进度条：数字连着「元」摆中间，三张卡才一样高 */
+.gauge.money .gauge-h{align-items:baseline;justify-content:center;gap:4px;
+  flex:1 1 auto;margin:2px 0 1px}
+.gauge.money .gauge-h b{margin-left:0}
+
+.buffs{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.buff{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;
+  padding:3px 10px;border-radius:99px;cursor:pointer;white-space:nowrap;
+  color:#b6dcc4;background:var(--green-soft);border:1px solid rgba(104,166,120,.38);
+  transition:background .16s, border-color .16s}
+.buff::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;
+  flex:0 0 auto;box-shadow:0 0 6px currentColor}
+.buff.bad{color:#f0b3a6;background:var(--bad-soft);border-color:rgba(207,101,83,.45);
+  animation:buffPulse 2.4s ease-in-out infinite}
+@keyframes buffPulse{
+  0%,100%{border-color:rgba(207,101,83,.35);box-shadow:0 0 0 0 rgba(207,101,83,0)}
+  50%{border-color:rgba(207,101,83,.85);box-shadow:0 0 10px -2px rgba(207,101,83,.65)}}
+@media (prefers-reduced-motion:reduce){
+  .buff.bad{animation:none}
+  .gauge-bar i{transition:none}
+}
+
+/* ── 舞台 ─────────────────────────────────────────────────── */
+#stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+/* 场景抬头：左边一道竖金线，右边挂在场的人 */
+#sceneHead{position:relative;flex:0 0 auto;padding:14px 12px 0 20px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#sceneHead::before{content:"";position:absolute;left:11px;top:15px;bottom:1px;width:3px;
+  border-radius:2px;background:linear-gradient(180deg,var(--gold),rgba(217,178,111,.08))}
+#sceneName{font-family:var(--font-serif);font-size:20px;font-weight:700;color:var(--ink);
+  letter-spacing:1.5px;line-height:1.25}
+#sceneWho{font-size:11.5px;color:#b6dcc4;background:var(--green-soft);
+  border:1px solid rgba(104,166,120,.38);border-radius:99px;padding:3px 11px;
+  margin-left:auto;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+#sceneWho::before{content:"";width:5px;height:5px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 7px var(--green);flex:0 0 auto}
+/* 没人在场就别挂个空胶囊 */
+#sceneWho:empty{display:none}
+
+/* 叙事：一张宣纸卡片 */
+#narr{flex:0 0 auto;margin:10px 12px 0;padding:12px 15px;max-height:32vh;
+  overflow-y:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  background:var(--paper-bg);border:1px solid var(--paper-border);border-radius:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 12px 26px -22px #000;
+  font-family:var(--font-serif);font-size:14.5px;line-height:1.85;color:var(--ink-narr)}
+#narr::-webkit-scrollbar{display:none}
+#narr p{margin:0 0 8px}
+#narr p:last-child{margin-bottom:0}
+/* 头一句是「这是什么地方」—— 交代性质，压暗一档，别跟正文抢 */
+#narr .scene-desc{font-family:var(--font-sans);font-size:13.5px;color:var(--dim);line-height:1.72}
+/* 有人说话：金线引一引，像小说 */
+#narr .said{font-size:15px;color:#f2e9d6;border-left:2px solid var(--gold);
+  padding-left:11px}
+/* 刚发生的事：最亮的一档，上面划一道虚线，一眼看得出是新的一笔 */
+#narr .ev{font-size:14.5px;color:var(--ink)}
+#narr .ev-first{border-top:1px dashed var(--line-strong);padding-top:9px;margin-top:2px}
+#narr .sys{font-family:var(--font-sans);font-size:12.5px;color:var(--muted)}
+
+/* ── 动作列表 ───────────────────────────────────────────────── */
+#actions{flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px 12px 16px;
+  display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+#actions::-webkit-scrollbar{display:none}
+
+/* flex:0 0 auto 不能省。#actions 是 flex 列，按钮要是能被压扁，
+   一屏装不下时它们不会撑出去让容器滚，而是各自缩一截 —— 缩到比里头那两行字还矮。 */
+.act{position:relative;overflow:hidden;flex:0 0 auto;
+  display:flex;align-items:center;gap:11px;
+  background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  border:1px solid var(--line);border-radius:13px;padding:11px 13px 11px 16px;
+  cursor:pointer;box-shadow:var(--sh-card);
+  transition:transform .1s ease, border-color .16s ease, box-shadow .16s ease}
+/* 左边那道色条：普通动作是秧绿，带检定的是渠水蓝，决策是金的 */
+.act::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;
+  border-radius:0 3px 3px 0;background:var(--green);opacity:.5;
+  transition:opacity .16s ease, top .16s ease, bottom .16s ease}
+/* 指针扫过时的一道高光 */
+.act::after{content:"";position:absolute;top:0;bottom:0;left:-70%;width:45%;opacity:0;
+  pointer-events:none;transform:skewX(-18deg);
+  background:linear-gradient(100deg, transparent, rgba(240,234,220,.07), transparent)}
+.act-body{flex:1 1 auto;min-width:0}
+.act.locked{opacity:.42;cursor:default}
+.act.locked::before{background:var(--muted);opacity:.55}
+.act-main{font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.35}
+/* 开销做成一粒粒小胶囊 —— 比拿竖线拼成一串灰字清楚得多 */
+.act-sub{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:6px}
+.act-sub .bit{font-size:10.5px;color:var(--dim);white-space:nowrap;
+  background:rgba(255,255,255,.045);border:1px solid var(--line);
+  border-radius:99px;padding:2px 8px}
+.act-sub .chk{font-size:10.5px;color:var(--gold)}
+.act-note{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.55}
+.act-why{font-size:11px;color:#e0a292;margin-top:5px}
+
+/* 带检定的动作：右边挂一枚成功率徽章 */
+.act.check::before{background:var(--blue);opacity:.7}
+.act-badge{flex:0 0 auto;min-width:54px;text-align:center;padding:5px 7px 6px;
+  border-radius:11px;border:1px solid;line-height:1.1}
+.act-badge b{display:block;font-family:var(--font-mono);font-size:17px;font-weight:700}
+.act-badge span{display:block;font-size:9px;letter-spacing:1.5px;margin-top:2px;opacity:.85}
+.act-badge.good{color:var(--green);border-color:rgba(104,166,120,.45);background:var(--green-soft)}
+.act-badge.mid{color:var(--warn);border-color:rgba(224,159,69,.45);background:rgba(224,159,69,.13)}
+.act-badge.low{color:var(--bad);border-color:rgba(207,101,83,.45);background:var(--bad-soft)}
+
+/* 主决策卡：双层金边、右侧微光、左上角一枚【农时】角标 */
+.act.decision{padding:20px 15px 13px 18px;border-color:rgba(217,178,111,.55);
+  background:
+    radial-gradient(120% 150% at 100% 50%, rgba(217,178,111,.17) 0%, rgba(217,178,111,0) 62%),
+    linear-gradient(180deg,#2c3330,#212823);
+  box-shadow:0 0 0 1px rgba(217,178,111,.15), 0 8px 26px -16px rgba(217,178,111,.6)}
+.act.decision::before{top:0;bottom:0;width:4px;border-radius:0;opacity:1;
+  background:linear-gradient(180deg,var(--gold),var(--gold-deep))}
+.act.decision .act-main{font-family:var(--font-serif);font-size:16px;font-weight:700;
+  color:#f6e9ca;letter-spacing:.6px}
+.act-kind{position:absolute;top:0;left:0;font-size:9.5px;letter-spacing:2px;
+  font-weight:700;color:#221a0b;padding:3px 10px 3px 13px;
+  border-radius:12px 0 10px 0;
+  background:linear-gradient(180deg,#e0bb79,#bb9247)}
+
+/* ── 底部地点移动栏 ─────────────────────────────────────────── */
+/* 五格平分，一个都不许被推出屏幕 ——
+   移动栏要是还得横着划才够得着「镇上集市」，那它就不算「常驻」了。 */
+#navbar{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;
+  padding:9px 9px calc(9px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(29,36,33,.72), rgba(13,17,16,.96));
+  backdrop-filter:blur(10px)}
+.loc{position:relative;overflow:hidden;text-align:center;cursor:pointer;
+  padding:8px 3px 7px;border-radius:12px;border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  transition:transform .1s ease, border-color .16s ease, background .16s ease}
+.loc-ic{font-size:15px;line-height:1.1}
+.loc-n{font-size:11px;font-weight:700;color:var(--ink);margin-top:2px;line-height:1.3}
+.loc-t{font-size:9.5px;color:var(--muted);margin-top:4px;line-height:1.3;min-height:14px}
+.loc-t .wl{display:inline-block;border:1px solid var(--line);border-radius:99px;
+  padding:0 6px;font-family:var(--font-mono);font-size:9px}
+.loc.here{border-color:rgba(104,166,120,.45);
+  background:linear-gradient(180deg, rgba(104,166,120,.16), rgba(29,36,33,.9))}
+.loc.here::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg, transparent, var(--gold), transparent)}
+.loc.here .loc-n{color:#dceade}
+.loc.here .loc-t{color:var(--green)}
+/* 「● 就在这儿」的那个圆点 —— 走 CSS，不动文案 */
+.loc.here .loc-t::before{content:"";display:inline-block;width:5px;height:5px;
+  border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);
+  margin-right:5px;vertical-align:middle}
+/* 鞋陷过泥、绕远了的，耗时标成麦芽黄 */
+.loc.far .loc-t .wl{color:var(--warn);border-color:rgba(224,159,69,.45);
+  background:rgba(224,159,69,.12)}
+
+/* ── 抽屉 ─────────────────────────────────────────────────── */
+#mask{position:absolute;inset:0;background:rgba(6,9,8,.62);opacity:0;
+  pointer-events:none;transition:opacity .22s;z-index:30}
+#mask.on{opacity:1;pointer-events:auto}
+#drawer{position:absolute;top:0;left:0;bottom:0;width:88%;max-width:376px;z-index:40;
+  display:flex;flex-direction:column;
+  background:linear-gradient(180deg, rgba(37,46,42,.92), rgba(21,26,24,.96));
+  backdrop-filter:blur(14px) saturate(1.25);
+  border-right:1px solid var(--line-strong);
+  box-shadow:20px 0 44px -28px #000;
+  transform:translateX(-102%);transition:transform .24s cubic-bezier(.3,.8,.3,1)}
+#drawer.on{transform:translateX(0)}
+#drawerHead{flex:0 0 auto;padding:14px 14px 11px;border-bottom:1px solid var(--line)}
+#drawerHead h2{margin:0 0 11px;font-family:var(--font-serif);font-size:16px;font-weight:700;
+  color:var(--ink);letter-spacing:2px;
+  display:flex;align-items:center;gap:9px}
+#drawerHead h2::after{content:"";flex:1 1 auto;height:1px;
+  background:linear-gradient(90deg,var(--line-strong),transparent)}
+/* 分段控制器 */
+#tabs{display:flex;gap:4px;padding:3px;border-radius:11px;
+  background:rgba(0,0,0,.3);border:1px solid var(--line)}
+.tab{flex:1;text-align:center;font-size:11.5px;padding:6px 2px;border-radius:8px;
+  color:var(--dim);cursor:pointer;border:1px solid transparent;
+  transition:background .16s, color .16s, border-color .16s}
+.tab.on{background:var(--panel-elevated);color:var(--gold);
+  border-color:var(--line-strong);box-shadow:0 2px 8px -6px #000}
+#drawerBody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 14px 28px}
+#drawerBody h3{font-family:var(--font-serif);font-size:12.5px;font-weight:700;color:var(--gold);
+  margin:20px 0 9px;letter-spacing:2px;display:flex;align-items:center;gap:9px}
+#drawerBody h3::after{content:"";flex:1 1 auto;height:1px;
+  background:linear-gradient(90deg,var(--line-strong),transparent)}
+#drawerBody h3:first-child{margin-top:0}
+
+/* 田况：两张数据看板 */
+.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  border:1px solid var(--line);border-radius:12px;padding:11px 12px 12px}
+.stat-l{font-size:10px;color:var(--muted);letter-spacing:1.5px}
+.stat-v{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--gold);
+  margin-top:6px;line-height:1.15;white-space:nowrap}
+/* 前面的空格由模板里带出来，这儿不再补 margin —— 补了会宽出一格 */
+.stat-u{font-size:10px;color:var(--dim);font-family:var(--font-sans)}
+/* 误差半径：中间一道准星，两边一条渐隐的带子，越宽越没数 */
+.radius{margin-top:9px}
+.radius-bar{position:relative;height:7px;border-radius:99px;overflow:hidden;
+  background:rgba(0,0,0,.34);border:1px solid var(--line)}
+.radius-band{position:absolute;top:0;bottom:0;border-radius:99px;
+  background:linear-gradient(90deg, var(--gold-soft), rgba(217,178,111,.55), var(--gold-soft))}
+.radius-mid{position:absolute;top:-1px;bottom:-1px;width:1px;background:var(--gold);opacity:.9}
+.radius-foot{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+.mod{display:flex;gap:8px;font-size:12px;padding:8px 10px;border-radius:9px;
+  margin-bottom:5px;line-height:1.5;color:#cfe6d5;
+  background:var(--green-soft);border-left:3px solid var(--green)}
+.mod.bad{border-left-color:var(--bad);background:var(--bad-soft);color:#f2cfc6}
+.mod.plain{border-left-color:var(--line-strong);background:rgba(255,255,255,.035);
+  color:var(--dim)}
+.mod .why{color:var(--muted)}
+
+/* 穿戴槽位：底下一条耐久条 */
+.slot{background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  border:1px solid var(--line);border-radius:11px;padding:10px 12px 11px;margin-bottom:7px}
+.slot-row{display:flex;align-items:center;gap:10px}
+.slot-ic{font-size:18px;flex:0 0 auto;width:24px;text-align:center;opacity:.9}
+.slot-b{flex:1 1 auto;min-width:0}
+.slot-t{font-size:13.5px;font-weight:600;color:var(--ink)}
+.slot-e{font-size:11.5px;color:var(--dim);margin-top:3px;line-height:1.5}
+.slot-empty{opacity:.5}
+.dur{flex:0 0 auto;text-align:right}
+.dur b{display:block;font-family:var(--font-mono);font-size:14px;color:var(--ink);
+  line-height:1.2}
+.dur span{font-size:9px;color:var(--muted);letter-spacing:1px}
+.dur-bar{height:4px;border-radius:99px;background:rgba(0,0,0,.42);overflow:hidden;margin-top:9px}
+.dur-bar i{display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--green),#9ccf9f)}
+.dur-bar i.low{background:linear-gradient(90deg,var(--bad),#e59b8b)}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{font-size:10px;padding:1.5px 7px;border-radius:99px;
+  color:#f0b3a6;background:var(--bad-soft);border:1px solid rgba(207,101,83,.4)}
+.tag.g{color:#b6dcc4;background:var(--green-soft);border-color:rgba(104,166,120,.4)}
+
+/* 日程 */
+.clock{background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px}
+.clock-t{font-size:13px;margin-bottom:8px;line-height:1.65;color:var(--ink-narr)}
+.clock-t b{font-family:var(--font-mono);color:var(--gold);font-size:14px}
+.bar{height:6px;border-radius:99px;background:rgba(0,0,0,.4);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--green),var(--gold))}
+.memo{font-size:12.5px;padding:9px 11px;border-radius:9px;margin-bottom:5px;
+  line-height:1.55;color:var(--dim);background:rgba(255,255,255,.035);
+  border:1px solid var(--line);border-left:3px solid var(--line-strong)}
+.memo.soon{border-left-color:var(--warn);background:rgba(224,159,69,.10);color:#f0d6ac}
+.memo.done{border-left-color:var(--green);color:var(--muted)}
+
+/* 人物 */
+.npc{background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px}
+.npc-h{display:flex;align-items:center;gap:10px;cursor:pointer}
+.npc-av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-serif);font-size:15px;font-weight:700;line-height:1}
+.npc-av.c0{background:var(--gold-soft);color:var(--gold);border:1px solid rgba(217,178,111,.45)}
+.npc-av.c1{background:var(--green-soft);color:#9ccf9f;border:1px solid rgba(104,166,120,.45)}
+.npc-av.c2{background:rgba(124,159,176,.16);color:#9ec2d1;border:1px solid rgba(124,159,176,.45)}
+.npc-hd{flex:1 1 auto;min-width:0}
+.npc-n{font-size:14px;font-weight:600;color:var(--ink)}
+.npc-r{font-size:10.5px;color:var(--muted);margin-top:2px}
+.npc-o{flex:0 0 auto;font-family:var(--font-mono);font-size:15px;font-weight:700}
+/* 好感度：中间一道零线，往两边长 */
+.opi{position:relative;height:6px;border-radius:99px;margin-top:9px;
+  background:rgba(0,0,0,.34);border:1px solid var(--line);overflow:hidden}
+.opi-mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;
+  background:var(--line-strong)}
+.opi-fill{position:absolute;top:0;bottom:0;border-radius:99px}
+.opi-fill.p{left:50%;background:linear-gradient(90deg,rgba(104,166,120,.5),var(--green))}
+.opi-fill.m{right:50%;background:linear-gradient(270deg,rgba(207,101,83,.5),var(--bad))}
+.opi-foot{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);
+  margin-top:3px;font-family:var(--font-mono)}
+.npc-d{font-size:11.5px;color:var(--dim);margin-top:7px;line-height:1.55}
+.npc-log{margin-top:10px;border-top:1px solid var(--line);padding-top:9px;display:none}
+.npc.open .npc-log{display:block}
+/* 时间轴：一条竖线串起一颗颗点 */
+.npc-log div{position:relative;display:flex;justify-content:space-between;gap:10px;
+  font-size:11.5px;color:var(--dim);padding:0 0 0 15px;line-height:1.5;min-height:20px}
+.npc-log div::before{content:"";position:absolute;left:2px;top:6px;width:5px;height:5px;
+  border-radius:50%;background:var(--line-strong)}
+.npc-log div::after{content:"";position:absolute;left:4px;top:12px;bottom:-2px;width:1px;
+  background:var(--line)}
+.npc-log div:last-child::after{display:none}
+.npc-log b{flex:0 0 auto;font-family:var(--font-mono)}
+
+/* 藏品册：36 格，六个类别各一个色调 */
+.relics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.relic{position:relative;overflow:hidden;text-align:center;cursor:pointer;
+  padding:10px 6px 9px;border-radius:11px;border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--panel-elevated),var(--panel));
+  transition:transform .1s ease, border-color .16s ease}
+.relic-no{position:absolute;top:3px;right:5px;font-family:var(--font-mono);font-size:8.5px;
+  color:var(--muted);letter-spacing:.5px}
+.relic-n{font-size:11px;font-weight:600;color:var(--ink);line-height:1.35}
+.relic-c{font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:1px}
+.relic.lock{opacity:.34;cursor:default}
+.relic.sel{border-color:var(--gold);box-shadow:0 0 0 1px rgba(217,178,111,.3)}
+/* 六个类别：0免灾 1免代价 2换信息 3换人情 4换钱 5顶货 */
+.relic[data-cat="0"]{border-color:rgba(207,101,83,.34)}
+.relic[data-cat="1"]{border-color:rgba(224,159,69,.34)}
+.relic[data-cat="2"]{border-color:rgba(124,159,176,.34)}
+.relic[data-cat="3"]{border-color:rgba(217,178,111,.34)}
+.relic[data-cat="4"]{border-color:rgba(104,166,120,.34)}
+.relic[data-cat="5"]{border-color:rgba(154,163,156,.3)}
+/* 详情：一张档案卡 */
+.relic-d{grid-column:1/-1;border-radius:13px;padding:14px 15px;
+  font-family:var(--font-serif);font-size:12.5px;line-height:1.8;color:var(--ink-narr);
+  background:var(--paper-bg);border:1px solid var(--paper-border);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 14px 30px -24px #000}
+.relic-d .t{font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px;
+  letter-spacing:1px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.relic-d .t em{font-family:var(--font-sans);font-style:normal;font-size:10.5px;
+  color:var(--muted);letter-spacing:1px}
+.relic-d .q{color:var(--dim);margin-top:8px;font-size:11.5px}
+.relic-d .e{color:#b6dcc4;margin-top:8px}
+
+/* ── 弹层 ─────────────────────────────────────────────────── */
+#modal{position:absolute;inset:0;z-index:60;display:none;align-items:flex-end;
+  background:rgba(6,9,8,.66)}
+#modal.on{display:flex}
+#sheet{width:100%;max-height:88%;overflow-y:auto;background:var(--bg-app);
+  border-top:1px solid var(--line-strong);border-radius:18px 18px 0 0;
+  padding:10px 16px calc(20px + env(safe-area-inset-bottom));
+  box-shadow:0 -18px 50px -26px #000;animation:sheetUp .22s cubic-bezier(.3,.8,.3,1)}
+@keyframes sheetUp{from{transform:translateY(18px);opacity:.4}
+  to{transform:translateY(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){#sheet{animation:none}}
+.sh-grab{width:36px;height:4px;border-radius:99px;background:var(--line-strong);
+  margin:0 auto 14px}
+.sh-title{font-family:var(--font-serif);font-size:17px;font-weight:700;color:var(--ink);
+  letter-spacing:1px;margin-bottom:5px}
+.sh-sub{font-size:12.5px;color:var(--dim);margin-bottom:13px;line-height:1.6}
+.sh-body{font-size:14px;line-height:1.8;color:var(--ink-narr);margin-bottom:14px;
+  font-family:var(--font-serif)}
+.sh-body p{margin:0 0 7px}
+.sh-body p:last-child{margin-bottom:0}
+.sh-sec{font-family:var(--font-serif);font-size:11.5px;font-weight:700;color:var(--gold);
+  letter-spacing:2px;margin:16px 0 9px;display:flex;align-items:center;gap:9px}
+.sh-sec::after{content:"";flex:1 1 auto;height:1px;
+  background:linear-gradient(90deg,var(--line-strong),transparent)}
+
+/* CK3 检定面板 */
+.chk-big{display:flex;align-items:center;gap:14px;margin-bottom:13px}
+/* 成功率做成一只环形表 —— 65 这种数，绕一圈看一眼就有分量 */
+.chk-num{flex:0 0 auto;position:relative;width:84px;height:84px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:conic-gradient(var(--ok) calc(var(--p,0) * 1%), rgba(0,0,0,.42) 0)}
+.chk-num::before{content:"";position:absolute;inset:7px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--line)}
+.chk-num span{position:relative;font-family:var(--font-mono);font-size:21px;font-weight:700;
+  color:var(--ok);letter-spacing:-.5px}
+.chk-num.mid{background:conic-gradient(var(--warn) calc(var(--p,0) * 1%), rgba(0,0,0,.42) 0)}
+.chk-num.mid span{color:var(--warn)}
+.chk-num.low{background:conic-gradient(var(--bad) calc(var(--p,0) * 1%), rgba(0,0,0,.42) 0)}
+.chk-num.low span{color:var(--bad)}
+.chk-lbl{font-size:12px;color:var(--dim);line-height:1.6}
+.chk-lbl b{font-family:var(--font-mono)}
+
+.chk-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;
+  padding:7px 11px;border-radius:9px;margin-bottom:4px;line-height:1.5;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-left:3px solid var(--green)}
+.chk-row.base{background:rgba(0,0,0,.26);border-left-color:var(--line-strong)}
+/* 没生效的那几条：压暗、灰掉，一眼看出差在哪 */
+.chk-row.off{opacity:.5;border-left-color:var(--muted);background:rgba(255,255,255,.02)}
+.chk-row b{flex:0 0 auto;font-family:var(--font-mono)}
+.chk-row b.p{color:var(--green)}
+.chk-row b.m{color:var(--muted)}
+.chk-row.risk{background:var(--bad-soft);border-color:rgba(207,101,83,.35);
+  border-left-color:var(--bad);color:#f0bdb1}
+.chk-row .mk{color:var(--muted)}
+
+.sh-btn{width:100%;border:none;border-radius:11px;padding:12px;font-size:15px;font-weight:700;
+  font-family:var(--font-sans);color:#1d1608;cursor:pointer;margin-top:9px;
+  background:linear-gradient(180deg,#e6c383,#c09646);
+  box-shadow:0 6px 18px -10px rgba(217,178,111,.9);
+  transition:filter .16s ease, transform .1s ease}
+.sh-btn:active{transform:translateY(1px)}
+.sh-btn.ghost{background:rgba(255,255,255,.05);color:var(--ink);
+  border:1px solid var(--line-strong);box-shadow:none;font-weight:600}
+.sh-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+#toast{position:absolute;left:50%;bottom:104px;transform:translateX(-50%);z-index:80;
+  max-width:86%;text-align:center;padding:9px 16px;font-size:12.5px;color:var(--ink);
+  background:rgba(37,46,42,.96);border:1px solid var(--line-strong);border-radius:99px;
+  backdrop-filter:blur(8px);box-shadow:0 10px 26px -14px #000;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+
+/* ── 桌面预览：一台手机壳 ─────────────────────────────────────── */
+@media (min-width:440px){
+  body{align-items:center;padding:16px}
+  #phone{height:calc(100vh - 32px);height:calc(100dvh - 32px);
+    border:1px solid var(--line-strong);border-radius:26px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.55), 0 44px 90px -36px #000,
+               0 0 110px -50px var(--green)}
+}
+
+/* ── 宽屏：抽屉常驻在右边 ────────────────────────────────────────
+   断点 1024px 跟 UIRenderer.isWide() 是同一个数，改要一起改。
+   这一档不只是放大：布局从「一条竖列」变成「游戏 + 面板」两栏，
+   抽屉不再抽进抽出，直接摆在那儿。 */
+@media (min-width:1024px){
+  body{padding:22px}
+  #phone{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 400px;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"top side" "stage side" "nav side";
+    width:min(1100px,100%);max-width:1100px;
+    height:min(940px,calc(100vh - 44px));
+    border:1px solid var(--line-strong);border-radius:22px;overflow:hidden;
+    box-shadow:0 0 0 1px rgba(0,0,0,.55), 0 50px 100px -40px #000,
+               0 0 130px -60px var(--green)}
+  #topbar{grid-area:top;padding:14px 22px 12px}
+  #stage{grid-area:stage}
+  #navbar{grid-area:nav;padding:12px 20px 14px;gap:9px}
+  #drawerBtn{display:none}
+  #mask{display:none !important}
+  #drawer{grid-area:side;position:static;transform:none;width:auto;max-width:none;
+    border-right:none;border-left:1px solid var(--line);box-shadow:none;
+    backdrop-filter:none;background:linear-gradient(180deg, rgba(37,46,42,.55),
+      rgba(21,26,24,.92))}
+  #drawerHead{padding:16px 18px 13px}
+  #drawerBody{padding:16px 18px 30px}
+  /* 桌面不兴把滚动条藏起来 */
+  #drawerBody,#actions{scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent}
+  #drawerBody::-webkit-scrollbar,#actions::-webkit-scrollbar{display:block;width:9px}
+  #drawerBody::-webkit-scrollbar-thumb,#actions::-webkit-scrollbar-thumb{
+    background:var(--line-strong);border-radius:99px;border:2px solid transparent;
+    background-clip:content-box}
+  #drawerBody::-webkit-scrollbar-track,#actions::-webkit-scrollbar-track{background:transparent}
+  #sceneHead{padding:18px 24px 0 32px}
+  #sceneHead::before{left:23px;top:19px}
+  #narr{margin:12px 24px 0;max-height:30vh}
+  #actions{padding:13px 24px 18px;gap:9px}
+  .loc{padding:10px 8px}
+  .loc-ic{font-size:17px}
+  .loc-n{font-size:12.5px}
+  .loc-t{font-size:10px}
+  .relics{grid-template-columns:repeat(4,1fr)}
+  /* 窄屏是底部抽屉，宽屏改成一个居中对话框 */
+  #modal{align-items:center;justify-content:center;padding:24px}
+  /* 居中对话框不是「抽上来的」，那条把手在这儿没意义，收掉 */
+  #sheet .sh-grab{display:none}
+  #sheet{max-width:640px;max-height:92%;border:1px solid var(--line-strong);
+    border-radius:18px;box-shadow:0 40px 90px -40px #000;
+    scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+    padding:16px 26px calc(20px + env(safe-area-inset-bottom))}
+  /* 一对按钮在桌面上并排，省下一行的高度 —— 那点高度够让「退回去」
+     不用滚就看得见。（只有一枚按钮的弹层不加这个，:only-of-type 认的就是这个）
+     减 10 而不是减 4：两个 inline-block 之间那个换行会渲染成一个空格，
+     算漏了它最后会多出几个像素，第二枚就被挤到下一行去了。 */
+  #sheet .sh-btn:not(:only-of-type){display:inline-block;width:calc(50% - 10px);
+    vertical-align:top}
+  #sheet .sh-btn + .sh-btn{margin-left:8px}
+  #toast{bottom:120px}
+}
+
+/* 指针设备才给悬停 —— 触屏上 :hover 会粘住 */
+@media (hover:hover) and (pointer:fine){
+  #drawerBtn:hover{border-color:var(--gold);box-shadow:0 0 14px -6px var(--gold)}
+  .act:hover{transform:translateY(-1px);border-color:var(--line-strong);box-shadow:var(--sh-lift)}
+  .act:hover::before{opacity:1;top:0;bottom:0}
+  .act:hover::after{opacity:1;left:120%;transition:left .55s ease, opacity .2s}
+  .act.check:hover{border-color:rgba(124,159,176,.55)}
+  .act.decision:hover{border-color:var(--gold)}
+  .act.locked:hover{transform:none;box-shadow:var(--sh-card);border-color:var(--line)}
+  .loc:hover{transform:translateY(-1px);border-color:var(--line-strong)}
+  .loc.here:hover,.act.locked:hover::before{transform:none}
+  .loc.here:hover{border-color:rgba(104,166,120,.45)}
+  .tab:hover{background:rgba(255,255,255,.05);color:var(--ink)}
+  .tab.on:hover{color:var(--gold)}
+  .buff:hover{border-color:rgba(104,166,120,.7)}
+  .buff.bad:hover{border-color:rgba(207,101,83,.75)}
+  .relic:hover:not(.lock){transform:translateY(-1px);border-color:var(--gold)}
+  .npc-h:hover .npc-n{color:var(--gold)}
+  .sh-btn:hover:not(:disabled){filter:brightness(1.08)}
+  .sh-btn.ghost:hover:not(:disabled){background:rgba(255,255,255,.09)}
+}
+</style>
+</head>
+<body>
+<div id="phone">
+
+  <div id="topbar">
+    <div class="tb-row1">
+      <!-- 抽屉按钮：图标 + 一枚小小的「状态」标签。宽屏上这枚按钮是收起来的，
+           抽屉本来就在右边摆着。 -->
+      <button id="drawerBtn"><span class="db-ic">☰</span><span class="db-tx">状态</span></button>
+      <!-- 节气 / 钟点。里面的两颗 span 归 renderTopBar() 填，
+           别在这儿先写死 —— #tbTime 是原样拼出来的。 -->
+      <div class="tb-time" id="tbTime"></div>
+      <div class="tb-weather" id="tbWeather"></div>
+    </div>
+    <!-- 三张微缩仪表盘。数字那个 <b> 只装数字本身：
+         「元」得摆在外头，#tbMoney 的 textContent 是要被逐字对过的。 -->
+    <div class="tb-row2">
+      <div class="gauge" id="gaugeStamina">
+        <div class="gauge-h">
+          <span class="gauge-dot" id="dotStamina"></span>
+          <span class="gauge-l">体力</span>
+          <b id="tbStamina"></b>
+        </div>
+        <div class="gauge-bar"><i id="barStamina"></i></div>
+      </div>
+      <div class="gauge" id="gaugeStress">
+        <div class="gauge-h">
+          <span class="gauge-dot" id="dotStress"></span>
+          <span class="gauge-l">压力</span>
+          <b id="tbStress"></b>
+        </div>
+        <div class="gauge-bar"><i id="barStress"></i></div>
+      </div>
+      <div class="gauge money">
+        <div class="gauge-h">
+          <span class="gauge-l">现金</span>
+          <b id="tbMoney"></b>
+          <span class="gauge-u">元</span>
+        </div>
+      </div>
+    </div>
+    <div class="buffs" id="tbChips"></div>
+  </div>
+
+  <div id="stage">
+    <div id="sceneHead">
+      <div id="sceneName"></div>
+      <div id="sceneWho"></div>
+    </div>
+    <div id="narr"></div>
+    <div id="actions"></div>
+  </div>
+
+  <div id="navbar"></div>
+
+  <div id="mask"></div>
+  <div id="drawer">
+    <div id="drawerHead">
+      <h2>状态 / 日程</h2>
+      <div id="tabs">
+        <div class="tab on" data-tab="field">🌾 田况</div>
+        <div class="tab" data-tab="schedule">📅 日程</div>
+        <div class="tab" data-tab="people">👥 人物</div>
+        <div class="tab" data-tab="relics">🏺 藏品</div>
+      </div>
+    </div>
+    <div id="drawerBody"></div>
+  </div>
+
+  <div id="modal"><div id="sheet"></div></div>
+  <div id="toast"></div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   ◆ DATA —— 第一层：配置层
+   ----------------------------------------------------------------------------
+   只有数据。没有逻辑，没有 DOM。
+   搬 Cocos：整个 GameData 原样粘进一个 .ts，前面加 export。
+
+   键名走英文（对齐 spec 的接口），值里是作者的原文，一个字没改。
+   ============================================================================ */
+
+const GameData = {
+
+  /* ── 节气 11 个，顺序照现有游戏的 DECISIONS.序 ───────────────
+     taskWindow 就是日程页上「距【立夏·保温催芽】开始」那句里的后半截。
+     （不叫 window：那一层要能一眼看出没碰浏览器全局。）
+     ─────────────────────────────────────────────────────────── */
+  solarTerms: [
+    { id:'谷雨', days:3, work:'落谷',   taskWindow:'泡种落谷' },
+    { id:'立夏', days:3, work:'育秧',   taskWindow:'保温催芽' },
+    { id:'小满', days:3, work:'田埂',   taskWindow:'清沟保水' },
+    { id:'芒种', days:3, work:'插秧',   taskWindow:'抢插' },
+    { id:'夏至', days:3, work:'水',     taskWindow:'控水晒田' },
+    { id:'小暑', days:3, work:'草',     taskWindow:'除草' },
+    { id:'大暑', days:3, work:'虫',     taskWindow:'防虫' },
+    { id:'立秋', days:3, work:'穗肥',   taskWindow:'追肥' },
+    { id:'处暑', days:3, work:'断水',   taskWindow:'断水' },
+    { id:'白露', days:3, work:'叶面肥', taskWindow:'叶面肥' },
+    { id:'秋分', days:3, work:'开镰',   taskWindow:'收割' }
+  ],
+
+  /* ── 天气 · 五档（照 spec 的 sunny / windy / rain / cold_rain / scorching） ── */
+  weather: {
+    sunny:     { label:'晴',     icon:'☀️' },
+    windy:     { label:'微风',   icon:'🌤️' },
+    rain:      { label:'雨',     icon:'🌧️' },
+    cold_rain: { label:'冷雨',   icon:'🌧️' },
+    scorching: { label:'毒日头', icon:'🔥' }
+  },
+  weatherPool: ['sunny','windy','windy','rain','rain','cold_rain','scorching'],
+
+  /* ── 五个地点 ────────────────────────────────────────────────
+     x / y 只用来算步行分钟数：距离 = 地图单位，1 单位 ≈ 1 分钟，
+     再乘上穿戴带来的系数（胶鞋踩泥里快，运动鞋陷）。
+     name 照 spec；底下的 desc 不是总表里的，是重构时补的一句场景话。
+     ─────────────────────────────────────────────────────────── */
+  locations: [
+    { id:'field',   name:'一亩稻田',   x:0,  y:0,  time:'0分',
+      desc:'一亩三分，田口在东边。水从西边渠里来。' },
+    { id:'shed',    name:'田头工具房', x:5,  y:0,  time:'5分',
+      desc:'一间砖房，一张板床，墙角堆着农具。' },
+    { id:'plot',    name:'河西试验田', x:15, y:0,  time:'15分',
+      desc:'河西一长条，插着白牌子，是站里的对照田。' },
+    { id:'village', name:'上庄村里',   x:0,  y:15, time:'15分',
+      desc:'老槐树底下坐着人。老周家在东头第二户。' },
+    { id:'town',    name:'镇上集市',   x:0,  y:30, time:'30分',
+      desc:'一条街，五金、农资、小吃摊。粮站在街尾。' }
+  ],
+
+  /* ── 人物 ────────────────────────────────────────────────────
+     指纹照抄 data/人物性格.json（脾气 / 怎么说话 / 不会说）。
+     name 和 role 照 spec；voice 不是总表里的，是照指纹重述的一句。
+     两位同窗全程去性别化：代码和文案里都不出现「他」「她」。
+     ─────────────────────────────────────────────────────────── */
+  npcs: [
+    { id:'zhou',       name:'老周',   role:'老农技员，57 岁', faction:'村',
+      voice:'种了四十年的直脾气：话短，先看先尝再开口，损归损、该教的照教。不客套、不顺着书本说；夸你也夸得别扭。' },
+    { id:'classmateA', name:'同学A',  role:'河西试验田 · 同届', faction:'同窗',
+      voice:'话少，不解释、不圆场；事事记在自己那个本子上。能短就短，问一句答一句；偶尔一句很准，说完就不说了。' },
+    { id:'classmateB', name:'同学B',  role:'农大新媒体 · 同级', faction:'同窗',
+      voice:'傲娇毒舌：开口先贬，凶完立刻找补；绝不承认在乎。消息常常只有几个字。' }
+  ],
+
+  /* ── 藏品 36 件 ──────────────────────────────────────────────
+     quote  / origin ：原样来自文字总表，一个字没改。
+     effect          ：不是总表里的 —— 这一版我配的被动数值，待作者过目。
+     slot            ：有槽的才穿得上身（head / feet / tool / accessory）。
+     ─────────────────────────────────────────────────────────── */
+  relics: [
+    /* ═══ 免灾 01-06 ═══ */
+    { id:'01', name:'雏鸭', category:'免灾',
+      quote:'稻丛里走一趟,虫子少一半',
+      origin:'开春在镇口碰见老周去捉鸭苗，你跟着挑了一窝精神的。',
+      effect:{ desc:'虫口涨得慢' } },
+    { id:'02', name:'抽水机', category:'免灾',
+      quote:'老周借给你使过两回，拉绳启动那一下你总是拽不着劲。',
+      origin:'借过两回后，老周懒得再跑，把水带往你田头一扔，让你往后自己拽绳。',
+      effect:{ desc:'旱涝损失减三成' } },
+    { id:'03', name:'老周的锹', category:'免灾', slot:'tool',
+      quote:'木头锹把被汗手盘得溜光，握着比新买的顺手得多。',
+      origin:'那天你在沟里急头白脸地瞎挖泥，老周在埂上实在看不下去，一脸嫌弃地把自己的锹递了下来。',
+      effect:{ desc:'清沟省一半力气', stamina:{ ditch:0.5 } } },
+    { id:'04', name:'镰刀', category:'免灾', slot:'tool',
+      quote:'自己挑来的真家伙，开过刃，握在手里沉甸甸的。',
+      origin:'开镰前几天你精心挑来的大镰刀，怪顺手的。老周说这孩咋恁没见识。',
+      effect:{ desc:'抢收检定 +25' } },
+    { id:'05', name:'药桶', category:'免灾', slot:'tool',
+      quote:'桶侧记号笔写的配药比例被冲得只剩“1:？”。上回你拿它接雨水，让老周看见，差点没骂死你。',
+      origin:'从场院角落里翻出来的大蓝桶，刷干净了，往后打药可能用得上。',
+      effect:{ desc:'打药检定 +20' } },
+    { id:'06', name:'杀虫灯', category:'免灾',
+      quote:'说是物理防虫，亮一宿能省半桶药，比喷药环保。',
+      origin:'听师兄随口提过一嘴，你记下了，过了几天真去农资站搬了一盏回来。',
+      effect:{ desc:'虫口涨得慢' } },
+
+    /* ═══ 免代价 07-12 ═══ */
+    { id:'07', name:'草帽', category:'免代价', slot:'head',
+      quote:'帽檐宽大，编得密实，就是竹篾子边角有点扎手。',
+      origin:'下田那天日头毒，老周一边嫌你一边扣在你头上的。',
+      effect:{ desc:'日头底下省体力', stamina:{ sun:0.25 } } },
+    { id:'08', name:'胶鞋', category:'免代价', slot:'feet',
+      quote:'老周借走之后还回来，上面泥比借走之前多三倍，还很自然地跟你说“洗过了”。',
+      origin:'自从那次陷进地里寸步难行后，你知道你再也离不开它了。',
+      effect:{ desc:'泥里走得快，不陷；下沟省力',
+        travel:0.4, stamina:{ ditch:0.3 } } },
+    { id:'09', name:'电锅', category:'免代价',
+      quote:'宿舍淘汰下来的老式电饭煲，按下开关得拿根筷子卡住才不跳闸。',
+      origin:'抢农时那阵收工太晚，你干脆把锅搬到了田头工具房，插上电就能对付一口热的。',
+      effect:{ desc:'工具房里能焖热饭' } },
+    { id:'10', name:'旧书', category:'免代价',
+      quote:'八十年代印的《北方水稻栽培》，纸页泛黄，重点的地方全用铅笔画了道道。',
+      origin:'催芽那几天翻箱子翻出来的，有一页被折了个角，还用铅笔画了几行。',
+      effect:{ desc:'选种 / 穗肥检定 +15' } },
+    { id:'11', name:'秧把', category:'免代价',
+      quote:'根上带着原苗床的护根土，插下去缓苗快，不伤根。',
+      origin:'起秧那天特意连泥铲起来的，用稻草扎成把，码在田头随取随栽。',
+      effect:{ desc:'插秧省工', stamina:{ transplant:0.3 } } },
+    { id:'12', name:'水壶', category:'免代价', slot:'accessory',
+      quote:'两升装的大号塑料太空杯，灌满凉白开，够顶一上午的汗。',
+      origin:'天热起来之后特意置办的，天天挂在田头树杈上，省得渴了老往回跑。',
+      effect:{ desc:'一切劳作省一成力气', stamina:{ all:0.12 } } },
+
+    /* ═══ 换信息 13-18：都在收窄预估误差 ═══ */
+    { id:'13', name:'老周的本子', category:'换信息',
+      quote:'软皮塑料本，整整八册，记满了这片地四十年的放水日子和年景。',
+      origin:'老周要退岗那阵借给你抄的，纸页都黄透了，一笔一划全是他踩出来的经验。',
+      effect:{ desc:'亩产误差 -15 斤；水里的事拿得准', margin:{ yield:-15 } } },
+    { id:'14', name:'搪瓷盆', category:'换信息',
+      quote:'原本买来洗脸的白搪瓷盆，磕掉了一块瓷，现在专门端下地拍稻飞虱用。',
+      origin:'植保课上教的“盆拍法”，没有专业白瓷盘，你就拿宿舍的洗脸盆顶上了。',
+      effect:{ desc:'亩产误差 -10 斤', margin:{ yield:-10 } } },
+    { id:'15', name:'叶色卡', category:'换信息', slot:'accessory',
+      quote:'印着深浅六道绿色的塑料比色卡，叶子缺不缺氮，对一下色号就知道。',
+      origin:'从实验室顺出来的小工具，揣在兜里不占地方，看叶施肥全凭它拿准数。',
+      effect:{ desc:'米质误差 -4 分', margin:{ quality:-4 } } },
+    { id:'16', name:'水尺', category:'换信息',
+      quote:'带刻度的不锈钢尺，往田泥里一插，水深水浅不用靠猜。',
+      origin:'刚下田那会儿总拿不准老周说的“浅水一寸”到底是多深，干脆自己买了一把插在田口。',
+      effect:{ desc:'亩产误差 -10 斤', margin:{ yield:-10 } } },
+    { id:'17', name:'节气表', category:'换信息',
+      quote:'站里墙上揭下来的老农事历，哪个节气该下种、该晒田，边上全有前人写的批注。',
+      origin:'开春换表,旧的那张揭下来你收着了,边角都卷了。',
+      effect:{ desc:'亩产误差 -10 斤', margin:{ yield:-10 } } },
+    { id:'18', name:'记录本', category:'换信息',
+      quote:'老周翻了两页,说比他自己记的还细',
+      origin:'从种下第一茬起你就天天记。老周翻过两页，说比他记的还细。',
+      effect:{ desc:'亩产误差 -25 斤', margin:{ yield:-25 } } },
+
+    /* ═══ 换人情 19-24 ═══ */
+    { id:'19', name:'两瓶酒', category:'换人情',
+      quote:'三百块的酒钱,买的就是坐下来说话',
+      origin:'在镇上烟酒店挑的，不算顶贵，但拎上门去，有些不好开腔的话就顺理成章了。',
+      effect:{ desc:'求人办事的检定 +20' } },
+    { id:'20', name:'一碗面', category:'换人情',
+      quote:'卤是炸酱,酱里搁了虾皮',
+      origin:'忙到天黑收工，顺手在灶上多下了两把挂面。卤是现熬的炸酱，里头搁了虾皮。',
+      effect:{ desc:'求人办事的检定 +15' } },
+    { id:'21', name:'一沓名片', category:'换人情',
+      quote:'一袋米换一沓纸,后来真有一张打来了电话',
+      origin:'上回带样米去市里展销会换回来的一沓名片，里头有农技站的，也有做生意的。',
+      effect:{ desc:'所有检定 +10（找个懂行的问一句）', globalCheck:10 } },
+    { id:'22', name:'半碗咸菜', category:'换人情',
+      quote:'村里老太太自家腌的芥菜疙瘩，切了细丝，淋着香油。',
+      origin:'秋收帮工的老太太放在你田埂上的，就着早上的白粥吃，脆生生的。',
+      effect:{ desc:'找人搭把手容易些' } },
+    { id:'23', name:'烟袋', category:'换人情',
+      quote:'在鞋底上磕两下,话才开头',
+      origin:'老周随身带的黄铜旱烟袋，每回他在鞋底上磕两下烟灰，就是准备跟你说正事了。',
+      effect:{ desc:'老周开口的检定 +25' } },
+    { id:'24', name:'缸子', category:'换人情',
+      quote:'印着红双喜的旧搪瓷茶缸，泡着浓酽酽的茉莉花茶。',
+      origin:'搁在田头屋里待客用的大茶缸，谁路过渴了都能进来倒半缸子水坐会儿。',
+      effect:{ desc:'老周开口的检定 +15' } },
+
+    /* ═══ 换钱 25-30：现在都花在秋后 ═══ */
+    { id:'25', name:'扦样器', category:'换钱',
+      quote:'一头尖的空心铁管，往麻袋里一捅再抽出来，中间的谷子成色就全在手心里了。',
+      origin:'头年去粮站交粮吃过一回亏，后来你自己也淘了一把，收粮验质时先自己捅一杆。',
+      effect:{ desc:'收粮验质不吃哑巴亏' } },
+    { id:'26', name:'磅秤', category:'换钱',
+      quote:'带铁砣的老式台秤，自己先校准了，收粮时往埂上一摆，谁也别想在斤两上糊弄。',
+      origin:'见识过粮贩子那台“有点飘”的秤之后，你干脆自己从旧货市场拉了一台回来。',
+      effect:{ desc:'斤两上糊弄不了你' } },
+    { id:'27', name:'那块牌子', category:'换钱',
+      quote:'白底红字,编号07:拔了,还给钉一块',
+      origin:'公司不知什么时候立在你田头的“示范基地”铁牌，你拔过一回，第二天他们又给钉上了。',
+      effect:{ desc:'卖米的时候，人家认得出这块地' } },
+    { id:'28', name:'算盘', category:'换钱',
+      quote:'红木框的老算盘，珠子拨得噼啪响，比按手机计算器更有震慑力。',
+      origin:'村里老会计淘汰下来的，送给了你。秋后算人工、结谷账，全靠它一笔笔归齐。',
+      effect:{ desc:'雇工费算得清' } },
+    { id:'29', name:'铁盒子', category:'换钱',
+      quote:'装过饼干的扁铁盒，里头塞满了这一季买种、买肥、雇工的收据和白条。',
+      origin:'搁在床头专门攒票据的盒子，每花一笔钱就往里塞一张，到秋后刚好攒了厚厚一沓。',
+      effect:{ desc:'账目上说不清的地方少一大半' } },
+    { id:'30', name:'簸箕', category:'换钱',
+      quote:'簸两下,轻的飞出去,沉的留下来',
+      origin:'从场院屋角翻出来的竹编大簸箕，迎着风颠两下，瘪谷糠皮全飞出去，成色一目了然。',
+      effect:{ desc:'手底下的成色自己先知道' } },
+
+    /* ═══ 顶货 31-36：顶一次采购 ═══ */
+    { id:'31', name:'草木灰', category:'顶货',
+      quote:'「补钾的,比化肥强。」说完就走,也没要钱',
+      origin:'老周从自家灶房攒出来挑到你田头的，丢下一句“补钾的”，没要你的钱。',
+      effect:{ desc:'顶一次追肥，不花钱' } },
+    { id:'32', name:'干稻茬', category:'顶货',
+      quote:'上一季收割留下的干稻草，铺在苗床上能挡寒风，夜里点着了还能熏烟防霜。',
+      origin:'秋收后特意留了一垛码在场院边，开春防寒、入秋防霜都能顶一阵。',
+      effect:{ desc:'顶一次盖膜；也可以拿来擦鞋' } },
+    { id:'33', name:'赊账本', category:'顶货',
+      quote:'柜台上那本,只有圈起来的才给赊',
+      origin:'你在农资店有借有还，老板在柜台那本账册上把你的名字画了个圈，准你先拿货后给钱。',
+      effect:{ desc:'农资可以先拿货后给钱' } },
+    { id:'34', name:'秧盘', category:'顶货',
+      quote:'机插专用的塑料育秧软盘，育出来的毯状苗密、矮、齐，到点卷起来就能上机子。',
+      origin:'开春从镇上农机站搬回来的一摞塑料盘，专门为了配合插秧机用的。',
+      effect:{ desc:'育秧插秧省工', stamina:{ transplant:0.2 } } },
+    { id:'35', name:'膜卷', category:'顶货',
+      quote:'上一季用剩的那半卷,还压着块砖',
+      origin:'上一季拆棚时特意拿水冲干净、卷好收回家的旧农膜，展开来看还能再顶一季。',
+      effect:{ desc:'顶一次盖膜' } },
+    { id:'36', name:'化肥袋', category:'顶货',
+      quote:'墙角立着的编织袋，拿砖头压着封口，里头还剩大半袋没使完的肥。',
+      origin:'上一季从农资店多备出来的半袋肥，一直封在屋角防潮，用完的空袋子秋天还能装谷子。',
+      effect:{ desc:'顶一次追肥' } }
+  ],
+
+  /* ── 开局那双运动鞋 ──────────────────────────────────────────
+     它不是家什，是开局就穿在脚上、会出事的一双鞋。
+     travel 是负数：踩泥里更慢。
+     ─────────────────────────────────────────────────────────── */
+  starterGear: {
+    // 这双鞋不是藏品，是开局自带的。quote 和 effect 不是总表里的。
+    id:'shoe0', name:'运动鞋', slot:'feet', durability:100, states:[],
+    quote:'穿着上课的那双，白底网面，鞋帮只有脚踝高。',
+    effect:{ desc:'下田会陷，走泥路慢一半', travel:-0.5 }
+  },
+
+  /* ── 三个标杆决策 ────────────────────────────────────────────
+     每个 option 就是一条 ActionOption（spec 的接口）。
+     screenName / brief / story / hinge / pitch / onSuccessText / blockedHint
+       原样来自文字总表，一个字没改（check-decisions.mjs 逐字校过）。
+     onFailText 不是总表里的 —— 总表只给了成了以后那一段，翻车那支是我补的。
+     check 也是这一版新加的机制，baseChance 和加成数值待作者过目。
+     ─────────────────────────────────────────────────────────── */
+  decisions: [
+    /* ══════ 谷雨 · 落谷 ══════ */
+    {
+      id:'guyu', solarTerm:'谷雨', screenName:'落谷',
+      brief:'泡种之前，先定用哪一路种子。',
+      story:'老周蹲下抓了把你摊在簸箕里的种，又把手一松，谷子落了回去。他说：\n　「现在人家都买新种了。你这旧种杂，也没清过。」',
+      options:[
+        {
+          id:'guyu_native', label:'用自家留的种',
+          detail:'用自家留的种，晒一天、盐水选一遍再下缸',
+          costTimeMinutes:180, costStamina:12, costMoney:0, costHookNpc:null,
+          hinge:'种：这一袋干不干净',
+          pitch:'省了一百五十块种子钱。\n　可这袋种纯不纯、带不带菌，光看外表看不出来。得等出苗以后才知道。',
+          check:{
+            name:'盐水选种', baseChance:55,
+            modifiers:[
+              { source:'旧书《北方水稻栽培》', bonus:15, requires:{ relic:'10' } },
+              { source:'节气表上那几行批注',   bonus:10, requires:{ relic:'17' } },
+              { source:'老周 好感每一档',      bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'兑好盐水，把浮起来的瘪谷和杂质捞掉，沉底的多是饱满粒。然后再用清水冲净。',
+            onFailText:'盐水兑得淡了，瘪谷没漂净。下田以后出苗稀稀拉拉，补了两回苗。',
+            onSuccess:{ modifiers:[{ name:'自家留的种', good:true, desc:'省了一百五' }] },
+            onFail:{ yieldDelta:-45, qualityDelta:-5,
+              modifiers:[{ name:'出苗不齐', good:false, desc:'亩产 -45，米质 -5' }] }
+          }
+        },
+        {
+          id:'guyu_buy', label:'去原种站买新种，包过衣的',
+          detail:'去原种站买新种，包过衣的',
+          costTimeMinutes:240, costStamina:10, costMoney:150, costHookNpc:null,
+          hinge:'钱：一百五，买今年不操这份心',
+          pitch:'这一百五十块，买的是种子纯度、发芽率和已经做过的处理。\n　省心一些，但也还是得盯着。',
+          check:null,
+          onSuccessText:'新种包过衣，种源清楚，发芽也整齐。至于长得怎么样，还得看后面的管理。',
+          onSuccess:{ yieldDelta:10, qualityDelta:2,
+            modifiers:[{ name:'种源干净', good:true, desc:'亩产 +10，米质 +2' }] }
+        },
+        {
+          id:'guyu_swap', label:'托老周问邻村换种',
+          detail:'托老周问邻村换种，两家换着种',
+          costTimeMinutes:300, costStamina:14, costMoney:60, costHookNpc:null,
+          hinge:'种：两家的种换着用',
+          requires:{ opinion:{ zhou:20 } },
+          blockedHint:'老周跟你还没到那份上。换种靠人情，这事还得靠你自己。',
+          pitch:'杂交稻不能自己留种，常规粳稻能，所以两家换着用看着是条路。\n　可换过来的不一定是更干净的一路：对面那袋也是自己留的，杂株照样攒着，菌照样带着。',
+          check:{
+            name:'老周肯不肯张这个口', baseChance:45,
+            modifiers:[
+              { source:'老周 好感每一档', bonus:20, requires:{ opinionTier:'zhou' } },
+              { source:'拎两瓶酒上门',    bonus:20, requires:{ relic:'19' } },
+              { source:'递烟袋',          bonus:15, requires:{ relic:'23' } }
+            ],
+            onSuccessText:'老周第二天回话，说成了。\n　你去邻村驮回半袋，对方说是同一个品种、今年新留的种。',
+            onFailText:'老周去问了一趟，那边今年自己也没留够。\n六十块添头退回来一半，剩下的算跑腿。',
+            onSuccess:{ yieldDelta:5, opinionDelta:{ zhou:6 },
+              modifiers:[{ name:'换来的另一路', good:true, desc:'抗病换着来了' }] },
+            onFail:{ yieldDelta:-15, qualityDelta:-2, opinionDelta:{ zhou:-3 },
+              modifiers:[{ name:'换种没换成', good:false, desc:'白搭了六十块' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 夏至 · 水 ══════ */
+    {
+      id:'xiazhi', solarTerm:'夏至', screenName:'水',
+      brief:'够苗了。这时候田里的水怎么管，定的是根的深浅。',
+      story:'田面已经封行。老周站在水口上，背着手看了半天，没说话。',
+      options:[
+        {
+          id:'xiazhi_deep', label:'灌深水，把草闷在水底下',
+          detail:'灌深水，把草闷在水底下',
+          costTimeMinutes:90, costStamina:10, costMoney:0, costHookNpc:null,
+          hinge:'水：分蘖会少，根也容易闷着',
+          pitch:'拿穗子换省事。草压住了，底下分出来的杈也一起压住了。杈少了，将来的穗就少。这一手在分杈那几天做，账要到出穗才看得见。',
+          check:null,
+          onSuccessText:'水放满了，稻苗只露个尖。底下的草见不着光，稻苗自己也闷在水里。',
+          onSuccess:{ yieldDelta:-55,
+            modifiers:[
+              { name:'深水压苗', good:false, desc:'分蘖少了，亩产 -55' },
+              { name:'草压住了', good:true,  desc:'省了一遍除草' }
+            ] }
+        },
+        {
+          id:'xiazhi_dry', label:'排水晒田，让根往下扎',
+          detail:'排水晒田，让根往下扎',
+          costTimeMinutes:150, costStamina:16, costMoney:0, costHookNpc:null,
+          hinge:'水，也关根：晒到什么程度',
+          pitch:'把根往下逼一截，是为了给可能的旱情做准备。雨匀的话没什么；可要是赶上伏旱，它就派上大用场。',
+          check:{
+            name:'晒到鸡爪纹', baseChance:60,
+            modifiers:[
+              { source:'水尺（插在田口）', bonus:15, requires:{ relic:'16' } },
+              { source:'老周的本子',       bonus:20, requires:{ relic:'13' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'水放干的第三天，田面裂出细纹。扒开土看，稻根顺着缝往下走了一截。',
+            onFailText:'晒过了头。田面裂开一指宽的缝，扒开看，细根断了不少。\n补了两天水才缓过来。',
+            onSuccess:{ yieldDelta:25, qualityDelta:3,
+              modifiers:[{ name:'晒田扎根', good:true, desc:'亩产 +25，抗倒伏 +25%' }] },
+            onFail:{ yieldDelta:-30, qualityDelta:-4,
+              modifiers:[{ name:'晒过了', good:false, desc:'裂口太大，伤了根' }] }
+          }
+        },
+        {
+          id:'xiazhi_light', label:'轻晒一遍，再灌浅水',
+          detail:'轻晒一遍，再灌浅水',
+          costTimeMinutes:420, costStamina:26, costMoney:0, costHookNpc:null,
+          hinge:'水：苗弱轻晒，苗旺重晒',
+          pitch:'苗还不算旺，就别一下晒得太狠。先让田面落干、透气，刚发白起细纹就补一层浅水。',
+          check:null,
+          onSuccessText:'水落到田面刚发白，你又补了一层浅水。这样来回管了七八天。',
+          onSuccess:{ yieldDelta:12, qualityDelta:1,
+            modifiers:[{ name:'浅水勤灌', good:true, desc:'亩产 +12，苗没受罪' }] }
+        }
+      ]
+    },
+
+    /* ══════ 立秋 · 穗肥 ══════ */
+    {
+      id:'liqiu', solarTerm:'立秋', screenName:'穗肥',
+      brief:'出穗前最后一次追肥，窗口是出穗前 15 天左右。',
+      story:'「你先看叶色。」\n　老周捏着最上头那片叶对着光。\n　「还黑绿着不褪，就别施了。穗肥得等叶色褪下来。不退你就施，那是等着它倒。」',
+      options:[
+        {
+          id:'liqiu_full', label:'照往年的量，再追一遍氮肥',
+          detail:'照往年的量，再追一遍氮肥',
+          costTimeMinutes:120, costStamina:14, costMoney:0, costHookNpc:null,
+          hinge:'肥，也关秆子：苗本来缺不缺',
+          pitch:'苗弱、叶色淡，补肥能保住穗粒；苗已经黑绿，再追氮就容易贪青、软秆、加重病害。眼前看着更旺，不一定都长到米里。',
+          check:null,
+          onSuccessText:'尿素撒下去，叶色又深了一层，稻子继续往高里长。穗子不会当场变大，后果还得往后看。',
+          onSuccess:{ yieldDelta:30, qualityDelta:-12,
+            modifiers:[
+              { name:'氮素偏高', good:false, desc:'亩产 +30，米质 -12' },
+              { name:'贪青',     good:false, desc:'秆软，来风就倒' }
+            ] }
+        },
+        {
+          id:'liqiu_light', label:'少施，够用就行',
+          detail:'少施，够用就行',
+          costTimeMinutes:90, costStamina:10, costMoney:0, costHookNpc:null,
+          hinge:'肥：今年这点积温，够不够它长',
+          pitch:'主动砍掉一截产量，换米质那条线往上走。赶上凉夏尤其值：积温本来就上不去，稻子长得慢，再拿氮去催，催出来的全是水。',
+          check:null,
+          onSuccessText:'只撒了薄薄一层。稻子长得不猛，叶色正，秆子捏着硬。',
+          onSuccess:{ yieldDelta:-25, qualityDelta:12,
+            modifiers:[{ name:'少氮', good:true, desc:'亩产 -25，米质 +12，秆硬' }] }
+        },
+        {
+          id:'liqiu_leaf', label:'掐片顶上的叶比一比',
+          detail:'掐片顶上的叶比一比：褪了色才补，不褪就不施',
+          costTimeMinutes:150, costStamina:12, costMoney:0, costHookNpc:null,
+          hinge:'叶色：这一口到底该不该补',
+          pitch:'书上那句「看叶色」，是把施不施交给叶子说了算，你不用猜今年是凉是暖，叶子自己会写。所以这一手不多不少：褪了色补薄薄一层，不褪就一分不施。',
+          check:{
+            name:'叶色比到第几格', baseChance:60,
+            modifiers:[
+              { source:'叶色卡（对着光比）', bonus:25, requires:{ relic:'15' } },
+              { source:'旧书那一段',         bonus:15, requires:{ relic:'10' } },
+              { source:'老周 好感每一档',    bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'掐一片顶上的叶对着光，跟卡上的格子比了比，还差一格才到该施的那一色。\n　那就只补薄薄一层，分两次撒下去。',
+            onFailText:'光比错了。等反应过来，叶色已经褪过头，再补也追不上了。',
+            onSuccess:{ yieldDelta:15, qualityDelta:8,
+              modifiers:[{ name:'按叶色补的', good:true, desc:'亩产 +15，米质 +8' }] },
+            onFail:{ yieldDelta:-10, qualityDelta:-3,
+              modifiers:[{ name:'看走了眼', good:false, desc:'补错了时候' }] }
+          }
+        }
+      ]
+    },
+
+    /* ◆ 立夏 到 秋分这八屏是生成的 ──────────────────────────
+      文案是 build-decisions.mjs 从 doc/文字总表/4-农事决策.md 里机器抄的：
+      屏名、brief、story、选N·text（按钮文案取它开头）、选N·关、选N·说、
+      选N·result、选N·锁说 —— 一个字没动。逐字校验见 check-decisions.mjs。
+      各自检定的名字、成功率、各项加成、失败文案，以及所有加减账，
+      不是总表里的，是我配的，等作者过目。
+      ────────────────────────────────────────────────────────── */
+
+    /* ══════ 立夏 · 育秧 ══════ */
+    {
+      id:'lixia', solarTerm:'立夏', screenName:'育秧',
+      brief:'五月上旬还可能突然返冷。育秧既怕低温，也怕膜里捂得太热。',
+      story:'',
+      options:[
+        {
+          id:'lixia_open', label:'露地育秧，就让它在外头长',
+          detail:'露地育秧，就让它在外头长',
+          costTimeMinutes:120, costStamina:8, costMoney:0, costHookNpc:null,
+          hinge:'天：四月那几场寒潮',
+          pitch:'省膜省工，代价是全靠天气。\n　如果气温稳，露地苗也能长；如果冷风连着来，出苗慢，烂芽、青枯的风险也大。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'四月的冷风来不来', baseChance:45,
+            modifiers:[
+              { source:'节气表上那几行批注', bonus:10, requires:{ relic:'17' } },
+              { source:'老周的本子',         bonus:15, requires:{ relic:'13' } },
+              { source:'老周 好感每一档',    bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'种子撒下去，盖一层薄土。夜里凉，白天晒，全凭天。',
+            onFailText:'冷风连着来了三夜。苗床上的芽尖先是发白，接着成片倒下去。\n补了一回种，出苗还是稀。',
+            onSuccess:{ yieldDelta:15, qualityDelta:2,
+              modifiers:[{ name:'露地苗', good:true, desc:'省了膜钱，苗也立得住' }] },
+            onFail:{ yieldDelta:-40, qualityDelta:-5,
+              modifiers:[{ name:'烂芽青枯', good:false, desc:'亩产 -40，米质 -5' }] }
+          }
+        },
+        {
+          id:'lixia_film', label:'盖膜育秧，给秧苗搭个棚',
+          detail:'盖膜育秧，给秧苗搭个棚',
+          costTimeMinutes:150, costStamina:10, costMoney:80, costHookNpc:null,
+          hinge:'天：今年四月是冷是暖',
+          pitch:'八十块买了保温。冷天棚里暖，可太阳一出来就得通风。如果捂得太热，苗会蹿得又细又软。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'竹片弯成拱，蒙上膜。棚里暖和，秧苗出得又快又齐。',
+          onSuccess:{ yieldDelta:8, qualityDelta:3,
+            modifiers:[{ name:'棚里育的苗', good:true, desc:'出苗又快又齐' }] }
+        },
+        {
+          id:'lixia_sprout', label:'先催出芽',
+          detail:'先催出芽，再落谷。让它在暖地方先把头探出来',
+          costTimeMinutes:180, costStamina:12, costMoney:0, costHookNpc:null,
+          hinge:'天：还是那段温度，只是赌的日子短了',
+          pitch:'催芽能让种子快些露白、出苗整齐，但代替不了保温。\n　落谷以后如果赶上冷天，该受冷还是受冷。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'催芽催得匀不匀', baseChance:55,
+            modifiers:[
+              { source:'秧盘（站里借的）', bonus:15, requires:{ relic:'34' } },
+              { source:'水壶',             bonus:10, requires:{ relic:'12' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'浸一天，然后捞起催芽。等大半种子出了白芽尖，就摊开晾到半干，然后下到苗床里。',
+            onFailText:'捂得太久，芽尖在簸箕里就干了。摊开晾的时候已经晚了一步，下到苗床里出得七零八落。',
+            onSuccess:{ yieldDelta:12, qualityDelta:2,
+              modifiers:[{ name:'催过芽', good:true, desc:'出苗快了一截' }] },
+            onFail:{ yieldDelta:-20,
+              modifiers:[{ name:'催过了头', good:false, desc:'芽尖干在簸箕里' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 小满 · 田埂 ══════ */
+    {
+      id:'xiaoman', solarTerm:'小满', screenName:'田埂',
+      brief:'雨季要来之前，田边那圈沟得清一遍。这活儿没人爱干，它不长在账上。',
+      story:'',
+      options:[
+        {
+          id:'xiaoman_ditch', label:'清沟、查水口',
+          detail:'清沟、查水口，再把田埂漏处堵好',
+          costTimeMinutes:480, costStamina:30, costMoney:0, costHookNpc:null,
+          hinge:'排得出去，但也留得住水',
+          pitch:'清沟不是把田里的水白白放走。沟通了，大雨时水退得快；水口关好、田埂堵严，旱时一样能留住水。花的是两天工，买的是排灌都听使唤。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'铁锹把田边那圈沟里的淤泥一锹一锹起出来，田埂上被黄鳝钻的洞也堵了。干了两天。',
+          onSuccess:{ flags:{ ditchCleared:true },
+            modifiers:[{ name:'沟清过了', good:true, desc:'灌得进，也排得出' }] }
+        },
+        {
+          id:'xiaoman_skip', label:'沟面看着是通的，先不管',
+          detail:'沟面看着是通的，先不管',
+          costTimeMinutes:30, costStamina:2, costMoney:0, costHookNpc:null,
+          hinge:'雨：淤了半截，你站在埂上看不见',
+          pitch:'省下两天工，赌的是沟底没有堵死。真来一场大雨，低洼处退不出水，再下田清沟就迟了。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'沟底到底堵没堵', baseChance:50,
+            modifiers:[
+              { source:'水尺（插在田口）', bonus:15, requires:{ relic:'16' } },
+              { source:'老周的本子',       bonus:15, requires:{ relic:'13' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'你绕田走了一圈。沟面有水在流，底下淤了多少，看不出来。',
+            onFailText:'一场大雨下来，低洼那一片退了三天才见泥。等你扛锹去清，稻脚已经泡黄了。',
+            onSuccess:{ modifiers:[{ name:'沟还通着', good:true, desc:'省下两天工' }] },
+            onFail:{ yieldDelta:-30, qualityDelta:-3,
+              modifiers:[{ name:'低洼处淤住了', good:false, desc:'退了三天水' }] }
+          }
+        },
+        {
+          id:'xiaoman_zhou', label:'请老周过来',
+          detail:'请老周过来，陪你把水路走一遍',
+          costTimeMinutes:240, costStamina:14, costMoney:0, costHookNpc:null,
+          hinge:'老周一处一处地指给你',
+          requires:{ opinion:{ zhou:20 } },
+          blockedHint:'这份交情还不够：老周肯指点你，但还没到肯陪你蹲半天。',
+          pitch:'你只会看沟里有没有淤，老周还会看水往哪儿走、哪里容易漏。请他来，图的是经验。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'老周肯不肯陪你蹲半天', baseChance:55,
+            modifiers:[
+              { source:'老周 好感每一档', bonus:10, requires:{ opinionTier:'zhou' } },
+              { source:'烟袋',            bonus:15, requires:{ relic:'23' } },
+              { source:'缸子',            bonus:10, requires:{ relic:'24' } }
+            ],
+            onSuccessText:'老周背着手在前面走，走到低洼那一段停下来，用脚点了点：「堵了。」\n　他一路点了三处，两处你都没看出来。',
+            onFailText:'老周走了一圈，点了两处。第三处到大雨以后才露出来。',
+            onSuccess:{ opinionDelta:{ zhou:5 }, flags:{ ditchCleared:true },
+              modifiers:[{ name:'三处堵点', good:true, desc:'老周一路点出来的' }] },
+            onFail:{ yieldDelta:-15,
+              modifiers:[{ name:'漏了一处', good:false, desc:'老周也没走到' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 芒种 · 插秧 ══════ */
+    {
+      id:'mangzhong', solarTerm:'芒种', screenName:'插秧',
+      brief:'京西稻多在五月下旬插完，你已经到了窗口末段。既要看苗，也不能把农时误了。',
+      story:'「再晚，出穗也要晚了。」老周蹲在埂上看了看苗，「苗弱一点还能缓。农时误了，可补不回来。」',
+      options:[
+        {
+          id:'mangzhong_now', label:'今天就插，让苗多长几天',
+          detail:'今天就插，让苗多长几天',
+          costTimeMinutes:480, costStamina:30, costMoney:0, costHookNpc:null,
+          hinge:'天：苗情和剩下的生育期',
+          pitch:'苗还不算最壮。但如果今天插下去，头几天浅水护苗，等它返青，后面的生长期还能多留几天。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'苗情和剩下的生育期', baseChance:50,
+            modifiers:[
+              { source:'秧把',             bonus:15, requires:{ relic:'11' } },
+              { source:'秧盘（站里借的）', bonus:15, requires:{ relic:'34' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'天没亮就下田，一天插下来腰直不起来。行距 30 公分，穴距 15 公分，稀植，为的是分杈别太密，秆子站得住。',
+            onFailText:'苗本来就弱，赶着插下去，返青慢了十来天。\n补了两次苗，行子里还是缺着。',
+            onSuccess:{ yieldDelta:20, qualityDelta:2,
+              modifiers:[{ name:'赶上了农时', good:true, desc:'亩产 +20' }] },
+            onFail:{ yieldDelta:-25, qualityDelta:-3,
+              modifiers:[{ name:'苗弱又赶工', good:false, desc:'缺穴不少' }] }
+          }
+        },
+        {
+          id:'mangzhong_wait', label:'再等五天，让秧壮一壮',
+          detail:'再等五天，让秧壮一壮',
+          costTimeMinutes:600, costStamina:20, costMoney:0, costHookNpc:null,
+          hinge:'天：苗能壮一些，农时也会晚五天',
+          pitch:'再等五天，苗会好插些，返青也可能快些。代价很明白：插秧、抽穗和灌浆都跟着往后推。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'又等了五天。苗粗壮些才下田，插下去很快立住了。',
+          onSuccess:{ yieldDelta:10, qualityDelta:3,
+            modifiers:[
+              { name:'壮苗下田', good:true, desc:'返青快' },
+              { name:'农时晚了五天', good:false, desc:'抽穗灌浆跟着推' }
+            ] }
+        },
+        {
+          id:'mangzhong_mud', label:'今天带泥起秧，尽量少伤根',
+          detail:'今天带泥起秧，尽量少伤根',
+          costTimeMinutes:600, costStamina:34, costMoney:0, costHookNpc:null,
+          hinge:'多费工，换少伤根、快返青',
+          pitch:'还是今天插，只是起秧时多带些泥，少伤一点根。多花的是工夫，换的是下田以后缓得快些。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'起秧时连着泥一块铲，运到田里再分开栽。活慢了不少，根倒是保住了大半。',
+          onSuccess:{ yieldDelta:12, qualityDelta:1,
+            modifiers:[{ name:'根保住了', good:true, desc:'返青快了两天' }] }
+        },
+        {
+          id:'mangzhong_machine', label:'不自己下田了',
+          detail:'不自己下田了：问站里那台插秧机排不排得上',
+          costTimeMinutes:300, costStamina:12, costMoney:1200, costHookNpc:null,
+          hinge:'花了钱，省时间，但也要看机器插得好不好',
+          pitch:'机器快、行距齐，买的是时间。苗床合适、田整得平、深浅调得好，产量未必比手插差；只是缺穴和漂秧还得回来补。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'插秧机在田里走了半天，一行行秧苗落下去。师傅先试了一趟，把深浅调稳才继续。\n　你站在田埂上看，一排排秧苗齐得很。',
+          onSuccess:{ yieldDelta:-18, qualityDelta:-2,
+            modifiers:[
+              { name:'机器插的', good:true, desc:'省了四天工' },
+              { name:'缺穴漂秧', good:false, desc:'亩产 -18' }
+            ] }
+        }
+      ]
+    },
+
+    /* ══════ 小暑 · 草 ══════ */
+    {
+      id:'xiaoshu', solarTerm:'小暑', screenName:'草',
+      brief:'稗子和稻子长得几乎一样。区别在：稻子有叶舌和叶耳，稗子两样都没有。叶脉发白、叶面光滑的，是稗子。',
+      story:'',
+      options:[
+        {
+          id:'xiaoshu_hand', label:'人工薅，一棵一棵认',
+          detail:'人工薅，一棵一棵认',
+          costTimeMinutes:900, costStamina:40, costMoney:0, costHookNpc:null,
+          hinge:'草：费工，但不怕选错药',
+          pitch:'人工薅草费腰，也得反复下田。好处是认准一棵拔一棵，天敌都还在。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'薅了三遍。到最后，你能隔着老远一眼认出哪棵是稗子。',
+          onSuccess:{ yieldDelta:8, qualityDelta:2,
+            modifiers:[{ name:'草薅干净了', good:true, desc:'天敌都还在' }] }
+        },
+        {
+          id:'xiaoshu_herbicide', label:'认准草相，选对除草剂',
+          detail:'认准草相，选对除草剂',
+          costTimeMinutes:120, costStamina:8, costMoney:45, costHookNpc:null,
+          hinge:'药：草种、叶龄和用量都得对上',
+          pitch:'四十五块换六天工，当场就划算。可广谱药不分敌我：蜘蛛没了，后面那几批虫就没人替你看着。这笔账要到八月才还。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'草种、叶龄和用量对不对得上', baseChance:50,
+            modifiers:[
+              { source:'药桶',            bonus:20, requires:{ relic:'05' } },
+              { source:'老周的本子',      bonus:10, requires:{ relic:'13' } },
+              { source:'老周 好感每一档', bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'药兑上水，背着桶走了一圈。三天后，田里的草和稗子一起黄了。',
+            onFailText:'药兑重了。三天后草是黄了，稻叶也跟着黄了一片。\n你站在田埂上看了半天，没敢再补。',
+            onSuccess:{ yieldDelta:5, qualityDelta:-2,
+              modifiers:[
+                { name:'一遍药下去', good:true, desc:'省了六天工' },
+                { name:'天敌清空了', good:false, desc:'八月的虫没人替你看着' }
+              ] },
+            onFail:{ yieldDelta:-20, qualityDelta:-3,
+              modifiers:[{ name:'药打重了', good:false, desc:'稻叶也黄了一片' }] }
+          }
+        },
+        {
+          id:'xiaoshu_flood', label:'灌深水，把稗子闷下去',
+          detail:'灌深水，把稗子闷下去',
+          costTimeMinutes:200, costStamina:18, costMoney:0, costHookNpc:null,
+          hinge:'用三天深水淹掉一茬稗子',
+          requires:{ flag:'ditchCleared' },
+          blockedHint:'小满那天沟没清，这会儿水灌得起来、排不出去。',
+          pitch:'稗子比稻子耐不了深水。灌到没顶三天，稗子先黄，稻子还撑得住。\n　可这一招全靠沟灌得进、退得出。进退不由己的时候，可不能这么干。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'水压不压得住', baseChance:50,
+            modifiers:[
+              { source:'水尺（插在田口）', bonus:15, requires:{ relic:'16' } },
+              { source:'抽水机',           bonus:15, requires:{ relic:'02' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'水灌到没过苗尖。第三天早上稗子开始发黄，稻叶还立着。你连夜把水排回去。',
+            onFailText:'水灌下去了，第三天稻苗也开始发黄。你连夜去排水，沟里却退不利索。',
+            onSuccess:{ yieldDelta:15,
+              modifiers:[{ name:'深水闷稗', good:true, desc:'一茬稗子淹掉了' }] },
+            onFail:{ yieldDelta:-30, qualityDelta:-4,
+              modifiers:[{ name:'水深过了头', good:false, desc:'稻苗也闷着了' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 大暑 · 虫 ══════ */
+    {
+      id:'dashu', solarTerm:'大暑', screenName:'虫',
+      brief:'二化螟第一代幼虫上来了，纹枯病也在发。同时。穗子正在秆里成形，田里最不能断水的就是这几天。',
+      story:'',
+      options:[
+        {
+          id:'dashu_spray', label:'打药，一遍下去最干脆',
+          detail:'打药，一遍下去最干脆',
+          costTimeMinutes:240, costStamina:16, costMoney:150, costHookNpc:null,
+          hinge:'虫，也关药：打完这一遍，田里还剩谁',
+          pitch:'现在虫是没了，可代价是天敌跟着清空了，八月的虫来得更凶。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'甲氧虫酰肼管螟虫，噻呋酰胺管纹枯病。一遍打下去。第二天田埂上落了一层虫。',
+          onSuccess:{ yieldDelta:25, qualityDelta:-4,
+            modifiers:[
+              { name:'一遍药下去', good:true, desc:'螟虫压住了' },
+              { name:'天敌清空了', good:false, desc:'八月的虫来得更凶' }
+            ] }
+        },
+        {
+          id:'dashu_ducks', label:'赶一群鸭子下田',
+          detail:'赶一群鸭子下田',
+          costTimeMinutes:120, costStamina:10, costMoney:1500, costHookNpc:null,
+          hinge:'虫：鸭子吃虫，可它也踩苗',
+          pitch:'一次掏一千五，换一季不动药。产量先掉一截：鸭子下田头几天会踩苗、啄穗；生态和米质往上走。这笔账要到开镰那天才结，而且上庄没人这么干过，你是头一个。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'二十只麻鸭下了田，在秧行间钻来钻去，嘴不停。',
+          onSuccess:{ yieldDelta:-35, qualityDelta:8,
+            modifiers:[
+              { name:'鸭子在田里', good:true, desc:'不动药，米质 +8' },
+              { name:'鸭子踩了苗', good:false, desc:'亩产 -35' }
+            ] }
+        },
+        {
+          id:'dashu_scout', label:'先拿盆拍一遍，够数了才打',
+          detail:'先拿盆拍一遍，够数了才打',
+          costTimeMinutes:300, costStamina:14, costMoney:0, costHookNpc:null,
+          hinge:'虫病：卵块、枯鞘和病丛到底有多少',
+          pitch:'多花半天查田，换来的是该打的地方不漏、不该打的地方不乱打。螟虫看卵块和枯鞘，纹枯病看病丛，不能拿一个数一起算。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'卵块、枯鞘和病丛到底有多少', baseChance:45,
+            modifiers:[
+              { source:'药桶',            bonus:20, requires:{ relic:'05' } },
+              { source:'老周的本子',      bonus:15, requires:{ relic:'13' } },
+              { source:'老周 好感每一档', bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'顺着田走了十来处，数卵块、看枯鞘，也扒开稻脚看病斑。',
+            onFailText:'数了十来处，偏偏没走到低洼那片。等你发现的时候，那一片已经枯了鞘。',
+            onSuccess:{ qualityDelta:3, yieldMarginDelta:-10,
+              modifiers:[{ name:'数过一遍', good:true, desc:'该打的没漏，不该打的没动' }] },
+            onFail:{ yieldDelta:-15,
+              modifiers:[{ name:'数岔了一处', good:false, desc:'漏了低洼那片' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 处暑 · 断水 ══════ */
+    {
+      id:'chushu', solarTerm:'处暑', screenName:'断水',
+      brief:'断水早了，灌浆不足；断得晚，田面发软，人下田费力，机器也容易打滑陷车。',
+      story:'',
+      options:[
+        {
+          id:'chushu_early', label:'现在就断水',
+          detail:'现在就断水，让田面早点硬起来',
+          costTimeMinutes:60, costStamina:6, costMoney:0, costHookNpc:null,
+          hinge:'水：最后这十来天断不断',
+          pitch:'现在断，收割时田面更容易承住人和机器；可谷粒还没灌足的话，叶片会早衰，粒重也会受影响。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'断得早不早', baseChance:50,
+            modifiers:[
+              { source:'水尺（插在田口）', bonus:15, requires:{ relic:'16' } },
+              { source:'老周的本子',       bonus:15, requires:{ relic:'13' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'水放干了。几天之后田面能站人，收割机开进来不打滑。',
+            onFailText:'水断早了。最后那十来天里，叶子从下往上黄上去。\n收割机是没打滑，可仓里的斤两少了一截。',
+            onSuccess:{ qualityDelta:3,
+              modifiers:[{ name:'田面早硬', good:true, desc:'收割不打滑' }] },
+            onFail:{ yieldDelta:-30, qualityDelta:-4,
+              modifiers:[{ name:'断早了', good:false, desc:'粒没灌足，叶片早衰' }] }
+          }
+        },
+        {
+          id:'chushu_alternate', label:'继续干湿交替',
+          detail:'继续干湿交替，收割前一周左右断水',
+          costTimeMinutes:400, costStamina:26, costMoney:0, costHookNpc:null,
+          hinge:'既养根灌浆，也给收割留出落干时间',
+          pitch:'长米那几天别让田渴着：浅水，干了再补；后头以干为主，临收前彻底断。费的是你一趟一趟下田。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'田里不再一直留明水。浅水灌过以后等它自然落干，到了收前一周才把水彻底断掉。',
+          onSuccess:{ yieldDelta:20, qualityDelta:4,
+            modifiers:[{ name:'干湿交替', good:true, desc:'根养住了，粒也灌足了' }] }
+        },
+        {
+          id:'chushu_split', label:'分开断',
+          detail:'分开断：高的那半边先断，低的那半边再留几天',
+          costTimeMinutes:480, costStamina:30, costMoney:0, costHookNpc:null,
+          hinge:'水：一块田当成两块种',
+          requires:{ relic:'13' },
+          blockedHint:'「断水」你还没在田里认过。认过了，才想得到这么干。',
+          pitch:'一块田不是平的。高处先干，低处后干。分开断，收割机进东头的时候西头还在长米，一趟活分两趟干，多花些工，挣下的是低处那几成的粒重。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'分得对不对', baseChance:50,
+            modifiers:[
+              { source:'水尺（插在田口）', bonus:15, requires:{ relic:'16' } },
+              { source:'老周的本子',       bonus:15, requires:{ relic:'13' } },
+              { source:'老周 好感每一档',  bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'水口开在东头。过了四天东头能站人了，西头还是浅水汪汪的。前后差了几天，收割也分成了两趟。',
+            onFailText:'你把水口开在了东头，可东头本来就是高的那一边。\n等反应过来，低处那半边的水也落干了。',
+            onSuccess:{ yieldDelta:28, qualityDelta:4,
+              modifiers:[{ name:'分开断水', good:true, desc:'低处那几成粒重挣下了' }] },
+            onFail:{ yieldDelta:-12,
+              modifiers:[{ name:'分错边了', good:false, desc:'高的那边还没熟透' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 白露 · 叶面肥 ══════ */
+    {
+      id:'bailu', solarTerm:'白露', screenName:'叶面肥',
+      brief:'米长足之前最后一趟肥。喷不喷，是拿粒重换早熟。',
+      story:'',
+      options:[
+        {
+          id:'bailu_spray', label:'喷一遍磷酸二氢钾',
+          detail:'喷一遍磷酸二氢钾，帮着灌浆',
+          costTimeMinutes:150, costStamina:10, costMoney:60, costHookNpc:null,
+          hinge:'叶：什么时候熟',
+          pitch:'如果雨来得早，喷一遍能赶上收，对原本弱的苗也有好处。但对正常的苗作用没那么大。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'把磷酸二氢钾兑水，你背着桶走了一圈。\n　叶子吸得快，三天就看出颜色不一样。',
+          onSuccess:{ yieldDelta:12, qualityDelta:3,
+            modifiers:[{ name:'喷过磷酸二氢钾', good:true, desc:'灌浆快了一截' }] }
+        },
+        {
+          id:'bailu_none', label:'不喷，让叶子多绿几天',
+          detail:'不喷，让叶子多绿几天',
+          costTimeMinutes:0, costStamina:0, costMoney:0, costHookNpc:null,
+          hinge:'叶：不缺就不补，也省下一遍工',
+          pitch:'叶子多撑几天，粒里就多进几分淀粉。可要是后面低温、叶片早衰，这次补救机会也就放过去了。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'你没动。叶子该绿到什么时候，就绿到什么时候。',
+          onSuccess:{ yieldDelta:5, qualityDelta:2,
+            modifiers:[{ name:'没动它', good:true, desc:'省下一遍工' }] }
+        },
+        {
+          id:'bailu_trial', label:'只喷一部分',
+          detail:'只喷一部分，留一部分作对照',
+          costTimeMinutes:240, costStamina:14, costMoney:60, costHookNpc:null,
+          hinge:'一半喷一半不喷：秋后看看，明年就有数了',
+          requires:{ relic:'18' },
+          blockedHint:'做对照不难，难的是分区、记录和分开收。没准备好这些，喷一半也看不出。',
+          pitch:'两块地同一个品种、同一天插、同一套管法，只差这一遍肥。收的时候分开打、分开称、分开验，谁划算，秋后称一称就知道。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'分区记不记得住', baseChance:45,
+            modifiers:[
+              { source:'记录本',          bonus:20, requires:{ relic:'18' } },
+              { source:'叶色卡',          bonus:15, requires:{ relic:'15' } },
+              { source:'老周 好感每一档', bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'你在田中间拉了根绳，东边喷，西边不喷。\n　喷的那半边三天就看出颜色不一样。你都记在了本子上。',
+            onFailText:'你在田中间拉了绳，可两边共着一个水口。肥跟着水串了，喷没喷，看不出差别。',
+            onSuccess:{ yieldMarginDelta:-15, qualityMarginDelta:-3,
+              modifiers:[{ name:'做了对照', good:true, desc:'明年就有数了' }] },
+            onFail:{ yieldDelta:-8,
+              modifiers:[{ name:'对照没做成', good:false, desc:'两边串了水' }] }
+          }
+        }
+      ]
+    },
+
+    /* ══════ 秋分 · 开镰 ══════ */
+    {
+      id:'qiufen', solarTerm:'秋分', screenName:'开镰',
+      brief:'黄颖壳粒到九成五就该收了。京西稻的规范写的是「完熟期，黄颖壳粒 95% 左右收割」。',
+      story:'老周掐了一穗，在手里搓开，吹掉糠皮，捏了两粒扔进嘴。\n　「再等五天。」他说，「等它灌满。可要是这几天来雨，你就白等。」',
+      options:[
+        {
+          id:'qiufen_now', label:'今天开镰，趁天还稳',
+          detail:'今天开镰，趁天还稳',
+          costTimeMinutes:600, costStamina:40, costMoney:0, costHookNpc:null,
+          hinge:'天：往后那五天，你敢不敢赌',
+          pitch:'现在收，青粒会多一点，粒重也可能还差一点；好处是避开后面的雨。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'往后那五天，敢不敢赌', baseChance:45,
+            modifiers:[
+              { source:'镰刀',               bonus:25, requires:{ relic:'04' } },
+              { source:'节气表上那几行批注', bonus:10, requires:{ relic:'17' } },
+              { source:'老周 好感每一档',    bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'镰刀磨好，天亮下田。稻把子一捆一捆码在田埂上。',
+            onFailText:'收是收进来了，青粒还是多了些。晒干扬净，成色差着一档。',
+            onSuccess:{ yieldDelta:15,
+              modifiers:[{ name:'趁天收的', good:true, desc:'一粒没糟蹋' }] },
+            onFail:{ yieldDelta:-25, qualityDelta:-5,
+              modifiers:[{ name:'青粒太多', good:false, desc:'米质 -5' }] }
+          }
+        },
+        {
+          id:'qiufen_wait', label:'再等五天',
+          detail:'再等五天，让剩下的谷粒灌足',
+          costTimeMinutes:120, costStamina:6, costMoney:0, costHookNpc:null,
+          hinge:'天：这五天的天气',
+          pitch:'天气晴的话，等几天能让晚熟的谷粒再充实些；可要是来连阴雨，再等就可能倒伏、掉粒、穗上发芽。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'这五天的天气', baseChance:50,
+            modifiers:[
+              { source:'节气表上那几行批注', bonus:10, requires:{ relic:'17' } },
+              { source:'老周的本子',         bonus:15, requires:{ relic:'13' } },
+              { source:'老周 好感每一档',    bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'你又等了几天。天气没变，剩下的青粒也渐渐硬了。',
+            onFailText:'第五天夜里下起雨，一下三天。等你再下田，稻子倒了一片。\n穗上冒出了白芽。',
+            onSuccess:{ yieldDelta:25, qualityDelta:4,
+              modifiers:[{ name:'等足了', good:true, desc:'粒重上去了' }] },
+            onFail:{ yieldDelta:-45, qualityDelta:-6,
+              modifiers:[{ name:'连阴雨', good:false, desc:'倒伏掉粒，穗上发芽' }] }
+          }
+        },
+        {
+          id:'qiufen_sample', label:'先下田掐几穗',
+          detail:'先下田掐几穗，熟得早、倒得重的地方先收',
+          costTimeMinutes:720, costStamina:40, costMoney:0, costHookNpc:null,
+          hinge:'谷粒：哪几片已经熟了，哪几片还能等',
+          pitch:'不整块地一刀切。倒伏重、成熟早的地方先收，剩下的再留几天。多费一趟工，换的是少掉粒，也不给晚熟处硬掐断灌浆。',
+          // 不是总表里的：检定名、成功率、各项加成、失败文案、加减账，都是我配的
+          check:{
+            name:'哪几片熟了，哪几片还能等', baseChance:50,
+            modifiers:[
+              { source:'叶色卡',          bonus:15, requires:{ relic:'15' } },
+              { source:'簸箕',            bonus:10, requires:{ relic:'30' } },
+              { source:'老周 好感每一档', bonus:10, requires:{ opinionTier:'zhou' } }
+            ],
+            onSuccessText:'从东头走起，隔几步掐一穗。谷粒已经硬、颖壳全黄的先收；还软、还带青的，再留几天。',
+            onFailText:'你隔着几行掐了一穗就算数。割到西头才发现，那边还有半片是青的。',
+            onSuccess:{ yieldDelta:20, qualityDelta:3,
+              modifiers:[{ name:'分片收的', good:true, desc:'少掉了不少粒' }] },
+            onFail:{ yieldDelta:-15, qualityDelta:-3,
+              modifiers:[{ name:'判断偏了', good:false, desc:'把还软的地方也割了' }] }
+          }
+        },
+        {
+          id:'qiufen_machine', label:'不自己割了',
+          detail:'不自己割了：叫站里的收割机过来',
+          costTimeMinutes:180, costStamina:10, costMoney:2000, costHookNpc:null,
+          hinge:'人：是你割，还是机器割',
+          pitch:'机器脱粒比人工狠，掉粒加破碎，一亩多损失几十斤；可它半天就干完了。跟插秧是同一笔账：你拿产量换时间。只是这一回的四十斤是实打实从仓里少出来的，不是从现在开始少。',
+          // 不是总表里的：加减账是我配的
+          check:null,
+          onSuccessText:'收割机从东头下去，一趟一趟把田剃平。谷子直接卸进三轮车斗里。\n　你站在田埂上，手里那把镰刀没派上用场。',
+          onSuccess:{ yieldDelta:-40,
+            modifiers:[
+              { name:'机器收的', good:true, desc:'半天干完' },
+              { name:'掉粒加破碎', good:false, desc:'亩产 -40' }
+            ] }
+        }
+      ]
+    }
+  ],
+
+
+  /* ══════ 年景卡：一季开头抽的那张天气牌 ══════
+     16 张，文案（名/说/报/line/对冲线/反线）全是 3-天灾.md 里的原话，机器抄的。
+     「对冲」「反」在表里只是一个词，我把它接到了对应决策的那个选项上 ——
+     收口在 C:\tmp\ymd7\build-yearcards.mjs 的 BIND 表里，没接上的词会当场报错。
+     抽牌权重、以及下面「挡它的货」的价钱，是我配的，等作者过目。
+     ────────────────────────────────────────────────────────── */
+  yearCards: [
+    { id:'pingNian', name:'平年', rarity:'R', tag:'中', say:'风调雨顺。该下雨下雨，该晒晒。',
+      report:'镇上的气象站说，今年跟前几年差不多。' },
+    { id:'yuShuiYun', name:'雨水匀', color:'a', rarity:'SR', tag:'上',
+      hit:'分蘖',
+      stageTerm:'夏至',
+      counter:{ label:'清沟', decision:'xiaoman', option:'xiaoman_ditch' },
+      anti:{ label:'未清沟', decision:'xiaoman', option:'xiaoman_ditch', negate:true },
+      say:'六月里下了几场透雨，不大不小，正好接上。',
+      report:'老周说：今年这雨，下得有分寸。',
+      line:'雨下得有分寸。该下的时候下透，下完就晴。分蘖一茬接一茬，田里一天没缺过水。',
+      counterLine:'雨下得匀，你那条围沟又是清的，水进得来、排得出，一滴没糟蹋。稻子一茬接一茬地发。',
+      antiLine:'雨是真匀。可你那条围沟从开春就没动过，淤了半截，下透的那两场，低洼那一片泡了三天，苗都黄了。' },
+    { id:'fengNian', name:'丰年', color:'a', rarity:'SSR', tag:'上上',
+      hit:'孕穗',
+      stageTerm:'立秋',
+      counter:{ label:'早插', decision:'mangzhong', option:'mangzhong_now' },
+      anti:{ label:'晚插', decision:'mangzhong', option:'mangzhong_wait' },
+      say:'雨热都踩在点上。老周说，这样的年景三五年碰不上一回。',
+      report:'老周看了半天云，说：今年能种个好稻。',
+      line:'整个一季的雨热都踩在点上。该热的时候热，该晴的时候晴。稻子一天一个样。',
+      counterLine:'这种年景三五年碰不上一回，你还插了个早，生长期拉满，光热一点没漏。穗子压得秆子都弯了。',
+      antiLine:'年景是好年景，可你插晚了。等你抽穗，最好那一段光热已经过去了，老天爷给了，你没接住。' },
+    { id:'nuanQiu', name:'暖秋', color:'a', rarity:'SR', tag:'上',
+      hit:'成熟',
+      stageTerm:'秋分',
+      counter:{ label:'晚收', decision:'qiufen', option:'qiufen_wait' },
+      anti:{ label:'早收', decision:'qiufen', option:'qiufen_now' },
+      say:'九月里一直晴，白天暖，夜里凉，温差拉得开。',
+      report:'老周说：这种天，米好吃。',
+      line:'处暑之后一直是这种天。白天晒得足，夜里凉得下来。淀粉往里积，米粒透亮。碾出来整米多、碎米少，今年的验米线整个往下走。',
+      counterLine:'这种天就该让它多留五天。你等了，最后一截灌得饱饱的，抓一把，米粒匀得挑不出毛病。今年这条线，你站得比谁都高。',
+      antiLine:'天是好天，可你收早了。往后那五天正是拉开温差的时候，白晒了。青粒多，碾出来碎米也多，线白挪了。' },
+    { id:'daoChunHan', name:'倒春寒', color:'d', rarity:'SR', tag:'下',
+      hit:'苗期',
+      stageTerm:'立夏',
+      counter:{ label:'盖膜', decision:'lixia', option:'lixia_film' },
+      anti:null,
+      say:'四月底一场寒潮，五月上旬日均温连着四天没过 12℃。',
+      report:'老周说：今年这天，秧田要当心。',
+      line:'寒潮真来了。连着四天，日均温没过 12℃。露地那一片秧，叶尖先发白，然后整株软下去。烂秧。',
+      counterLine:'寒潮真来了，连着四天没过 12℃。可你的秧在膜底下，只黄了个叶尖，缓两天就回来了。隔壁露地的，烂了一片，得补种。' },
+    { id:'nuanChun', name:'暖春', color:'a', rarity:'SR', tag:'上',
+      hit:'苗期',
+      stageTerm:'立夏',
+      counter:null,
+      anti:{ label:'盖膜', decision:'lixia', option:'lixia_film' },
+      say:'四月里就暖起来了，日均温稳过 15℃，比往年早了半个月。',
+      report:'老周说：今年回暖早，棉袄脱得比哪年都快。',
+      line:'回暖早。四月的积温比往年多了一大截，秧返青快，一天一个样。早插的那几家，苗已经封行了。',
+      antiLine:'你按去年的经验，把膜盖上了。可今年不冷，棚里中午窜到三十五度，苗蹿得又细又软，一揭膜就趴下一片。烧苗了。' },
+    { id:'fuHan', name:'伏旱', color:'d', rarity:'SR', tag:'下',
+      hit:'分蘖',
+      stageTerm:'夏至',
+      counter:{ label:'晒田', decision:'xiazhi', option:'xiazhi_dry' },
+      anti:null,
+      say:'六月下旬到七月上旬没下透雨，上庄水库的水位一直在掉。',
+      report:'渠里的水比往年少了一截。水利站说，要省着用。',
+      line:'旱得厉害。灌一次水，两天就渗没了，渠里的水还不够分。稻子中午卷叶，到傍晚才展开。',
+      counterLine:'旱是旱了，可你晒过田，根比别家往下多追了一截。同样的水，你能多撑两天。别家的稻中午卷叶，你的到下午还立着。' },
+    { id:'liangXia', name:'凉夏', color:'d', rarity:'R', tag:'下',
+      hit:'灌浆',
+      stageTerm:'白露',
+      counter:{ label:'少氮', decision:'liqiu', option:'liqiu_light' },
+      anti:null,
+      say:'七月下旬连着阴雨，日均温一直上不去。',
+      report:'老周说：就怕这种，看着不热，可稻子它不长。',
+      line:'凉夏。低温正赶上减数分裂期，花粉母细胞发育不全。当时看不出来，等到灌浆，穗上会空一片。空粒碾不出整米，今年的线，往上抬了一截。',
+      counterLine:'凉夏，低温正赶上减数分裂期。好在你穗肥没敢多施，稻子没被催起来，穗上空的比别家少得多，碾出来整米也比别家多。别家忙着补肥，越补越空，线抬得越高。' },
+    { id:'qiuLin', name:'秋淋', color:'d', rarity:'SSR', tag:'下下',
+      hit:'成熟',
+      stageTerm:'秋分',
+      counter:{ label:'早收', decision:'qiufen', option:'qiufen_now' },
+      anti:null,
+      say:'预报说九月底有一场连阴雨。',
+      report:'老周说：今年秋天，可能要多抢两天。',
+      line:'连阴雨下了六天。熟透的稻穗吸了水，穗子沉，茎秆撑不住；有些穗上直接发了芽。发了芽的谷子碾出来是碎米，今年的线，抬得比哪年都高。',
+      counterLine:'连阴雨下了六天。可你抢先收了，稻把子早码进棚里了。隔壁没抢的，穗子在田里发了芽，一年的收成就这么废了。线挪上去那一截，你没跟着吃。' },
+    { id:'zaoShuang', name:'早霜', color:'d', rarity:'SR', tag:'下',
+      hit:'成熟',
+      stageTerm:'秋分',
+      counter:{ label:'早收', decision:'qiufen', option:'qiufen_now' },
+      anti:null,
+      say:'九月下旬一场初霜，比往年早了十来天。',
+      report:'老周抬头看了看天，说：今年秋天来得急。',
+      line:'霜来得早。晚收的那一片，稻子冻在田里。穗子发暗，捏上去是硬的，出米率掉了一截。冻过的谷子一碾就碎，今年的线，抬上去了。',
+      counterLine:'霜下来之前你就收了。稻把子码在棚里，一颗没冻着。晚收的邻家，田里那一片发黑，人站在田埂上不说话，他们的线，今年是白抬了。' },
+    { id:'daShui', name:'大水', color:'d', rarity:'SR', tag:'下',
+      hit:'分蘖',
+      stageTerm:'夏至',
+      counter:{ label:'清沟', decision:'xiaoman', option:'xiaoman_ditch' },
+      anti:{ label:'未清沟', decision:'xiaoman', option:'xiaoman_ditch', negate:true },
+      say:'六月的雨一场接一场，田边的沟里，水快平了埂。',
+      report:'老周说：今年的雨，下得没个数。',
+      line:'雨连着下了几天，上游的水也下来了。低洼那几厢积了半尺，稻苗在水下待了一整天。苗还小，水一没顶就缓不过来 —— 往后一丛里少发好几根，谷子从这儿就短了一截。',
+      counterLine:'水真上来了。可你那条沟是清的，水进得来也退得出去 —— 泡了两个时辰就落了，稻苗只淹了个脚脖子，第二天照旧发棵。',
+      antiLine:'水是灌满了田，可你那条沟从开春就没动过，淤了半截。水退不下去，苗在水里沤了两天，黄了一片，后面的分蘖也跟不上。' },
+    { id:'daFeng', name:'大风', color:'d', rarity:'SR', tag:'下',
+      hit:'灌浆',
+      stageTerm:'白露',
+      counter:{ label:'晒田', decision:'xiazhi', option:'xiazhi_dry' },
+      anti:{ label:'深水', decision:'xiazhi', option:'xiazhi_deep' },
+      say:'八月里连刮了两天大风，穗子刚垂下去，粒还没长实。',
+      report:'老周说：今年的风，比往年沉。',
+      line:'大风刮了两天。灌满浆的穗子压着秆子，根扎得浅的那一片先倒。倒下去的穗子沾了泥，收上来发暗，碾出来整米要少一截。',
+      counterLine:'风刮了一夜。你晒过田，根比别家往下多追了半尺 —— 稻子晃得厉害，可一棵没倒。隔壁没晒的，倒了半片。',
+      antiLine:'你的田从插秧起就没断过深水，根一直浮在上头。风一来，根抓不住土，倒得比谁家都早。' },
+    { id:'lengYu', name:'冷雨', color:'d', rarity:'SR', tag:'下',
+      hit:'孕穗',
+      stageTerm:'立秋',
+      counter:{ label:'按虫情打药', decision:'dashu', option:'dashu_scout' },
+      anti:{ label:'多氮', decision:'liqiu', option:'liqiu_full' },
+      say:'七月里连着几天阴雨，气温上不来，穗子正处在最娇的时候。',
+      report:'老周说：这种天，穗子最容易出毛病。',
+      line:'低温连着阴雨，穗颈上起了病斑。当时看不出来，等粒长上去，穗子上会空一片。空粒碾不出整米，今年的线，往上抬了一截。',
+      counterLine:'冷雨下了四天。好在你不是闭着眼撒药的，该打的那几厢打到了、不该打的没动 —— 穗颈上只留了几个零星斑点，没铺开。',
+      antiLine:'穗肥你多施了一把，稻子催得又嫩又绿，正对病的胃口。冷雨一来，穗颈上先起斑，往下走了一圈。' },
+    { id:'zhaQing', name:'乍晴', color:'d', rarity:'SR', tag:'下',
+      hit:'苗期',
+      stageTerm:'立夏',
+      counter:{ label:'露地', decision:'lixia', option:'lixia_open' },
+      anti:{ label:'盖膜', decision:'lixia', option:'lixia_film' },
+      say:'五月里雨一停，日头就毒起来，棚里的温度一天高过一天。',
+      report:'老周说：今年这雨一停，天就翻脸。',
+      line:'雨停之后连着三天大晴。棚里的秧苗闷在里头，蹿得又细又软，一揭膜就趴下一片。补种又赶不上节气，这一季的苗，从一开始就欠着。',
+      counterLine:'日头毒了三天。你的秧在露天地里，风一吹就散，只软了个叶尖，傍晚自己立回来了。隔壁棚里的，趴了一片。',
+      antiLine:'你怕倒春寒，把膜早早盖上了。可今年不冷 —— 雨一停，棚里闷得像口锅，苗子蹿得又细又软，一揭膜趴下一片。烧苗了。' },
+    { id:'menRe', name:'闷热', color:'d', rarity:'R', tag:'下',
+      hit:'灌浆',
+      stageTerm:'白露',
+      counter:{ label:'看叶施', decision:'liqiu', option:'liqiu_leaf' },
+      anti:{ label:'多氮', decision:'liqiu', option:'liqiu_full' },
+      say:'伏天又闷又潮，一丝风也没有，稻子正长粒。',
+      report:'老周说：这种闷天，穗子上容易长东西。',
+      line:'连着十天又闷又潮。穗子上起了灰绿色的霉点，一碰就飞。这种粒碾出来尽是碎米，今年的线，抬上去了一截。',
+      counterLine:'闷热是真闷。可你是看着叶色补的肥 —— 该补的补了，该压的压住了，穗子上干干净净，粒照长，一点没耽搁。',
+      antiLine:'你怕穗小，穗肥多施了一把。稻子吃得饱、长得嫩，又赶上这种闷天，穗子上先起了一层霉。' },
+    { id:'chongNian', name:'虫年', color:'d', rarity:'SR', tag:'下',
+      hit:'孕穗',
+      stageTerm:'立秋',
+      counter:{ label:'稻鸭', decision:'dashu', option:'dashu_ducks' },
+      anti:{ label:'打药', decision:'dashu', option:'dashu_spray' },
+      say:'田里的虫子比往年多，日头一落，田边叫成一片。',
+      report:'老周说：今年的虫子，来得比往年早。',
+      line:'虫口一天比一天密，叶尖先焦了一圈，后来整片发黄。叶子供不上，米粒没灌饱，碾出来整米要少，今年的线抬了一截。',
+      counterLine:'虫子是不少。可你那群鸭子一天一趟，把虫子连同杂草一起收拾了 —— 天敌还在田里，虫口一直没起来。叶上只留下些零星斑点。',
+      antiLine:'你一遍药打下去，虫是死了，吃虫的也一并死了。没过几天，虫子回来得比打之前还密 —— 叶子黄了大半。' },
+  ],
+
+  /* ══════ 灾年阶梯：备货 → 兆 → 显 → 急 → 发作 ══════
+     11 条，文案全是表里的原话。
+     「好」和「中」是灾警屏上那两行动作 —— 表里说了只写动作、不写会怎样，所以别在这儿补结果。
+     撑住了/吃重/折是事后印的，对应 备了货走了好 / 硬扛走了中 / 没搭理。
+     ────────────────────────────────────────────────────────── */
+  disasterYears: [
+    { id:'daoChunHan', name:'倒春寒',
+      need:{ label:'膜', kind:'membrane', price:60, stamina:13 },
+      stock:'今年春天冷。膜备上一捆 —— 寒潮那一夜，棚里的秧就指望它。',
+      omen:'北风一阵一阵的，从早刮到晚，埂上的草都朝一个方向倒。',
+      sign:'老周在秧田边上站了一会儿，说：「今年的冷还没走干净。秧在露天地里，你得想点办法。」',
+      urgent:'气象站报下来：这两天夜里有霜冻。老周把烟掐了：「最后一回提醒你。」',
+      good:'连夜把膜搭上。',
+      fair:'守一夜，在田头烧几堆火放烟。',
+      held:'寒潮真来了。可你补的那一手顶了事 —— 秧只黄了个尖，缓两天就立起来了。',
+      heavy:'寒潮还是进来了。露地那一片，叶尖先白、整株软下去。你补了一遍种，节气往后挪了几天。',
+      broken:'秧烂了大半，补的种又赶不上节气。这一季，苗就没齐过。' },
+    { id:'fuHan', name:'伏旱',
+      need:{ label:'工', kind:'labor', price:150, stamina:15 },
+      stock:'今年要旱。雇工的钱备着 —— 旱了挑水，张口就有人。',
+      omen:'渠里的水声一天比一天小，到后来只剩一点滴答。',
+      sign:'渠里的水一天比一天浅。老周说：「今年这天，得早做打算。」',
+      urgent:'水库的水位又掉了一截。水利站说，往后放水要排日子 —— 再不动手，就只能等。',
+      good:'雇人挑水，一趟一趟往田里灌。',
+      fair:'自己下田挑水。',
+      held:'旱是真旱。可你那几趟水没白挑 —— 稻苗一天没断过水，撑到了下雨。',
+      heavy:'旱了一个月。田裂了口子，稻苗黄下去半截，后来的雨也只救回大半。',
+      broken:'渠底见了泥。稻苗一半枯在田里 —— 这一季，从分蘖起就欠着账。' },
+    { id:'liangXia', name:'凉夏',
+      need:{ label:'肥', kind:'fertilizer', price:120, stamina:12 },
+      stock:'今年夏天不热。叶面肥备一袋 —— 天不热、稻子不长的时候，叶面上补一口，能抢回来一点是一点。',
+      omen:'日头总在云后头，露水到晌午还没干。',
+      sign:'进了七月，天一直阴着。老周说：「不热，稻子就不长。你心里得有个数。」',
+      urgent:'连着半个月没见着像样的太阳。老周从田里捞起一穗，捏了捏，没说话。',
+      good:'叫上人，把叶面肥兑上喷一遍。',
+      fair:'趁天没黑，自己背桶喷几厢。',
+      held:'七月的阴雨拖了半个月。可叶面上补的那一口顶了事 —— 稻子灌浆没停。',
+      heavy:'天一直没热起来。稻子灌得慢，米粒上半截饱、下半截虚，碾出来整米要少。',
+      broken:'一个夏天没热起来。稻子没灌上浆 —— 收上来的，大半是瘪的。' },
+    { id:'qiuLin', name:'秋淋',
+      need:{ label:'工', kind:'labor', price:150, stamina:16 },
+      stock:'收的时候要下雨。雇工钱备着 —— 雨前抢收，得有人手。',
+      omen:'西边的云压得低，风里有股潮气，衣裳晾两天还是软的。',
+      sign:'老周看了看西边的云，说：「今年的雨，怕是要下在收的时候。」',
+      urgent:'预报说，后头几天有大雨。老周说：「稻子立在地里，就是赌。你赌不赌？」',
+      good:'雇人连夜下田，赶在雨前割。',
+      fair:'自己先下田割。',
+      held:'雨真来了。可你抢在前头割完了 —— 稻把子没沾水。',
+      heavy:'雨连着下了几天。倒了一片，穗上还发了芽；收上来的湿谷，烘干都得从头来。',
+      broken:'雨没停过。稻子成片倒在泥里，割回来的发了芽，碾不成米。' },
+    { id:'zaoShuang', name:'早霜',
+      need:{ label:'工', kind:'labor', price:150, stamina:14 },
+      stock:'霜来得早。雇工钱备着 —— 霜前连夜割，一个人是不够的。',
+      omen:'今年秋来得急，太阳一落，手上就凉。',
+      sign:'今年的秋来得早。老周说：「霜要早下，你得把日子往前赶。」',
+      urgent:'气象站报了霜冻。老周在田埂上等你：「就这两天了。」',
+      good:'连夜请人下田，赶在霜前割。',
+      fair:'自己割一夜。',
+      held:'霜来得早。可你赶在前头收了 —— 青粒是有，大半还是长足了。',
+      heavy:'头场霜比往年早。米没长足，青粒多，碾出来碎米也要多。',
+      broken:'霜下来的时候，稻子还在长米。这一季收回来的，大半是青的。' },
+    { id:'daShui', name:'大水',
+      need:{ label:'工', kind:'labor', price:150, stamina:15 },
+      stock:'今年雨大。雇工钱备着 —— 田里积了水，得有人连夜往外排。',
+      omen:'雨一阵一阵地砸，田埂上的泥踩上去直陷。',
+      sign:'雨连着下了三天。老周披着塑料布过来，站在埂上看了一会儿：「围沟里的水，快平埂了。」',
+      urgent:'上游的水下来了。老周把锹往你手里一塞：「再不开，就来不及了。」',
+      good:'请人连夜清沟，把田口子垫高。',
+      fair:'自己顶着雨下田掏沟。',
+      held:'水真上来了。可你那条沟是通的 —— 泡了两个时辰就退下去，稻苗只淹了个脚脖子。',
+      heavy:'田里积了半尺水。稻苗在水下待了一整天，叶子发黄，后面的分蘖也慢了半拍。',
+      broken:'水没退。分蘖期淹过顶的稻子缓不过来 —— 这一季，穗数从这儿就少了一大截。' },
+    { id:'daFeng', name:'大风',
+      need:{ label:'工', kind:'labor', price:150, stamina:14 },
+      stock:'今年风大。雇工钱备着 —— 风来之前把水放浅、把风口那几厢扶一遍，都得人手。',
+      omen:'风从南边过来，一阵比一阵沉，稻叶哗哗地响成一片。',
+      sign:'连着两天大风。老周蹲在田头，手把一丛稻子往根上按了按：「根扎得浅的，站不住。」',
+      urgent:'风还在加大。老周抬头看了看天：「今夜这一场，就看你的田经不经得住了。」',
+      good:'带人下田放浅水，扶一遍风口。',
+      fair:'自己下田，扶起倒下的那几片。',
+      held:'风刮了一夜。可你的水放得浅、根扎得深 —— 倒的只有埂边那几丛。',
+      heavy:'风过之后，田里倒了一片。秆子折的折、弯的弯，穗子沾了泥，碾出来整米要少。',
+      broken:'稻子成片趴在田里。穗子一沾地就霉，收上来的多半是瘪的 —— 这一季，风替你收了。' },
+    { id:'lengYu', name:'冷雨',
+      need:{ label:'肥', kind:'fertilizer', price:120, stamina:13 },
+      stock:'今年雨冷。叶面肥备一袋 —— 天冷又下雨，叶子扛不住，得从叶面上补一口。',
+      omen:'雨不大，可一直不停，落在胳膊上是凉的。',
+      sign:'连着几天阴雨，气温上不来。老周扒开一丛稻子看了看穗：「这种天，穗子最娇。」',
+      urgent:'雨还没停的意思。老周说：「窗口就这一两天，你自己拿主意。」',
+      good:'趁雨歇，把钾肥兑上喷一遍。',
+      fair:'自己冒雨下田，先过最密的几厢。',
+      held:'冷雨下了四天。可你趁窗口补了那一道 —— 穗子上只有零星几个斑点，没铺开。',
+      heavy:'低温加连阴雨，穗颈上起了病斑。不重，可碾出来整米要少一截。',
+      broken:'病从穗颈上走了一圈。穗子空了一大半，碾不成整米 —— 这一季，白长了个儿。' },
+    { id:'zhaQing', name:'乍晴',
+      need:{ label:'膜', kind:'membrane', price:60, stamina:12 },
+      stock:'今年春天雨多。膜备上一捆 —— 天一回晴，棚里的苗就得遮。',
+      omen:'雨刚停，日头就毒起来，田里的水汽一股一股往上蒸。',
+      sign:'连着晴了三天，一天比一天热。老周掀开你棚帘看了一眼：「闷在里头，苗要受不了。」',
+      urgent:'晌午的棚里能闷出事来。老周说：「今明两天，你得给它透口气。」',
+      good:'把膜揭半边，晌午遮、早晚盖。',
+      fair:'自己守在田头，中午掀帘放风。',
+      held:'日头毒了三天。可你的棚是透气的 —— 苗只软了个尖，傍晚就立回来了。',
+      heavy:'棚里闷了两天。秧苗蹿得又细又软，一揭膜趴下一片，补了不少种。',
+      broken:'闷过头了。整厢苗子像被开水烫过，立不起来 —— 这一季的秧，从开头就欠着。' },
+    { id:'menRe', name:'闷热',
+      need:{ label:'肥', kind:'fertilizer', price:120, stamina:12 },
+      stock:'今年伏天闷。叶面肥备一袋 —— 穗子上要补，也得挑着补。',
+      omen:'一丝风也没有，在日头底下站一会儿，衣裳就湿透了。',
+      sign:'连着十天又闷又潮。老周捏着一穗稻子翻过来看：「这种天，穗子上容易长东西。」',
+      urgent:'闷热一点没退。老周说：「再补一口肥，就看你自己拿不拿得准了。」',
+      good:'趁早晚凉快，把肥兑稀了补一遍。',
+      fair:'自己挑桶，把发黄的几厢补上。',
+      held:'闷热是真闷。可你补得薄、补得匀 —— 穗子上干净，粒照长，一点没耽搁。',
+      heavy:'又闷又潮，穗子上起了灰绿色的霉点。不重，可碾出来整米要少。',
+      broken:'穗子上长满了。那一层霉一碰就飞，碾出来尽是碎米 —— 这一季，收的是个色。' },
+    { id:'chongNian', name:'虫年',
+      need:{ label:'工', kind:'labor', price:150, stamina:13 },
+      stock:'今年虫子多。雇工钱备着 —— 要治就得趁早，人手越齐越快。',
+      omen:'日头一落，田边的虫叫声比往年密。',
+      sign:'田里的虫子比往年多。老周蹲下来，翻起一片叶子的背面给你看：「看到了吧。」',
+      urgent:'虫口还在涨。老周说：「该下田了 —— 怎么弄，你自己定。」',
+      good:'请人下田，先过虫口密的几片。',
+      fair:'自己下田走一趟，拣重的几厢。',
+      held:'虫子是不少。可你下手早 —— 叶上只留下些零星斑点，没耽误灌浆。',
+      heavy:'虫子压了一阵子。叶尖焦了一圈，米粒没灌饱，碾出来整米要少。',
+      broken:'虫子没压住。叶子黄了大半，剩下的也供不上 —— 这一季，穗上尽是秕的。' },
+  ],
+  /* ── 地点动作池 ──────────────────────────────────────────────
+     每条就是一个 ActionOption。
+     label ≤12 字；detail 是按钮下面那行小字。
+     costStamina 正数是耗，负数是回（睡觉那种）。
+     这一池子全不是总表里的：label 和 onSuccessText 都是重构时新写的，
+     耗时耗力也是我配的。机制照着总表的口径来，话得请作者过一遍。
+     ─────────────────────────────────────────────────────────── */
+  actions: {
+    field: [
+      { id:'field_look', label:'下田看一圈',
+        costTimeMinutes:30, costStamina:6, costMoney:0, costHookNpc:null, check:null,
+        onSuccessText:'深一脚浅一脚走了一圈。稻苗立着，田口的水在慢慢走。' },
+
+      { id:'field_weed', label:'下田拔稗草',
+        costTimeMinutes:120, costStamina:15, costMoney:0, costHookNpc:null,
+        check:{ name:'稗子认不认得准', baseChance:65,
+          modifiers:[{ source:'记录本上画过', bonus:20, requires:{ relic:'18' } }],
+          onSuccessText:'顺着垄一行行过，稗子连根薅出来，稻苗一根没伤。',
+          onFailText:'把两丛稻苗当稗子薅了。蹲在那儿看了半天，没敢再下手。',
+          onSuccess:{ modifiers:[{ name:'草净', good:true, desc:'后面省一遍工' }] },
+          onFail:{ staminaDelta:-8 } } },
+
+      { id:'field_ditch', label:'下水清沟',
+        costTimeMinutes:60, costStamina:12, costMoney:0, costHookNpc:null, check:null,
+        requires:{ slot:'tool' }, staminaTag:'ditch',
+        onSuccessText:'把沟底那道淤泥清开，水终于顺着走了，田口也垫住了。你擦了把汗，把锹搁在一边。' },
+
+      { id:'field_spray', label:'背起来打一遍',
+        costTimeMinutes:90, costStamina:18, costMoney:0, costHookNpc:null,
+        requires:{ relic:'05' },
+        check:{ name:'风向对不对', baseChance:70,
+          modifiers:[{ source:'药桶（配比熟）', bonus:20, requires:{ relic:'05' } }],
+          onSuccessText:'顺着风退着走，药雾匀匀落进稻丛，一遍打完还挺有成就感。',
+          onFailText:'迎风推了一杆子，药雾全糊在自己身上。蹲在渠边漱了半天口，嘴里苦了一下午。',
+          onSuccess:{ modifiers:[{ name:'压住了', good:true, desc:'虫口回落' }] },
+          onFail:{ staminaDelta:-10, stressDelta:6 } } }
+    ],
+
+    shed: [
+      { id:'shed_sleep', label:'睡到天亮', detail:'推到次日一早',
+        costTimeMinutes:0, costStamina:-35, costMoney:0, costHookNpc:null, check:null,
+        sleepToHour:6,
+        onSuccessText:'躺下就着了。再睁眼，窗纸已经发白。' },
+
+      { id:'shed_rest', label:'坐下歇会儿',
+        costTimeMinutes:45, costStamina:-20, costMoney:0, costHookNpc:null, check:null,
+        stressDelta:-8,
+        onSuccessText:'板床上坐了一会儿。屋里安静，只有外头水声。' },
+
+      { id:'shed_cook', label:'焖一锅饭',
+        costTimeMinutes:30, costStamina:-30, costMoney:0, costHookNpc:null, check:null,
+        stressDelta:-12, requires:{ relic:'09' },
+        onSuccessText:'插上电，拿筷子卡住开关。热气上来的时候，人才算真的歇下来。' },
+
+      { id:'shed_tidy', label:'收拾农具', detail:'身上东西耐久+12',
+        costTimeMinutes:30, costStamina:6, costMoney:0, costHookNpc:null, check:null,
+        onSuccessText:'把能擦的擦了，能紧的紧了。' }
+    ],
+
+    plot: [],
+
+    village: [
+      { id:'village_zhou', label:'去老周家坐坐', detail:'老周愿不愿意多说',
+        costTimeMinutes:60, costStamina:6, costMoney:0, costHookNpc:null,
+        check:{ name:'老周愿不愿意跟你多说', baseChance:50,
+          modifiers:[
+            { source:'老周 好感每一档', bonus:15, requires:{ opinionTier:'zhou' } },
+            { source:'递烟袋',          bonus:25, requires:{ relic:'23' } },
+            { source:'端缸子',          bonus:15, requires:{ relic:'24' } },
+            { source:'拎两瓶酒',        bonus:20, requires:{ relic:'19' } }
+          ],
+          onSuccessText:'老周把烟袋在鞋底上磕了两下，话就开了。\n从水口讲到今年的年景，讲了小半个钟头。',
+          onFailText:'老周在院里忙，应了一声就没下文。你站了会儿，走了。',
+          onSuccess:{ opinionDelta:{ zhou:5 }, yieldMarginDelta:-10 } } },
+
+      { id:'village_hire', label:'找帮工老太太', detail:'请一天工',
+        costTimeMinutes:60, costStamina:4, costMoney:300, costHookNpc:null, check:null,
+        onSuccessText:'老太太答应了，说明天一大早就过来。' }
+    ],
+
+    town: [
+      { id:'town_boots', label:'五金铺买胶鞋', detail:'高筒黑胶鞋',
+        costTimeMinutes:60, costStamina:8, costMoney:45, costHookNpc:null, check:null,
+        grants:'08', equipAfterGrant:true,
+        onSuccessText:'五金铺门口一摞黑胶鞋。老板让你试着走两步，说这鞋不磨脚。\n你先看了看筒高——齐膝，够用了。' },
+
+      { id:'town_eat', label:'小吃摊吃一碗',
+        costTimeMinutes:40, costStamina:-22, costMoney:15, costHookNpc:null, check:null,
+        stressDelta:-10,
+        onSuccessText:'一碗面，汤是热的。吃完坐在小马扎上歇了会儿才起身。' },
+
+      { id:'town_fert', label:'农资店买袋肥', detail:'追肥用',
+        costTimeMinutes:50, costStamina:8, costMoney:180, costHookNpc:null, check:null,
+        grants:'36',
+        onSuccessText:'老板把袋子往柜台上一放，说潮天别堆在墙角。' },
+
+      { id:'town_price', label:'粮站问问行情', detail:'多一层底',
+        costTimeMinutes:30, costStamina:4, costMoney:0, costHookNpc:null, check:null,
+        yieldMarginDelta:-10,
+        onSuccessText:'粮站门口的黑板上写着今年的收购价，比你听说的低一点。' }
+    ]
+  },
+
+  /* ── 同窗互动 ────────────────────────────────────────────────
+     单独拿出来，因为它们要判好感、要动人情形。
+     这段全不是总表里的：presenceText 和动作文案都是重构时新写的。
+     两位同窗全程去性别化：这段里不出现「他」「她」。
+     ─────────────────────────────────────────────────────────── */
+  classmateScenes: {
+    plot: {
+      npcId:'classmateA',
+      presenceText:'同学A 蹲在田埂上，草帽没戴，半边袖子湿到肘。\n仪器盒敞着，屏幕上的数字一直被雨点打断。',
+      actions:[
+        { id:'A_hat', label:'把草帽递过去', detail:'头上没草帽就没得递',
+          costTimeMinutes:20, costStamina:2, costMoney:0, costHookNpc:null, check:null,
+          requires:{ slot:'head' },
+          onSuccessText:'你把草帽摘下来递过去。同学A 看了你一眼，接过去扣上，帽檐压得很低。\n「你自己呢。」\n「屋近。」你说。',
+          onSuccess:{ opinionDelta:{ classmateA:10 }, stressDelta:-6 } },
+
+        { id:'A_record', label:'帮忙记数据', detail:'亩产的误差收窄',
+          costTimeMinutes:40, costStamina:8, costMoney:0, costHookNpc:null, check:null,
+          onSuccessText:'同学A 念，你记。念到一半停下来，说上一组数不对，得重来。\n重来了一遍，比那遍慢，可记完以后，两边田的底子你都清楚了。',
+          onSuccess:{ opinionDelta:{ classmateA:8 }, yieldMarginDelta:-20, qualityMarginDelta:-3 } },
+
+        { id:'A_noodle', label:'拽去工具房吃面',
+          costTimeMinutes:50, costStamina:-14, costMoney:0, costHookNpc:'classmateA', check:null,
+          onSuccessText:'你说先别测了，面要坨了。\n同学A 说还有两组。你没理，把仪器盖上了。\n工具房那锅面吃完，同学A 靠在椅背上，半天没说话。',
+          onSuccess:{ opinionDelta:{ classmateA:18 }, stressDelta:-16 } }
+      ]
+    },
+
+    field: {
+      npcId:'classmateB',
+      presenceText:'同学B 扛着云台站在田埂上，三脚架插在你刚整好那垄边上。\n「你这泥点子，溅我镜头上了。」',
+      actions:[
+        { id:'B_rest', label:'挨着三脚架歇会儿',
+          costTimeMinutes:20, costStamina:-8, costMoney:0, costHookNpc:null, check:null,
+          onSuccessText:'你在三脚架旁边的埂上坐下。同学B 一边调机器一边数落你，说你这块田拍出来不好看，光太硬。\n你没接话，那边也没停。',
+          onSuccess:{ opinionDelta:{ classmateB:5 }, stressDelta:-10 } },
+
+        { id:'B_wipe', label:'递干稻草擦鞋', detail:'先得手边有干稻茬',
+          costTimeMinutes:15, costStamina:2, costMoney:0, costHookNpc:null, check:null,
+          requires:{ relic:'32' },
+          onSuccessText:'你从场院边抽了一把干稻草递过去。同学B 愣了一下，接过去蹭了两下鞋边，黑泥掉了一层。\n「……行吧。」',
+          onSuccess:{ opinionDelta:{ classmateB:9 } } },
+
+        { id:'B_presale', label:'聊聊新米预售', detail:'好感够了才开得了这个口',
+          costTimeMinutes:40, costStamina:4, costMoney:0, costHookNpc:null, check:null,
+          requires:{ opinion:{ classmateB:30 } },
+          blockedHint:'同学B 还没把你当回事。这事得先把关系处出来。',
+          opensPresale:true }
+      ]
+    }
+  },
+
+  /* ── 新米预售：原稿在 5-事件.md 池071 ─────────────────────────
+     一百份，一份五十。钱先到手上，米秋天再给。
+     intro 原样来自那张池卡；三条 label 和 onSuccessText 不是总表里的。
+     ─────────────────────────────────────────────────────────── */
+  presale: {
+    intro:'同学B 半夜给你发消息，说想到一个办法。\n「先卖后种。你现在就把今年的米挂出去，一百份，一份五十，先收钱。」\n「这叫预售。钱先到手上，米秋天再给。」\n隔了一会儿又发一条：「当然，万一秋天收不上来，钱得退。」',
+    options:[
+      { id:'presale_50', label:'挂五十份', detail:'2500 元先到手',
+        onSuccessText:'你说先挂五十份试试。\n同学B 两个小时就卖完了，说：「剩下的五十份真不挂了？」\n你说不挂了。\n那五十份的钱你单独记在一页上，没并进田里的账。\n秋天交米那天，你把这页纸翻出来对了一遍，一个不差。',
+        onSuccess:{ moneyDelta:2500, opinionDelta:{ classmateB:6 } } },
+
+      { id:'presale_100', label:'挂满一百份', detail:'5000 元 · 秋天得交得出',
+        onSuccessText:'一百份三天卖完，五千块先进了你的卡。\n那阵子你花钱松了点，买了台小机器。\n秋天收上来一算，够交，可也紧紧巴巴。\n同学B 说：「你这不是种田，是借钱。」\n这话说得对，可钱已经花出去了。',
+        onSuccess:{ moneyDelta:5000, stressDelta:12, opinionDelta:{ classmateB:4 },
+          flags:{ presaleOwed:100 } } },
+
+      { id:'presale_none', label:'不挂，等收上来再卖', detail:'不欠人的',
+        onSuccessText:'你说收上来再说，不欠人的。\n同学B 回了个「也行」，就没再提。\n过了半个月，同学B 在群里发了别人家的预售链接，卖得挺好。\n你划过去了。',
+        onSuccess:{ opinionDelta:{ classmateB:-3 } } }
+    ]
+  },
+
+  /* ── 陷泥：穿着运动鞋头一回下水田干活，必出 ───────────────────
+     原稿在《京西稻》藏品模块全量修订（01-36）· 08 胶鞋 的
+     【新增关联：前置获取事件（陷进泥里）】，text 原样照抄。
+     hint 和 modifier 那两行不是总表里的，是重构时新写的。
+     ─────────────────────────────────────────────────────────── */
+  mudTrap: {
+    text:'你穿着平时上课的运动鞋就往田里迈。才两步，淤泥直接没过了脚脖子，冰凉的泥水瞬间灌满鞋窝。\n你使劲一抬腿，鞋带崩紧，差点人仰马翻，拔出脚来袜子还留在泥里。',
+    hint:'【待作者过目】镇上五金铺有高筒黑胶鞋。',
+    // tiedTo：这条账是记在那双运动鞋头上的，鞋一换人就撤（sweepModifiers）
+    modifier:{ name:'鞋陷进过泥', good:false, desc:'走泥路慢一半', tiedTo:'shoe0' }
+  },
+
+  /* ── 行路微事件：走路时小概率碰上，飘一行，不占屏 ───────────── */
+  // 底下五句不是总表里的，是重构时新写的行路旁白。
+  travelEvents: [
+    '渠边两只白鹭被脚步声惊起来，扑棱棱飞过田埂。',
+    '路过老何家的田，人家的稻子比你的高一截。',
+    '一辆电动车从身后过去，带起一路土。',
+    '村里的狗跟了你半条路，到路口自己拐回去了。',
+    '风把稻草屑吹到你脸上，你抹了一把。'
+  ],
+
+  /* ── 压力顶到头：失控微事件（CK3 那个 mental break） ─────────── */
+  // 底下三句不是总表里的，是重构时新写的失控旁白。
+  stressBreaks: [
+    { text:'你在田埂上坐了半天，什么也没干。等回过神，日头都偏了。',
+      costTimeMinutes:60, staminaDelta:-5, stressDelta:-30 },
+    { text:'站在水口上盯着水看。水一直在走，你没动。',
+      costTimeMinutes:45, staminaDelta:0, stressDelta:-25 },
+    { text:'把工具翻出来又重新摆了一遍。摆完自己也觉得没意思。',
+      costTimeMinutes:40, staminaDelta:6, stressDelta:-28 }
+  ],
+
+  /* ── 开局 ────────────────────────────────────────────────────
+     本钱 7500 照抄现有游戏的 NUM.本钱（学院拨的实习经费＋公司先垫）。
+     体力 / 压力这一版按新规范走 0~100。
+     ─────────────────────────────────────────────────────────── */
+  startup: {
+    solarTermIndex:0, day:1, minutes:8 * 60, weather:'windy',
+    stamina:100, stress:0, money:7500, location:'field',
+    trueYield:840, trueQuality:82, yieldErrorMargin:80, qualityErrorMargin:10
+  },
+
+  /* ── 开局就认识的三个人，各带一笔来由 ───────────────────────── */
+  openingOpinion: [
+    { npcId:'zhou',       delta:10, reason:'站里把你托给了他' },
+    { npcId:'classmateA', delta:5,  reason:'一块儿从学校来的' },
+    { npcId:'classmateB', delta:5,  reason:'一块儿从学校来的' }
+  ]
+};
+
+/* ============================================================================
+   ◆ ENGINE —— 第二层：核心逻辑引擎
+   ----------------------------------------------------------------------------
+   这一层不碰 document / window / localStorage，纯状态 + 纯函数。
+   想单独验它：抠出来在 node 里跑（C:\tmp\ymd7\验引擎.mjs 就是这么干的）。
+   搬 Cocos：原样复制，前面加 export。
+
+   ── GameState 的形状（照 spec） ──────────────────────────────
+   {
+     time:   { solarTermIndex, day, minutes, weather },
+     player: { stamina, stress, money, location,
+               equipment: { head, feet, tool, accessory }, relics: [] },
+     field:  { trueYield, trueQuality, yieldErrorMargin, qualityErrorMargin,
+               modifiers: [] },
+     npcs:   { [npcId]: { opinion, opinionLogs: [], hooks } },
+     flags:  {}
+   }
+
+   ── ActionOption 的形状（照 spec） ───────────────────────────
+   {
+     id, label, costTimeMinutes, costStamina, costMoney, costHookNpc,
+     check: { baseChance, modifiers: [{ source, bonus }],
+              onSuccessText, onFailText }
+   }
+   另外几条是我加的，用来把数值落到实处：
+     detail / hinge / pitch / requires / blockedHint /
+     onSuccess / onFail（结构化效果，跟 onSuccessText 配套）
+     sleepToHour / grants / equipAfterGrant / opensPresale / staminaTag
+   ============================================================================ */
+
+/**
+ * 定种子的随机数发生器（线性同余）。
+ * 同一个种子必然给出同一串数 —— 也就是说同一局能一字不差地重演。
+ * 测试全靠它；正式玩不传，用 Math.random。
+ *
+ * 头一下先把种子搅乱：不搅的话 1、2、3 这样挨着的种子，
+ * 第一发都落在 23 上下（常数项把种子的那点差别盖住了），等于没分种子。
+ */
+function makeRng(seed) {
+  let s = (Math.imul(seed >>> 0, 2654435761) ^ 0x9e3779b9) >>> 0;
+  return function () {
+    // 用 Math.imul 走 32 位乘法，别让 s * 1664525 掉进双精度的舍入里
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+const SLOTS = ['head', 'feet', 'tool', 'accessory'];
+const SLOT_NAMES = { head:'头', feet:'脚', tool:'工具', accessory:'随身' };
+
+class GameEngine {
+  /**
+   * @param {object}   data   GameData
+   * @param {function} [rng]  随机数发生器。传定种子的进来，同一局能复现。
+   */
+  constructor(data, rng) {
+    this.data = data;
+    this.rng = rng || Math.random;
+    this.events = [];
+    this.newGame();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     开局
+     ══════════════════════════════════════════════════════════════ */
+
+  newGame() {
+    const s = this.data.startup;
+
+    /** @type {object} GameState */
+    this.state = {
+      time: { solarTermIndex:s.solarTermIndex, day:s.day,
+              minutes:s.minutes, weather:s.weather },
+      player: {
+        stamina:s.stamina, stress:s.stress, money:s.money, location:s.location,
+        equipment: { head:null, feet:{ ...this.data.starterGear, states:[],
+                                      effect:{ ...this.data.starterGear.effect } },
+                     tool:null, accessory:null },
+        relics: []
+      },
+      field: {
+        trueYield:s.trueYield, trueQuality:s.trueQuality,
+        yieldErrorMargin:s.yieldErrorMargin, qualityErrorMargin:s.qualityErrorMargin,
+        modifiers: []
+      },
+      npcs: {},
+      flags: {}
+    };
+    for (const n of this.data.npcs) {
+      this.state.npcs[n.id] = { opinion:0, opinionLogs:[], hooks:0 };
+    }
+    for (const o of this.data.openingOpinion) {
+      this.changeOpinion(o.npcId, o.delta, o.reason);
+    }
+    this.events = [];
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     时间
+     ══════════════════════════════════════════════════════════════ */
+
+  get currentTerm() { return this.data.solarTerms[this.state.time.solarTermIndex]; }
+
+  /** 推进时间。跨日就结算，跨节气就报一声。 */
+  advanceTime(minutes) {
+    if (!minutes) return;
+    this.state.time.minutes += minutes;
+    let guard = 0;
+    while (this.state.time.minutes >= 24 * 60) {
+      this.state.time.minutes -= 24 * 60;
+      this.state.time.day++;
+      if (this.state.time.day > this.currentTerm.days) {
+        this.state.time.day = 1;
+        this.state.time.solarTermIndex =
+          (this.state.time.solarTermIndex + 1) % this.data.solarTerms.length;
+        this.pushEvent('sys', `交节了。${this.currentTerm.id}。`);
+      }
+      this.onNewDay();
+      // 保险丝。正常调用最多跨一两天，4000 是给「一口气推到秋后」那种测试留的余量
+      if (++guard > 4000) break;
+    }
+  }
+
+  onNewDay() {
+    this.changeStamina(25);
+    this.changeStress(-15);
+    const pool = this.data.weatherPool;
+    this.state.time.weather = pool[Math.floor(this.rng() * pool.length)];
+  }
+
+  clockText() {
+    const m = this.state.time.minutes;
+    const hh = String(Math.floor(m / 60)).padStart(2, '0');
+    const mm = String(m % 60).padStart(2, '0');
+    const seg = m < 7*60 ? '天没亮' : m < 11*60 ? '清晨' : m < 13*60 ? '晌午'
+              : m < 17*60 ? '后晌'  : m < 19*60 ? '傍晚' : '天黑了';
+    return `${this.currentTerm.id} · 第${this.state.time.day}天 ${hh}:${mm}（${seg}）`;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     地点与移动
+     ══════════════════════════════════════════════════════════════ */
+
+  location(id) { return this.data.locations.find(l => l.id === id); }
+
+  /** 从 a 走到 b 要几分钟。穿戴在这儿起作用。 */
+  walkMinutes(fromId, toId) {
+    if (fromId === toId) return 0;
+    const a = this.location(fromId), b = this.location(toId);
+    if (!a || !b) return 0;
+    const dist = Math.round(Math.hypot(b.x - a.x, b.y - a.y));
+    let factor = 1;
+    for (const item of this.getWorn()) {
+      const v = item.effect?.travel;
+      if (v) factor *= (1 - v);     // 正数是省时间，负数是费时间
+    }
+    return Math.max(1, Math.round(dist * factor));
+  }
+
+  /** 身上所有带效果的物件：四个槽 + 不带槽的家什。 */
+  getWorn() {
+    const out = [];
+    for (const slot of SLOTS) {
+      const item = this.state.player.equipment[slot];
+      if (item && item.effect) out.push(item);
+    }
+    for (const id of this.state.player.relics) {
+      const r = this.findRelic(id);
+      if (r && r.effect && !r.slot) out.push(r);
+    }
+    return out;
+  }
+
+  /** @spec moveTo(locationId) */
+  moveTo(locationId) {
+    const from = this.state.player.location;
+    if (locationId === from) return null;
+    if (!this.location(locationId)) return { error:'没有这个地方' };
+
+    const minutes = this.walkMinutes(from, locationId);
+    this.state.player.location = locationId;
+    this.advanceTime(minutes);
+
+    const result = { minutes, from, to:locationId, travelEvent:null };
+    if (this.rng() < 0.35) {
+      const pool = this.data.travelEvents;
+      result.travelEvent = pool[Math.floor(this.rng() * pool.length)];
+      this.pushEvent('travel', result.travelEvent);
+    }
+    return result;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     体力 / 压力
+     ══════════════════════════════════════════════════════════════ */
+
+  changeStamina(delta) {
+    this.state.player.stamina =
+      Math.max(0, Math.min(100, this.state.player.stamina + delta));
+  }
+
+  /**
+   * 干活耗体力。穿戴里的 stamina.all / .sun / .ditch / .transplant 在这儿扣。
+   * @param {string} [tag] 活儿的路数：'sun' | 'ditch' | 'transplant'
+   */
+  spendStamina(base, tag) {
+    let factor = 1;
+    for (const item of this.getWorn()) {
+      const st = item.effect?.stamina; if (!st) continue;
+      if (st.all) factor *= (1 - st.all);
+      if (tag && st[tag]) factor *= (1 - st[tag]);
+    }
+    const actual = Math.max(1, Math.round(base * factor));
+    this.changeStamina(-actual);
+    this.changeStress(actual * 0.35);
+    return actual;
+  }
+
+  changeStress(delta) {
+    const before = this.state.player.stress;
+    this.state.player.stress = Math.max(0, Math.min(100, before + delta));
+    if (before < 80 && this.state.player.stress >= 80) this.breakDown();
+  }
+
+  /** 压力顶到头，来一段失控。用旗子挡住，免得层层递归。 */
+  breakDown() {
+    if (this.state.flags._breaking) return;
+    this.state.flags._breaking = true;
+    const pool = this.data.stressBreaks;
+    const e = pool[Math.floor(this.rng() * pool.length)];
+    this.state.player.stress = Math.max(0, this.state.player.stress + e.stressDelta);
+    this.advanceTime(e.costTimeMinutes);
+    this.changeStamina(e.staminaDelta || 0);
+    this.pushEvent('break', e.text);
+    this.state.flags._breaking = false;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     钱
+     ══════════════════════════════════════════════════════════════ */
+
+  spendMoney(amount) {
+    if (this.state.player.money < amount) return false;
+    this.state.player.money -= amount;
+    return true;
+  }
+  earnMoney(amount) { this.state.player.money += amount; }
+
+  /* ══════════════════════════════════════════════════════════════
+     好感 / 人情筹码
+     ══════════════════════════════════════════════════════════════ */
+
+  changeOpinion(npcId, delta, reason) {
+    const n = this.state.npcs[npcId];
+    if (!n || !delta) return;
+    const before = n.opinion;
+    n.opinion = Math.max(-100, Math.min(100, before + delta));
+    const actual = n.opinion - before;
+    if (actual) n.opinionLogs.unshift({ reason, delta:actual });
+    if (before < 60 && n.opinion >= 60) {
+      n.hooks++;
+      this.pushEvent('good', `${this.npcName(npcId)} 记你一份人情。手里多了一个筹码。`);
+    }
+  }
+
+  /** 好感阶梯：每 20 点一档，最多三档。 */
+  opinionTier(perTier, npcId) {
+    const op = this.state.npcs[npcId]?.opinion ?? 0;
+    if (op <= 0) return 0;
+    return Math.min(3, Math.floor(op / 20)) * perTier;
+  }
+
+  useHook(npcId) {
+    const n = this.state.npcs[npcId];
+    if (!n || n.hooks <= 0) return false;
+    n.hooks--;
+    return true;
+  }
+
+  npcName(id) { return this.data.npcs.find(n => n.id === id)?.name ?? id; }
+
+  /* ══════════════════════════════════════════════════════════════
+     藏品 / 穿戴
+     ══════════════════════════════════════════════════════════════ */
+
+  findRelic(id) { return id ? (this.data.relics.find(r => r.id === id) || null) : null; }
+
+  /** 这东西还在身上吗？册子里算，哪个槽上穿着也算。 */
+  hasItem(id) {
+    if (!id) return false;
+    if (this.state.player.relics.includes(id)) return true;
+    return SLOTS.some(s => this.state.player.equipment[s]?.id === id);
+  }
+
+  /** 找一件东西：先当家什找，再当身上穿的找。 */
+  findItem(id) {
+    if (!id) return null;
+    const r = this.findRelic(id);
+    if (r) return r;
+    for (const slot of SLOTS) {
+      if (this.state.player.equipment[slot]?.id === id) {
+        return this.state.player.equipment[slot];
+      }
+    }
+    return null;
+  }
+
+  acquire(id) {
+    const relic = this.findRelic(id);
+    if (!relic) return false;
+    if (this.state.player.relics.includes(id)) return false;
+    this.state.player.relics.push(id);
+    this.pushEvent('good', `得了件东西：${relic.name}。`);
+    return true;
+  }
+
+  equip(id) {
+    const relic = this.findRelic(id);
+    if (!relic || !relic.slot) return false;
+    this.state.player.equipment[relic.slot] = {
+      id:relic.id, name:relic.name, slot:relic.slot, durability:100, states:[],
+      quote:relic.quote, effect:relic.effect
+    };
+    this.sweepModifiers();
+    return true;
+  }
+
+  /**
+   * 挂在某件东西上的词条，东西一下身就跟着撤。
+   * 运动鞋那条「走泥路慢一半」是鞋的账 —— 换上胶鞋，这条就不该还挂在田况里。
+   */
+  sweepModifiers() {
+    this.state.field.modifiers =
+      this.state.field.modifiers.filter(m => !m.tiedTo || this.hasItem(m.tiedTo));
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     检定（CK3 那一套）
+     ══════════════════════════════════════════════════════════════ */
+
+  /**
+   * 把一次检定的加减项一条条摊开 —— 面板上逐行显示的就是它。
+   * 没到手的加成也列出来（让人知道自己错过了什么），只是记 0 分。
+   * @returns {{name, baseChance, entries:[{source,bonus,applied,active}], chance}}
+   */
+  resolveCheck(check) {
+    const entries = [];
+    for (const m of (check.modifiers || [])) {
+      let applied = 0;
+      if (m.requires?.opinionTier) {
+        applied = this.opinionTier(m.bonus, m.requires.opinionTier);
+      } else if (this.meetsRequirement(m.requires)) {
+        applied = m.bonus;
+      }
+      entries.push({ source:m.source, bonus:m.bonus, applied, active:applied > 0 });
+    }
+    // 全局修正：一沓名片（找个懂行的问一句）
+    let global = 0;
+    for (const id of this.state.player.relics) {
+      const g = this.findRelic(id)?.effect?.globalCheck;
+      if (g) global += g;
+    }
+    if (global) {
+      entries.push({ source:'一沓名片（打电话问了一句）',
+                     bonus:global, applied:global, active:true, global:true });
+    }
+    const total = entries.reduce((a, b) => a + b.applied, 0);
+    return { name:check.name, baseChance:check.baseChance, entries,
+             chance:Math.max(5, Math.min(95, check.baseChance + total)) };
+  }
+
+  /** 掷一颗 d100，点数不超过成功率就算过。 */
+  rollCheck(check) {
+    const panel = this.resolveCheck(check);
+    const d100 = Math.floor(this.rng() * 100) + 1;
+    return { ...panel, d100, passed:d100 <= panel.chance };
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     条件判断
+     ══════════════════════════════════════════════════════════════ */
+
+  /**
+   * 条件写成对象，一眼看得懂：
+   *   { relic:'08' }            有这个藏品
+   *   { opinion:{ zhou:20 } }   好感够不够
+   *   { opinionTier:'zhou' }    每 20 点一档（在 resolveCheck 里单独算）
+   *   { slot:'tool' }           某个槽上有东西
+   */
+  meetsRequirement(req) {
+    if (!req) return true;
+    // 注意：opinionTier 由 resolveCheck 自己算（它要按档位给分），这儿不管。
+    // 也别写成「看到 opinionTier 就 return true」—— 那样跟 relic 混在一起会漏判。
+    if (req.flag) return !!this.state.flags[req.flag];
+    if (req.slot) return !!this.state.player.equipment[req.slot];
+    if (req.relic) return this.state.player.relics.includes(req.relic);
+    if (req.opinion) {
+      for (const id in req.opinion) {
+        if ((this.state.npcs[id]?.opinion ?? 0) < req.opinion[id]) return false;
+      }
+    }
+    return true;
+  }
+
+  /** 缺什么：按钮锁不锁，全看这个。返回一句给人看的白话，或 null。 */
+  describeBlocker(option) {
+    if (!option) return '没有这个动作';
+    if (option.costHookNpc && (this.state.npcs[option.costHookNpc]?.hooks ?? 0) <= 0) {
+      return '手里没有人情筹码';
+    }
+    if (option.requires?.slot && !this.state.player.equipment[option.requires.slot]) {
+      return `身上没有能用的${SLOT_NAMES[option.requires.slot]}类家什`;
+    }
+    if (option.requires?.relic && !this.state.player.relics.includes(option.requires.relic)) {
+      return '手边没有这件东西';
+    }
+    // 缺的是「先前那一步没做」：比如小满没清沟，小暑就灌不起深水
+    if (option.requires?.flag && !this.state.flags[option.requires.flag]) {
+      return option.blockedHint || '前头那一步没走，这条现在走不通';
+    }
+    if (option.requires?.opinion) {
+      for (const id in option.requires.opinion) {
+        if ((this.state.npcs[id]?.opinion ?? 0) < option.requires.opinion[id]) {
+          return option.blockedHint || `${this.npcName(id)} 跟你还没到那份上`;
+        }
+      }
+    }
+    return null;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     效果落地
+     ══════════════════════════════════════════════════════════════ */
+
+  applyEffect(effect, sourceLabel) {
+    if (!effect) return;
+    if (effect.yieldDelta)   this.shiftField('yield', effect.yieldDelta);
+    if (effect.qualityDelta) this.shiftField('quality', effect.qualityDelta);
+    if (effect.moneyDelta)   this.earnMoney(effect.moneyDelta);
+    if (effect.staminaDelta) this.changeStamina(effect.staminaDelta);
+    if (effect.stressDelta)  this.changeStress(effect.stressDelta);
+    if (effect.yieldMarginDelta) {
+      this.state.field.yieldErrorMargin =
+        Math.max(15, this.state.field.yieldErrorMargin + effect.yieldMarginDelta);
+    }
+    if (effect.qualityMarginDelta) {
+      this.state.field.qualityErrorMargin =
+        Math.max(2, this.state.field.qualityErrorMargin + effect.qualityMarginDelta);
+    }
+    if (effect.opinionDelta) {
+      for (const id in effect.opinionDelta) {
+        this.changeOpinion(id, effect.opinionDelta[id], sourceLabel);
+      }
+    }
+    if (effect.flags) Object.assign(this.state.flags, effect.flags);
+    if (effect.modifiers) {
+      for (const m of effect.modifiers) {
+        if (this.state.field.modifiers.some(x => x.name === m.name)) continue;
+        this.state.field.modifiers.push(m);
+      }
+    }
+    if (effect.text) this.pushEvent('norm', effect.text);
+  }
+
+  shiftField(which, delta) {
+    const f = this.state.field;
+    if (which === 'yield') f.trueYield = Math.max(300, f.trueYield + delta);
+    else f.trueQuality = Math.max(30, Math.min(100, f.trueQuality + delta));
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     动作
+     ══════════════════════════════════════════════════════════════ */
+
+  /** 当前地点能做的动作：地点自己的 + 在场同窗的。 */
+  actionsHere(locationId) {
+    const here = locationId ?? this.state.player.location;
+    const list = (this.data.actions[here] || []).slice();
+    const scene = this.data.classmateScenes[here];
+    if (scene) list.push(...scene.actions);
+    return list;
+  }
+
+  findAction(actionId) {
+    return this.actionsHere().find(a => a.id === actionId) || null;
+  }
+
+  /**
+   * @spec executeAction(actionId)
+   * @returns {{error?, opensDecision?, opensPresale?, check?, effect?, action?, text?}}
+   */
+  executeAction(actionId) {
+    const a = this.findAction(actionId);
+    if (!a) return { error:'没有这个动作' };
+
+    const blocked = this.describeBlocker(a);
+    if (blocked) return { error:blocked };
+    if (a.opensDecision) return { opensDecision:true };
+    if (a.opensPresale)  return { opensPresale:true };
+    if (a.costMoney && this.state.player.money < a.costMoney) {
+      return { error:`钱不够，还差 ${a.costMoney - this.state.player.money} 元` };
+    }
+    if (a.costHookNpc && !this.useHook(a.costHookNpc)) {
+      return { error:'手里没有人情筹码' };
+    }
+    return this.commit(a);
+  }
+
+  /** 花钱、走时间、扣体力，然后把结果记上。动作和决策选项走的是同一条路。 */
+  commit(a) {
+    if (a.costMoney) this.spendMoney(a.costMoney);
+
+    // 睡到天亮：推到明天的那个钟点，已经过了就多绕一天
+    if (a.sleepToHour !== undefined) {
+      const target = a.sleepToHour * 60;
+      let delta = target - this.state.time.minutes;
+      if (delta <= 0) delta += 24 * 60;
+      this.advanceTime(delta);
+    }
+    if (a.costTimeMinutes) this.advanceTime(a.costTimeMinutes);
+
+    if (a.costStamina > 0) this.spendStamina(a.costStamina, a.staminaTag);
+    else if (a.costStamina < 0) this.changeStamina(-a.costStamina);
+    if (a.stressDelta) this.changeStress(a.stressDelta);
+    if (a.yieldMarginDelta) {
+      this.state.field.yieldErrorMargin =
+        Math.max(15, this.state.field.yieldErrorMargin + a.yieldMarginDelta);
+    }
+    if (a.qualityMarginDelta) {
+      this.state.field.qualityErrorMargin =
+        Math.max(2, this.state.field.qualityErrorMargin + a.qualityMarginDelta);
+    }
+
+    // 这一步干出来的结果，先落进状态、再落进叙事
+    let check = null, effect, text;
+    if (a.check) {
+      check = this.rollCheck(a.check);
+      effect = check.passed ? a.check.onSuccess : a.check.onFail;
+      text   = check.passed ? a.check.onSuccessText : a.check.onFailText;
+      this.applyEffect(effect, a.check.name);
+    } else {
+      effect = a.onSuccess;
+      text   = a.onSuccessText;
+      this.applyEffect(effect, a.label);
+    }
+    // 没有检定的动作也要把话记上 —— 不然点了按钮屏上什么都不动
+    if (text) this.pushEvent('norm', text);
+
+    // 话记完了，再看这一脚有没有踩进泥里：意外永远压在最上头
+    this.maybeSpringMudTrap();
+
+    if (a.grants) { this.acquire(a.grants); if (a.equipAfterGrant) this.equip(a.grants); }
+
+    return { action:a, check, effect, text };
+  }
+
+  /**
+   * 陷泥：穿着那双运动鞋，头一回真下水田干活，必出。
+   * 异常挂在鞋本身上（角标才挂得上去「运动鞋:陷过泥」），
+   * 同时也在田况词条里留一笔，两边都看得见。
+   */
+  maybeSpringMudTrap() {
+    const p = this.state.player;
+    if (p.location !== 'field') return;
+    if (this.state.flags.mudTrapSprung) return;
+    if (p.equipment.feet?.id !== this.data.starterGear.id) return;
+
+    this.state.flags.mudTrapSprung = true;
+    if (!p.equipment.feet.states.includes('陷过泥')) p.equipment.feet.states.push('陷过泥');
+    const mod = this.data.mudTrap.modifier;
+    if (!this.state.field.modifiers.some(m => m.name === mod.name)) {
+      this.state.field.modifiers.push(mod);
+    }
+    this.pushEvent('bad', this.data.mudTrap.text);
+    this.pushEvent('sys', this.data.mudTrap.hint);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     节气主决策
+     ══════════════════════════════════════════════════════════════ */
+
+  /**
+   * 当前该定哪个决策。
+   * 规则：按节气顺序找第一个没做的，只要它的节气已经到了就算 ——
+   * 迟做可以，但不能不做（欠着的会堆在日程里）。
+   */
+  currentDecision() {
+    // 挑**最早**该定而没定的那一件，不是数组里靠前的那一件。
+    // 数组里三屏老决策排在八屏新的前头（谷雨、夏至、立秋、立夏…），
+    // 要是照数组顺序取，一个把立夏小满芒种都拖着的玩家，到夏至会先被问夏至。
+    let found = null, foundIndex = Infinity;
+    for (const d of this.data.decisions) {
+      if (this.state.flags['done_' + d.id]) continue;
+      const i = this.data.solarTerms.findIndex(t => t.id === d.solarTerm);
+      if (i >= 0 && i <= this.state.time.solarTermIndex && i < foundIndex) {
+        found = d; foundIndex = i;
+      }
+    }
+    return found;
+  }
+
+  overdueDecisions() {
+    return this.data.decisions.filter(d => {
+      const i = this.data.solarTerms.findIndex(t => t.id === d.solarTerm);
+      return !this.state.flags['done_' + d.id] &&
+             i >= 0 && i < this.state.time.solarTermIndex;
+    });
+  }
+
+  chooseDecision(decisionId, optionId) {
+    const d = this.data.decisions.find(x => x.id === decisionId);
+    if (!d) return { error:'没有这个决策' };
+    const o = d.options.find(x => x.id === optionId);
+    if (!o) return { error:'没有这个选项' };
+
+    const blocked = this.describeBlocker(o);
+    if (blocked) return { error:blocked };
+    if (o.costMoney && this.state.player.money < o.costMoney) return { error:'钱不够' };
+
+    const result = this.commit(o);
+    this.state.flags['done_' + d.id] = optionId;
+    return { ...result, decision:d, option:o };
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     新米预售
+     ══════════════════════════════════════════════════════════════ */
+
+  takePresale(optionId) {
+    const o = this.data.presale.options.find(x => x.id === optionId);
+    if (!o) return null;
+    this.applyEffect(o.onSuccess, '新米预售');
+    this.state.flags.presaleTaken = true;
+    return o;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     事件队列（给视图层取）
+     ══════════════════════════════════════════════════════════════ */
+
+  pushEvent(kind, text) {
+    this.events.push({ kind, text });
+    // 只留最近这些条，叙事区就是拿它当滚动窗看的，没必要一直攒着
+    if (this.events.length > 60) this.events.splice(0, this.events.length - 60);
+  }
+  drainEvents() { const e = this.events; this.events = []; return e; }
+  /** 最近 n 条，早的在后。 */
+  peekEvents(n) { return this.events.slice(-n); }
+
+  /* ══════════════════════════════════════════════════════════════
+     给视图层读的快照
+     ══════════════════════════════════════════════════════════════ */
+
+  /**
+   * 手上的信息类家什，一直在替你把那两把尺子收紧 ——
+   * 不用做什么，东西在你手里，你就量得比昨天准。
+   * （一把水尺插在田口，往后每次看水都作数。）
+   */
+  relicMargin() {
+    let yieldMargin = 0, qualityMargin = 0;
+    for (const id of this.state.player.relics) {
+      const e = this.findRelic(id)?.effect;
+      if (e?.margin?.yield)   yieldMargin   += e.margin.yield;
+      if (e?.margin?.quality) qualityMargin += e.margin.quality;
+    }
+    return { yield:yieldMargin, quality:qualityMargin };
+  }
+
+  /** 底：再准也准不到哪儿去，留一条线，别让区间收成一根刺。 */
+  yieldErrorMargin() {
+    return Math.max(15, this.state.field.yieldErrorMargin + this.relicMargin().yield);
+  }
+  qualityErrorMargin() {
+    return Math.max(2, this.state.field.qualityErrorMargin + this.relicMargin().quality);
+  }
+
+  yieldRange() {
+    const y = this.state.field.trueYield, e = this.yieldErrorMargin();
+    return [y - e, y + e];
+  }
+  qualityRange() {
+    const q = this.state.field.trueQuality, e = this.qualityErrorMargin();
+    return [Math.max(0, Math.round(q - e)), Math.min(100, Math.round(q + e))];
+  }
+
+  /**
+   * 顶栏上挂的角标，最多三条。
+   * 排在最前的是当下最该管的：身上的毛病 → 撑不住 → 田里的坏账 → 田里的好账。
+   * 所以只挂得下三条时，被挤掉的总是好消息。
+   */
+  statusChips() {
+    const bad = [], good = [];
+    for (const slot of SLOTS) {
+      const item = this.state.player.equipment[slot];
+      if (item?.states?.length) bad.push({ good:false, text:`${item.name}:${item.states[0]}` });
+    }
+    if (this.state.player.stress >= 80) bad.push({ good:false, text:'撑不住了' });
+    for (const m of this.state.field.modifiers) {
+      (m.good ? good : bad).push({ good:!!m.good, text:m.name });
+    }
+    return bad.concat(good).slice(0, 3);
+  }
+
+  /** 当前地点有没有同窗，有的话把那一幕的描述给出来。 */
+  classmateHere(locationId) {
+    const scene = this.data.classmateScenes[locationId ?? this.state.player.location];
+    if (!scene) return null;
+    return { npcId:scene.npcId, name:this.npcName(scene.npcId),
+             presenceText:scene.presenceText };
+  }
+}
+
+/* ============================================================================
+   ◆ VIEW —— 第三层：视图渲染
+   ----------------------------------------------------------------------------
+   从这一行往下才开始碰 document。所有 DOM 操作都在这儿。
+   搬 Cocos 时这一层整个不要，换成一个「读 GameEngine 快照、摆节点」的脚本。
+   ============================================================================ */
+
+class UIRenderer {
+  constructor(engine, data, root) {
+    this.engine = engine;
+    this.data = data;
+    this.root = root;
+    this.tab = 'field';
+    this.selectedRelic = null;
+    this.el = {
+      time:      root.querySelector('#tbTime'),
+      weather:   root.querySelector('#tbWeather'),
+      stamina:   root.querySelector('#tbStamina'),
+      stress:    root.querySelector('#tbStress'),
+      money:     root.querySelector('#tbMoney'),
+      dotStamina:root.querySelector('#dotStamina'),
+      dotStress: root.querySelector('#dotStress'),
+      barStamina:root.querySelector('#barStamina'),
+      barStress: root.querySelector('#barStress'),
+      chips:     root.querySelector('#tbChips'),
+      sceneName: root.querySelector('#sceneName'),
+      sceneWho:  root.querySelector('#sceneWho'),
+      narr:      root.querySelector('#narr'),
+      actions:   root.querySelector('#actions'),
+      navbar:    root.querySelector('#navbar'),
+      mask:      root.querySelector('#mask'),
+      drawer:    root.querySelector('#drawer'),
+      drawerBody:root.querySelector('#drawerBody'),
+      modal:     root.querySelector('#modal'),
+      sheet:     root.querySelector('#sheet'),
+      toast:     root.querySelector('#toast')
+    };
+  }
+
+  /* ── 接线 ─────────────────────────────────────────────────── */
+  mount() {
+    this.root.querySelector('#drawerBtn').onclick = () => this.openDrawer();
+    this.el.mask.onclick = () => this.closeDrawer();
+    this.el.modal.onclick = e => { if (e.target === this.el.modal) this.closeSheet(); };
+    this.root.querySelectorAll('.tab').forEach(t => {
+      t.onclick = () => {
+        this.root.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+        t.classList.add('on');
+        this.tab = t.dataset.tab;
+        this.renderDrawer();
+      };
+    });
+    // 浏览器窗口拉过 1024 那条线时，抽屉从「抽出来」变成「常驻」，
+    // 或者反过来 —— 两边都得重画一次，不然那栏里会是空的／是旧的。
+    let wasWide = UIRenderer.isWide();
+    window.addEventListener('resize', () => {
+      if (UIRenderer.isWide() === wasWide) return;
+      wasWide = UIRenderer.isWide();
+      if (!wasWide) this.closeDrawer();
+      this.renderAll();
+    });
+    this.engine.drainEvents();
+    this.renderAll();
+  }
+
+  /* ── 小工具 ───────────────────────────────────────────────── */
+  static toastTimer = null;
+  toast(text) {
+    const t = this.el.toast;
+    t.textContent = text;
+    t.className = 'on';
+    clearTimeout(UIRenderer.toastTimer);
+    UIRenderer.toastTimer = setTimeout(() => { t.className = ''; }, 1900);
+  }
+  static gaugeColor(v, higherIsBetter) {
+    const good = higherIsBetter ? v >= 60 : v <= 40;
+    const bad  = higherIsBetter ? v <= 25 : v >= 75;
+    return good ? 'var(--ok)' : bad ? 'var(--bad)' : 'var(--warn)';
+  }
+  static duration(minutes) {
+    if (minutes < 60) return `${minutes}分`;
+    const h = minutes / 60;
+    return (h % 1 === 0 ? h : h.toFixed(1)) + '小时';
+  }
+  /** 把一段带换行的文本铺成 <p>。 */
+  static paragraphs(text) {
+    return (text || '').split('\n').map(line => `<p>${line}</p>`).join('');
+  }
+  /** 开销那一串：耗时 / 体力 / 钱 / 筹码。
+   *  动作池的按钮和决策方案共用同一套写法 —— 说好每个选项都要先把成本摆出来的，
+   *  决策那屏早先漏了这一段，一屏一千二的插秧机点下去才知道要花钱。 */
+  static costs(a) {
+    const bits = [];
+    if (a.costTimeMinutes) bits.push(`耗时${UIRenderer.duration(a.costTimeMinutes)}`);
+    if (a.costStamina > 0) bits.push(`体力-${a.costStamina}`);
+    if (a.costStamina < 0) bits.push(`体力+${-a.costStamina}`);
+    if (a.costMoney) bits.push(`${a.costMoney}元`);
+    if (a.costHookNpc) bits.push('🪝 一个筹码');
+    // 压力也摆出来：歇会儿、焖锅饭这一类，回的那口气全在压力上，
+    // 不写出来就只剩「体力+20」，看着像白捡的。
+    if (a.stressDelta) bits.push(`压力${a.stressDelta > 0 ? '+' : ''}${a.stressDelta}`);
+    // 每一项都包个 span 再回去。.act-sub 是个 flex，
+    // 光把几个字符串扔进去，它们会并成**一块**匿名文本 —— 中间那个间距就不生效了，
+    // 读出来是「耗时30分体力-6」。包成元素才各自是一个 flex item。
+    return bits.map(t => `<span class="bit">${t}</span>`);
+  }
+  /** 效果里那几个数字，缩成一行「这一步的账」。 */
+  static ledger(effect) {
+    if (!effect) return '';
+    const parts = [];
+    if (effect.yieldDelta)   parts.push(`亩产 ${effect.yieldDelta > 0 ? '+' : ''}${effect.yieldDelta}`);
+    if (effect.qualityDelta) parts.push(`米质 ${effect.qualityDelta > 0 ? '+' : ''}${effect.qualityDelta}`);
+    if (effect.moneyDelta)   parts.push(`钱 ${effect.moneyDelta > 0 ? '+' : ''}${effect.moneyDelta}`);
+    return parts.join(' · ');
+  }
+  static modifierRows(effect) {
+    if (!effect?.modifiers) return '';
+    return effect.modifiers.map(m =>
+      `<div class="chk-row"><span>${m.good ? '🟩' : '🟥'} ${m.name}</span>
+       <span class="mk">${m.desc}</span></div>`).join('');
+  }
+
+  /* ── 总渲染 ───────────────────────────────────────────────── */
+  renderAll() {
+    this.renderTopBar();
+    const scene = this.renderScene();
+    this.renderNarrative(scene);
+    this.renderActions();
+    this.renderLocationBar();
+    if (this.drawerVisible()) this.renderDrawer();
+  }
+
+  /** 体力、压力这两样的满格是多少。引擎那边没这个常数 ——
+   *  开局的 100 / 0 是配置里的数值，不是上限定义。这儿只为画进度条，
+   *  所以夹一下就够了，别把它当成一条真规则到处用。 */
+  static STAT_MAX = 100;
+
+  renderTopBar() {
+    const st = this.engine.state;
+    const w = this.data.weather[st.time.weather];
+    this.renderClock();
+    this.el.weather.textContent = `${w.icon} ${w.label}`;
+    this.el.stamina.textContent = st.player.stamina;
+    this.el.stress.textContent = st.player.stress;
+    this.el.money.textContent = st.player.money;
+
+    // 圆点和进度条一个色。光晕在这儿一起写进去 ——
+    // 样式里只能写 currentColor，那是奶白的，配红的绿的圆点不对。
+    const tint = (dot, bar, v, higherIsBetter) => {
+      const c = UIRenderer.gaugeColor(v, higherIsBetter);
+      dot.style.background = c;
+      dot.style.boxShadow = `0 0 7px -1px ${c}`;
+      bar.style.background = c;
+      bar.style.width = Math.max(0, Math.min(100,
+        v / UIRenderer.STAT_MAX * 100)).toFixed(0) + '%';
+    };
+    tint(this.el.dotStamina, this.el.barStamina, st.player.stamina, true);
+    tint(this.el.dotStress,  this.el.barStress,  st.player.stress,  false);
+
+    this.el.chips.innerHTML = this.engine.statusChips()
+      .map(c => `<span class="buff ${c.good ? 'good' : 'bad'}">${c.text}</span>`).join('');
+  }
+
+  /** 顶栏那一行时间：节气做成一枚金印，钟点另起一小段灰字。
+   *  clockText() 本来就是「谷雨 · 第1天 08:00（清晨）」一整句，
+   *  这儿只是把开头那个节气名切出来单独上色 —— 所以切不动就整句照放，
+   *  文案是引擎那边出的，视图不许自己拼。 */
+  renderClock() {
+    const term = this.engine.currentTerm.id;
+    const text = this.engine.clockText();
+    const rest = text.startsWith(term) ? text.slice(term.length) : '';
+    this.el.time.innerHTML = rest
+      ? `<span class="tb-term">${term}</span><span class="tb-clock">${rest}</span>`
+      : `<span class="tb-clock">${text}</span>`;
+  }
+
+  renderScene() {
+    const loc = this.engine.location(this.engine.state.player.location);
+    const mate = this.engine.classmateHere();
+    this.el.sceneName.textContent = loc.name;
+    // 那枚圆点是 CSS 的 ::before 画的，不进 textContent ——
+    // 不在场时这里得**空着**，空才落得上 :empty 那条「别挂个空胶囊」。
+    this.el.sceneWho.textContent = mate ? `${mate.name} 在此` : '';
+    return mate;
+  }
+
+  /**
+   * 叙事区：地点一句话 + 在场的人 + 刚发生的事。
+   * 事情那一截是滚动窗，最多留三条 —— 一次动作有时候会连出好几笔
+   * （比如陷进泥里：干了什么、出了什么事、该怎么办）。
+   */
+  renderNarrative(mate) {
+    // 头一句是交代地方，不是正文，压暗一档分开
+    const parts = [`<p class="scene-desc">${
+      this.engine.location(this.engine.state.player.location).desc}</p>`];
+    if (mate) parts.push(`<p class="said">${mate.presenceText.replace(/\n/g, '<br>')}</p>`);
+    let first = true;
+    for (const e of this.engine.peekEvents(3)) {
+      const cls = (e.kind === 'sys' || e.kind === 'travel') ? 'sys' : 'ev';
+      // 新发生的第一笔上面划一道虚线 —— 这一窗里哪几行是刚出来的，一眼看得出
+      parts.push(`<p class="${cls}${first ? ' ev-first' : ''}">${
+        e.text.replace(/\n/g, '<br>')}</p>`);
+      first = false;
+    }
+    const box = this.el.narr;
+    box.innerHTML = parts.join('');
+    box.scrollTop = box.scrollHeight;      // 最新的那笔得看得见
+  }
+
+  renderActions() {
+    const box = this.el.actions;
+    box.innerHTML = '';
+
+    const decision = this.engine.currentDecision();
+    if (decision) {
+      // 按钮上那行用的是日程表里的 taskWindow（泡种落谷 / 控水晒田 / 除草 …），
+      // 整句照搬，不改字也不截字。
+      // 早先写的是「该${屏名}了」—— 遇上屏名是「水」「草」「虫」的几屏，读出来不成话。
+      const termRow = this.data.solarTerms.find(t => t.id === decision.solarTerm);
+      box.appendChild(this.actionButton({
+        id:'decision_' + decision.id,
+        label: termRow ? `${termRow.taskWindow}的时候到了` : `该${decision.screenName}了`,
+        detail:'这一步定下去，秋后才见账',
+        isDecision:true
+      }));
+    }
+    for (const a of this.engine.actionsHere()) {
+      if (a.opensPresale && this.engine.state.flags.presaleTaken) continue;
+      box.appendChild(this.actionButton(a));
+    }
+    if (!box.children.length) {
+      const d = document.createElement('div');
+      d.className = 'act locked';
+      d.innerHTML = '<div class="act-body"><div class="act-main">这儿这会儿没什么可干的</div></div>';
+      box.appendChild(d);
+    }
+  }
+
+  /** 成功率按三档上色。检定面板和动作按钮共用同一个档位，
+   *  免得同一个数在列表里是绿的、点进去变黄的。 */
+  static chanceClass(chance) {
+    return chance > 75 ? 'good' : chance > 50 ? 'mid' : 'low';
+  }
+
+  actionButton(a) {
+    const el = document.createElement('div');
+    const blocked = this.engine.describeBlocker(a);
+    // 卡片没有图标了：原来那个 emoji（⚡/💰/🎲）既说不清是什么事，
+    // 又跟左边的色条、右边的徽章各说各话。现在「是什么」靠色条，
+    // 「多大把握」靠徽章，都比一个闪电准。
+    el.className = 'act' + (blocked ? ' locked' : '') + (a.isDecision ? ' decision' : '')
+      + (a.check ? ' check' : '');
+
+    const bits = UIRenderer.costs(a);
+    // 说明另起一行。跟开销挤在同一行过 —— 说明里本来就常写着「30分 · 体力-6」，
+    // 跟左边那几个数一对，看着像是重了一遍。
+    const note = a.detail ? `<div class="act-note">${a.detail}</div>` : '';
+
+    // 带检定的往右挂一枚概率徽章：大数字 + 小字注明这是「检定」
+    let badge = '';
+    if (a.check) {
+      const chance = this.engine.resolveCheck(a.check).chance;
+      badge = `<div class="act-badge ${UIRenderer.chanceClass(chance)}">
+        <b>${chance}</b><span>检定</span></div>`;
+    }
+
+    el.innerHTML =
+      // .act-body 这一层不能省：.act 是 flex 行，
+      // 里头几个块要是直接当 flex item，就会**并排**摊开，
+      // 说明和开销会跑到标题右边去。包一层，里头才是正常的竖着堆。
+      `<div class="act-body">` +
+        (a.isDecision ? `<div class="act-kind">农时</div>` : '') +
+        `<div class="act-main">${a.label}</div>` +
+        `<div class="act-sub">${bits.join('')}</div>` +
+        note +
+        (blocked ? `<div class="act-why">${blocked}</div>` : '') +
+      `</div>` + badge;
+
+    if (!blocked) el.onclick = () => {
+      if (a.isDecision) return this.openDecisionSheet();
+      if (a.opensPresale) return this.openPresaleSheet();
+      const r = this.engine.executeAction(a.id);
+      if (r.error) return this.toast(r.error);
+      this.renderAll();
+      if (r.check) this.showCheckResult(a.label, r.check, r.effect, r.text);
+    };
+    return el;
+  }
+
+  /** 五个地点各配一个图标。键是 location.id，加地点得跟着补一个，
+   *  漏了就用最后一格那个垫底 —— 不认字总比认不出好。 */
+  static LOC_ICON = { field:'🌾', shed:'🛖', plot:'🧪', village:'🏡', town:'🏮' };
+
+  renderLocationBar() {
+    const bar = this.el.navbar;
+    bar.innerHTML = '';
+    const here = this.engine.state.player.location;
+    for (const loc of this.data.locations) {
+      const isHere = loc.id === here;
+      const minutes = isHere ? 0 : this.engine.walkMinutes(here, loc.id);
+      // 直线距离就是「不穿鞋也不陷泥」时的耗时（见 engine.walkMinutes）——
+      // 视图自己拿坐标算，不必再问引擎要一个「没加成要多久」的重载。
+      // 比它慢，就是身上那身行头拖的（胶鞋走泥路慢一半），标成麦芽黄。
+      const pure = Math.round(Math.hypot(loc.x - this.engine.location(here).x,
+                                        loc.y - this.engine.location(here).y));
+      const slowed = !isHere && minutes > pure;
+
+      const b = document.createElement('div');
+      b.className = 'loc' + (isHere ? ' here' : '') + (slowed ? ' far' : '');
+      b.innerHTML =
+        `<div class="loc-ic">${UIRenderer.LOC_ICON[loc.id] || '📍'}</div>
+         <div class="loc-n">${loc.name}</div>
+         <div class="loc-t">${isHere ? '就在这儿'
+           : `<span class="wl">${minutes} 分钟</span>`}</div>`;
+      if (!isHere) b.onclick = () => {
+        const r = this.engine.moveTo(loc.id);
+        this.renderAll();
+        if (r?.travelEvent) this.toast(r.travelEvent);
+      };
+      bar.appendChild(b);
+    }
+  }
+
+  /* ── 抽屉 ─────────────────────────────────────────────────── */
+  /** 宽屏上抽屉是**常驻**的：CSS 里把它摆到了右栏，不再抽进抽出。
+   *  所以「抽屉开着没开着」这件事不能只看 .on 那个 class —— 宽屏上永远没有它。
+   *  这个 1024 跟样式里那一段是同一个数，改要一起改。 */
+  static isWide() {
+    return typeof window.matchMedia === 'function'
+      && window.matchMedia('(min-width:1024px)').matches;
+  }
+  /** 抽屉这会儿看不看得见 —— 宽屏常驻，窄屏看 .on。 */
+  drawerVisible() {
+    return UIRenderer.isWide() || this.el.drawer.classList.contains('on');
+  }
+  openDrawer() {
+    // 宽屏上它本来就在那儿，再按一次不该弹出一层遮罩来
+    if (UIRenderer.isWide()) { this.renderDrawer(); return; }
+    this.el.drawer.classList.add('on');
+    this.el.mask.classList.add('on');
+    this.renderDrawer();
+  }
+  closeDrawer() {
+    this.el.drawer.classList.remove('on');
+    this.el.mask.classList.remove('on');
+  }
+  renderDrawer() {
+    ({ field:this.renderFieldTab, schedule:this.renderScheduleTab,
+       people:this.renderPeopleTab, relics:this.renderRelicTab })[this.tab]
+      .call(this, this.el.drawerBody);
+  }
+
+  /* ① 田况与穿戴 */
+  /** 一张数据看板：大数字 + 一条「误差半径」带子。
+   *  带子中间那道准星是估值的中点，两边铺开的宽窄就是这颗心的虚实 ——
+   *  越宽越没数。误差范围是引擎给的，视图只负责画出来。
+   *  满量程取多少：亩产按 1200 斤封顶，米质按 100 分。*/
+  static gaugeCard(label, unit, lo, hi, margin, span) {
+    const mid = (lo + hi) / 2;
+    const width = Math.min(100, margin * 2 / span * 100);
+    const pct = v => Math.max(0, Math.min(100, v / span * 100));
+    // 单位前面那个空格是**留着的**，不是手滑：
+    // 「840 ~ 920 斤」这句是连着读的，单位贴死在数上会读成「920斤」一坨。
+    return `<div class="stat">
+      <div class="stat-l">${label}</div>
+      <div class="stat-v">${lo} ~ ${hi}<span class="stat-u"> ${unit}</span></div>
+      <div class="radius">
+        <div class="radius-bar">
+          <div class="radius-band" style="left:${pct(mid - margin).toFixed(1)}%;
+            width:${width.toFixed(1)}%"></div>
+          <div class="radius-mid" style="left:${pct(mid).toFixed(1)}%"></div>
+        </div>
+        <div class="radius-foot">误差 ±${margin} ${unit}</div>
+      </div>
+    </div>`;
+  }
+
+  renderFieldTab(box) {
+    const e = this.engine;
+    const [y0, y1] = e.yieldRange(), [q0, q1] = e.qualityRange();
+    const margin = e.yieldErrorMargin(), qMargin = e.qualityErrorMargin();
+    const passive = e.relicMargin().yield;
+    const fit = margin <= 35 ? '收得挺窄了' : margin <= 55 ? '大致有数' : '还虚着';
+
+    box.innerHTML = `
+      <h3>田里的估值</h3>
+      <div class="stat-cards">
+        ${UIRenderer.gaugeCard('预估亩产', '斤', y0, y1, margin, 1200)}
+        ${UIRenderer.gaugeCard('预估米质', '分', q0, q1, qMargin, 100)}
+      </div>
+      <div class="mod plain"><span>这把尺子</span>
+        <span class="why">${fit}${passive
+          ? ` · 手里的家什替你收窄了 ${-passive} 斤` : ''}</span></div>
+      <h3>田况词条</h3>
+      ${e.state.field.modifiers.length
+        ? e.state.field.modifiers.map(m => `
+            <div class="mod ${m.good ? '' : 'bad'}">
+              <span>${m.name} <span class="why">（${m.desc}）</span></span></div>`).join('')
+        : '<div class="mod plain">还没什么攒下来</div>'}
+      <h3>身上的穿戴</h3>
+      ${this.slotRow('head','🎩')}${this.slotRow('feet','👟')}
+      ${this.slotRow('tool','🔧')}${this.slotRow('accessory','🎒')}`;
+  }
+
+  slotRow(slot, icon) {
+    const item = this.engine.state.player.equipment[slot];
+    if (!item) {
+      return `<div class="slot"><div class="slot-row">
+        <div class="slot-ic">${icon}</div>
+        <div class="slot-b"><div class="slot-t slot-empty">${
+          SLOT_NAMES[slot]}位空着</div></div></div></div>`;
+    }
+    const states = (item.states || []).map(s => `<span class="tag">${s}</span>`).join('');
+    const good = item.effect?.desc ? `<span class="tag g">${item.effect.desc}</span>` : '';
+    const dur = item.durability;
+    return `<div class="slot">
+      <div class="slot-row">
+        <div class="slot-ic">${icon}</div>
+        <div class="slot-b">
+          <div class="slot-t">${item.name}</div>
+          <div class="slot-e">${item.quote || ''}</div>
+          <div class="tags">${states}${good}</div>
+        </div>
+        ${dur === undefined ? '' : `<div class="dur"><span>耐久</span><b>${dur}%</b></div>`}
+      </div>
+      ${dur === undefined ? '' :
+        `<div class="dur-bar"><i class="${dur <= 30 ? 'low' : ''}" style="width:${dur}%"></i></div>`}
+    </div>`;
+  }
+
+  /* ② 日程与农时 */
+  renderScheduleTab(box) {
+    const e = this.engine, st = e.state, term = e.currentTerm;
+    const total = term.days * 24 * 60;
+    const elapsed = (st.time.day - 1) * 24 * 60 + st.time.minutes;
+    const left = Math.max(0, total - elapsed);
+    const next = this.data.solarTerms[
+      (st.time.solarTermIndex + 1) % this.data.solarTerms.length];
+    const now = e.currentDecision(), late = e.overdueDecisions();
+
+    box.innerHTML = `
+      <h3>农时窗口</h3>
+      <div class="clock">
+        <div class="clock-t">距【${next.id}·${next.taskWindow}】开始<br>
+          <b>${Math.floor(left / 60)} 小时 ${left % 60} 分</b></div>
+        <div class="bar"><i style="width:${Math.round(elapsed / total * 100)}%"></i></div>
+        <div style="font-size:11px;color:var(--dim);margin-top:6px">
+          ${term.id} 第 ${st.time.day} / ${term.days} 天 · 这个节气的事：${term.work}</div>
+      </div>
+      <h3>备忘录</h3>
+      ${now ? `<div class="memo soon">【${now.solarTerm}·${now.screenName}】还没定。
+        这一步定下去，秋后才见账。</div>` : ''}
+      ${late.map(d => `<div class="memo soon">【${d.solarTerm}·${d.screenName}】拖过了，还欠着。</div>`).join('')}
+      ${(!now && !late.length) ? '<div class="memo done">到这会儿的正事都定了</div>' : ''}
+      ${st.flags.presaleOwed
+        ? '<div class="memo soon">欠着一百份预售的米。秋天交不出来，钱得退。</div>' : ''}
+      ${st.player.stress >= 60 ? '<div class="memo soon">压力快到顶了。找个地方歇一歇。</div>' : ''}
+      <div class="memo">镇上粮站挂着今年的收购价。</div>`;
+  }
+
+  /* ③ 人物 */
+  /** 圆形头像里放什么：老周是姓，两位同窗是自己名字末尾那个「A」「B」。
+   *  两个同窗全程去性别化 —— 头像也得是字母，不能是头像剪影。 */
+  static avatarOf(n) {
+    if (n.id === 'zhou') return n.name.slice(-1);
+    const m = n.name.match(/[A-Z]$/);
+    return m ? m[0] : n.name.slice(0, 1);
+  }
+
+  renderPeopleTab(box) {
+    // 好感度是 -100 ~ +100 的两极条（引擎那边起始 0）。
+    // 底数写成常数，免得三处各写一个 100。
+    const OPINION_MAX = 100;
+    /** 好坏只看「正负」，浓淡看「多少」—— 三档色 */
+    const tint = v => v >= 30 ? 'var(--green)' : v < 0 ? 'var(--bad)' : 'var(--warn)';
+
+    box.innerHTML = '<h3>人物关系</h3>' + this.data.npcs.map((n, i) => {
+      const s = this.engine.state.npcs[n.id];
+      const stage = s.opinion >= 60 ? '能开口求事' : s.opinion >= 30 ? '说得上话'
+                  : s.opinion >= 0 ? '点头之交' : s.opinion > -30 ? '不太待见你' : '躲着你走';
+      const color = tint(s.opinion);
+      // 条子从中线往一边长。正的长右边，负的长左边 ——
+      // 半格就是对满 100（不是整格）：+100 正好顶到右端，
+      // 写成整格的话 +100 会长出条子外头去。
+      const pct = Math.min(50, Math.abs(s.opinion) / OPINION_MAX * 50).toFixed(1);
+      const barSide = s.opinion >= 0
+        ? `<i class="opi-fill p" style="width:${pct}%"></i>`
+        : `<i class="opi-fill m" style="width:${pct}%"></i>`;
+      return `<div class="npc">
+        <div class="npc-h">
+          <div class="npc-av c${i % 3}">${UIRenderer.avatarOf(n)}</div>
+          <div class="npc-hd">
+            <div class="npc-n">${n.name}</div>
+            <div class="npc-r">${n.role}</div>
+          </div>
+          <div class="npc-o" style="color:${color}">${s.opinion >= 0 ? '+' : ''}${s.opinion}</div>
+        </div>
+        <div class="opi">
+          <div class="opi-mid"></div>${barSide}
+        </div>
+        <div class="opi-foot"><span>-100</span><span>0</span><span>+100</span></div>
+        <div class="npc-d">${stage}${s.hooks ? ` · 🪝 人情筹码 ${s.hooks}` : ''}</div>
+        <div class="npc-d">${n.voice}</div>
+        <div class="npc-log">
+          ${s.opinionLogs.length
+            ? s.opinionLogs.map(l => `<div><span>${l.reason}</span>
+                <b style="color:${l.delta >= 0 ? 'var(--ok)' : 'var(--bad)'}">
+                ${l.delta >= 0 ? '+' : ''}${l.delta}</b></div>`).join('')
+            : '<div><span>还没有来往</span><b></b></div>'}
+        </div></div>`;
+    }).join('');
+
+    box.querySelectorAll('.npc').forEach(el => {
+      el.querySelector('.npc-h').onclick = () => el.classList.toggle('open');
+    });
+  }
+
+  /* ④ 藏品册 */
+  renderRelicTab(box) {
+    const owned = this.engine.state.player.relics;
+    box.innerHTML =
+      `<h3>藏品册 ${owned.length} / 36</h3><div class="relics" id="relicGrid"></div>`;
+    const grid = box.querySelector('#relicGrid');
+
+    for (const r of this.data.relics) {
+      const has = owned.includes(r.id);
+      const el = document.createElement('div');
+      el.className = 'relic' + (has ? '' : ' lock') +
+                     (this.selectedRelic === r.id ? ' sel' : '');
+      // 类别次序照 relics 自己的排列（见 GameData 的注释）：
+      // 免灾 01–06、免代价 07–12、换信息 13–18、换人情 19–24、换钱 25–30、顶货 31–36。
+      // 一格一个色调，翻册子时一眼能看出是哪一路。
+      el.dataset.cat = String(Math.floor((Number(r.id) - 1) / 6));
+      // 角上挂个编号。没到手的那格也挂 —— 缺的是第几号，本来就该看得见。
+      el.innerHTML = `<div class="relic-no">${r.id}</div>
+                      <div class="relic-n">${has ? r.name : '？？'}</div>
+                      <div class="relic-c">${has ? r.category : '未到手'}</div>`;
+      if (has) el.onclick = () => {
+        this.selectedRelic = this.selectedRelic === r.id ? null : r.id;
+        this.renderRelicTab(box);
+      };
+      grid.appendChild(el);
+    }
+
+    const sel = this.selectedRelic ? this.engine.findRelic(this.selectedRelic) : null;
+    if (sel) {
+      const d = document.createElement('div');
+      d.className = 'relic-d';
+      d.innerHTML = `<div class="t">${sel.id} ${sel.name}
+          <em>${sel.category}类${
+            sel.slot ? ' · 可穿戴：' + SLOT_NAMES[sel.slot] : ''}</em></div>
+        <div>${sel.quote}</div>
+        <div class="q">来历：${sel.origin}</div>
+        ${sel.effect?.desc ? `<div class="e">▸ ${sel.effect.desc}</div>` : ''}`;
+      grid.appendChild(d);
+    }
+  }
+
+  /* ── 决策层：CK3 式三选一 ─────────────────────────────────── */
+  openDecisionSheet() {
+    const d = this.engine.currentDecision();
+    if (!d) return this.toast('这会儿没有要定的事');
+
+    const rows = d.options.map(o => {
+      const blocked = this.engine.describeBlocker(o);
+      const panel = o.check ? this.engine.resolveCheck(o.check) : null;
+      const color = panel ? (panel.chance >= 75 ? 'var(--ok)'
+                           : panel.chance >= 50 ? 'var(--warn)' : 'var(--bad)')
+                          : 'var(--dim)';
+      const bits = UIRenderer.costs(o);
+      if (panel) bits.push(`<span style="color:${color}">🎲 检定 ${panel.chance}%</span>`);
+      else if (UIRenderer.ledger(o.onSuccess)) bits.push(UIRenderer.ledger(o.onSuccess));
+      return `<div class="act${blocked ? ' locked' : ''}" data-option="${o.id}">
+        <div class="act-main">${o.label}</div>
+        <div class="act-sub">${bits.join('')}</div>
+        <div class="act-note">${o.detail}</div>
+        ${blocked ? `<div class="act-why">${blocked}</div>` : ''}</div>`;
+    }).join('');
+
+    this.setSheet(`
+      <div class="sh-title">${d.solarTerm} · ${d.screenName}</div>
+      <div class="sh-sub">${d.brief}</div>
+      <div class="sh-body">${UIRenderer.paragraphs(d.story)}</div>
+      <div class="sh-sec">这一步怎么走</div>
+      ${rows}
+      <button class="sh-btn ghost" id="sheetClose">再想想</button>`);
+
+    this.el.sheet.querySelectorAll('[data-option]').forEach(el => {
+      if (el.classList.contains('locked')) return;
+      el.onclick = () => this.openOptionDetail(
+        d, d.options.find(o => o.id === el.dataset.option));
+    });
+    this.el.sheet.querySelector('#sheetClose').onclick = () => this.closeSheet();
+  }
+
+  /* ── 选项详情：完整检定面板 ───────────────────────────────── */
+  openOptionDetail(decision, o) {
+    let html = `<div class="sh-title">${o.label}</div>
+      <div class="sh-sub">${o.hinge || ''}</div>
+      <div class="sh-body">${UIRenderer.paragraphs(o.pitch)}</div>`;
+
+    if (o.check) {
+      const panel = this.engine.resolveCheck(o.check);
+      const cls = panel.chance >= 75 ? '' : panel.chance >= 50 ? 'mid' : 'low';
+      // 那只环靠 --p 画：conic-gradient 走到百分之几，就是成功率百分之几。
+      html += `<div class="sh-sec">检定 · ${panel.name}</div>
+        <div class="chk-big">
+          <div class="chk-num ${cls}" style="--p:${panel.chance}"><span>${panel.chance}%</span></div>
+          <div class="chk-lbl">掷一颗 d100，掷出不超过这个数就算过<br>
+            底子 <b>${panel.baseChance}</b>，底下每一笔加减都摊开了</div></div>
+        <div class="chk-row base"><span>基础成功率</span><b>${panel.baseChance}%</b></div>`;
+      // 加上了的正常列（绿），没加上的一律灰着、写明差在哪 ——
+      // 原来没加成的只写「没加成」，看不出到底是没这个条件还是条件不够。
+      for (const m of panel.entries) {
+        if (m.applied > 0) {
+          html += `<div class="chk-row"><span>${m.source}</span>
+            <b class="p">+${m.applied}%</b></div>`;
+        } else {
+          const why = m.global ? '缺一条' : '未持有 / 未达标';
+          html += `<div class="chk-row off"><span>${m.source}
+            <span class="mk">· ${why}</span></span><b class="m">${
+              m.applied < 0 ? m.applied + '%' : '0'}</b></div>`;
+        }
+      }
+      html += `<div class="sh-sec">万一不过</div>
+        <div class="chk-row risk"><span>${(o.check.onFailText || '').split('\n')[0]}</span>
+          <b>${UIRenderer.ledger(o.check.onFail) || '—'}</b></div>`;
+    } else {
+      html += `<div class="sh-sec">这一步干了什么</div>
+        <div class="chk-row"><span>这一步的账</span>
+          <b>${UIRenderer.ledger(o.onSuccess) || '不亏不赚'}</b></div>
+        ${UIRenderer.modifierRows(o.onSuccess)}`;
+    }
+
+    html += `<button class="sh-btn" id="sheetGo">就这么办</button>
+             <button class="sh-btn ghost" id="sheetBack">退回去</button>`;
+    this.setSheet(html);
+
+    this.el.sheet.querySelector('#sheetGo').onclick = () => {
+      const r = this.engine.chooseDecision(decision.id, o.id);
+      if (r.error) return this.toast(r.error);
+      this.closeSheet();
+      this.renderAll();
+      this.showCheckResult(`${decision.solarTerm}·${decision.screenName} · ${o.label}`,
+                           r.check, r.effect, r.text);
+    };
+    this.el.sheet.querySelector('#sheetBack').onclick = () => this.openDecisionSheet();
+  }
+
+  /* ── 预售层 ───────────────────────────────────────────────── */
+  openPresaleSheet() {
+    const p = this.data.presale;
+    this.setSheet(`
+      <div class="sh-title">新米预售</div>
+      <div class="sh-sub">同学B 出的主意 · 一百份，一份五十</div>
+      <div class="sh-body">${UIRenderer.paragraphs(p.intro)}</div>
+      <div class="sh-sec">挂多少</div>
+      ${p.options.map(o => `<div class="act" data-presale="${o.id}">
+        <div class="act-body"><div class="act-main">${o.label}</div>
+        <div class="act-sub"><span class="bit">${o.detail}</span></div></div></div>`).join('')}
+      <button class="sh-btn ghost" id="sheetClose">先不提这事</button>`);
+
+    this.el.sheet.querySelectorAll('[data-presale]').forEach(el => {
+      el.onclick = () => {
+        const o = this.engine.takePresale(el.dataset.presale);
+        this.closeSheet();
+          this.renderAll();
+        this.showCheckResult('新米预售 · ' + o.label, null, o.onSuccess, o.onSuccessText);
+      };
+    });
+    this.el.sheet.querySelector('#sheetClose').onclick = () => this.closeSheet();
+  }
+
+  /* ── 结果层 ───────────────────────────────────────────────── */
+  showCheckResult(title, check, effect, text) {
+    let html = `<div class="sh-title">${title}</div>`;
+    if (check) {
+      html += `<div class="sh-sub">检定 · ${check.name}</div>
+        <div class="chk-big">
+          <!-- 这只环这回画的是掷出来的点数：指针走到 68，就是掷出了 68 -->
+          <div class="chk-num ${check.passed ? '' : 'low'}"
+               style="--p:${check.d100}"><span>${check.d100}</span></div>
+          <div class="chk-lbl">掷出 ${check.d100}，要不超过 ${check.chance} ——
+            <b style="color:${check.passed ? 'var(--ok)' : 'var(--bad)'}">
+              ${check.passed ? '过了' : '没过'}</b></div>
+        </div>`;
+    }
+    html += `<div class="sh-body">${UIRenderer.paragraphs(text)}</div>`;
+    if (UIRenderer.ledger(effect)) {
+      html += `<div class="chk-row"><span>这一步的账</span>
+        <b>${UIRenderer.ledger(effect)}</b></div>`;
+    }
+    html += UIRenderer.modifierRows(effect);
+    html += `<button class="sh-btn" id="sheetClose">知道了</button>`;
+    this.setSheet(html);
+    this.el.sheet.querySelector('#sheetClose').onclick = () => this.closeSheet();
+  }
+
+  /** 每张弹层顶上那条把手，统一在这儿加 —— 三个 open* 各写一遍容易漏。
+   *  宽屏上弹层是个居中对话框，那条把手就没意义了，CSS 里收掉。 */
+  setSheet(html) {
+    this.el.sheet.innerHTML = `<div class="sh-grab"></div>` + html;
+    this.el.modal.className = 'on';
+  }
+  closeSheet() { this.el.modal.className = ''; }
+}
+
+/* ============================================================================
+   ◆ BOOT —— 引导：把 DOM 和引擎接起来
+   ============================================================================ */
+const engine   = new GameEngine(GameData);
+const renderer = new UIRenderer(engine, GameData, document.getElementById('phone'));
+renderer.mount();
+</script>
+</body>
+</html>
