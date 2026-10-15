@@ -9,3 +9,6 @@ _tmp_*.pdf
 # 爬来的第三方资料（网页原文、统计年鉴 PDF）—— 别人的东西，不适合传到公开仓库
 _research/
 .research/
+
+# 截图暂存目录（九月里连着 a.png / _crop-*.png 一堆），过程产物，不进仓库
+ymdshot/
