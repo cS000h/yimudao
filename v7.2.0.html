@@ -817,8 +817,14 @@ body{display:flex;justify-content:center;align-items:stretch}
   transition:background .16s, color .16s}
 .wear-btn.off{border-color:var(--line-dark);color:var(--dim)}
 /* 藏品详情卡底下那颗「穿戴上身 / 握在手里」—— 它穿的是 .sh-btn 的皮，
-   只是在卡里得跟正文拉开一点 */
-.relic-d .sh-btn{margin-top:11px}
+   但填满一整片的红在抽屉里太响：这一页别处没有一块实红，
+   它往那儿一杵，看着像要付款。改成朱砂描边 ——
+   还是这一张卡上唯一的动作，只是跟纸一个调子，按下去才泛红。 */
+.relic-d .sh-btn{background:none;color:var(--stamp-red);box-shadow:none;
+  border:1.3px solid var(--stamp-red);font-size:13px;font-weight:700;margin-top:11px}
+/* 已经穿在身上的：按钮转灰，写的是「已穿戴在身 · 卸下」 */
+.relic-d .sh-btn.on{color:var(--dim);border-color:var(--line-dark)}
+.relic-d .sh-btn:hover{background:var(--stamp-bg)}
 
 .care-list{display:flex;flex-direction:column;gap:6px}
 .care{display:flex;align-items:center;gap:9px;width:100%;text-align:left;cursor:pointer;
