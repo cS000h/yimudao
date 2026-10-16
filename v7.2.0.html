@@ -4468,12 +4468,13 @@ class UIRenderer {
            + `需定下【${row ? row.taskWindow : decision.screenName}】方案`
            + `（距${this.nextTerm().id}还剩 ${Math.floor(this.termMinutesLeft() / 60)} 小时）`;
     } else if (mud) {
-      // 陷泥那句是照着陷泥那件事写的提示：鞋自己的 effect.desc 就写着
-      // 「走泥路慢一半」，胶鞋那一件写着「泥里走得快」。这儿只是把
-      // **已经有的一句话**摆到眼前，不是新加的规则。
+      // 陷泥这一条只说两件事：这双鞋叫什么、它自己那条 effect.desc。
+      // 一个字都不是这儿编的 —— 早先在这后头还接了半句
+      // 「镇上集市的五金铺有胶鞋，穿戴上就不用再拖着腿走」，
+      // 那是视图在教人怎么玩：提示归提示，替玩家拿主意是另一回事，
+      // 何况该去哪儿、该买什么，镇上那一屏和陷泥那件事自己会讲。
       cls = 'tip'; icon = 'bulb';
-      text = `提示：脚上这双${mud.name}陷过泥（${mud.effect?.desc || ''}）—— `
-           + `镇上集市的五金铺有胶鞋，穿戴上就不用再拖着腿走`;
+      text = `提示：脚上这双${mud.name}陷过泥 —— ${mud.effect?.desc || ''}`;
     } else {
       text = `眼下没有非定不可的事 —— ${e.currentTerm.id}还剩 `
            + `${Math.floor(this.termMinutesLeft() / 60)} 小时`;
